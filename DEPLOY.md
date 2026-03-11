@@ -52,7 +52,7 @@ sudo apt install -y git
 sudo -u postgres psql
 
 # Inside psql:
-CREATE USER evanepal_user WITH PASSWORD 'choose-a-strong-password';
+CREATE USER evanepal_user WITH PASSWORD 'ev@Nep@l2026';
 CREATE DATABASE evanepal OWNER evanepal_user;
 GRANT ALL PRIVILEGES ON DATABASE evanepal TO evanepal_user;
 \q
@@ -66,11 +66,11 @@ Note the credentials — you will need them for `DATABASE_URL`.
 
 ```bash
 # Create app directory
-sudo mkdir -p /var/www/eva-nepal
-sudo chown $USER:$USER /var/www/eva-nepal
+sudo mkdir -p /var/www/eva
+sudo chown $USER:$USER /var/www/eva
 
 # Clone
-cd /var/www/eva-nepal
+cd /var/www/eva
 git clone https://github.com/YOUR_USERNAME/eva-nepal.git .
 ```
 
@@ -78,10 +78,10 @@ git clone https://github.com/YOUR_USERNAME/eva-nepal.git .
 
 ## Step 4 — Environment Variables
 
-Create `/var/www/eva-nepal/.env.local`:
+Create `/var/www/eva/.env.local`:
 
 ```bash
-nano /var/www/eva-nepal/.env.local
+nano /var/www/eva/.env.local
 ```
 
 Paste the following (replace every placeholder):
@@ -95,6 +95,7 @@ GOOGLE_CLIENT_SECRET=""
 ```
 
 Generate NEXTAUTH_SECRET:
+
 ```bash
 openssl rand -base64 32
 ```
@@ -104,7 +105,7 @@ openssl rand -base64 32
 ## Step 5 — Install Dependencies & Build
 
 ```bash
-cd /var/www/eva-nepal
+cd /var/www/eva
 
 # Install packages
 npm ci
@@ -150,15 +151,15 @@ The app runs on **port 3011** (defined in `ecosystem.config.js`).
 
 ```bash
 # Copy the config
-sudo cp /var/www/eva-nepal/nginx.conf /etc/nginx/sites-available/evanepal.org
+sudo cp /var/www/eva-nepal/nginx.conf /etc/nginx/sites-available/eva-nepal
 
 # Edit: set real domain
-sudo nano /etc/nginx/sites-available/evanepal.org
+sudo nano /etc/nginx/sites-available/eva-nepal
 # Change: server_name _;
 # To:     server_name evanepal.org www.evanepal.org;
 
 # Enable the site
-sudo ln -s /etc/nginx/sites-available/evanepal.org /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/eva-nepal /etc/nginx/sites-enabled/
 
 # Remove default site
 sudo rm -f /etc/nginx/sites-enabled/default
@@ -230,6 +231,7 @@ pm2 restart eva-nepal
 ```
 
 Or use the existing deploy script:
+
 ```bash
 bash deploy.sh
 ```
@@ -284,20 +286,26 @@ npx prisma studio                # DB browser (run on server then SSH tunnel)
 ## Remote DB Access (Prisma Studio via SSH Tunnel)
 
 Run on your local machine:
+
 ```bash
 ssh -L 5555:localhost:5555 user@YOUR_VPS_IP \
-  "cd /var/www/eva-nepal && npx prisma studio"
+  "cd /var/www/eva && npx prisma studio"
 ```
+
 Then open `http://localhost:5555` in your browser.
 
 ---
 
 ## File Locations on Server
 
-| Path | Purpose |
-|------|---------|
-| `/var/www/eva-nepal/` | App root |
-| `/var/www/eva-nepal/.env.local` | Environment variables (never commit) |
-| `/var/www/eva-nepal/public/uploads/` | Admin-uploaded images |
-| `/etc/nginx/sites-available/evanepal.org` | Nginx config |
-| `/var/log/nginx/` | Nginx access + error logs |
+| Path                                   | Purpose                              |
+| -------------------------------------- | ------------------------------------ |
+| `/var/www/eva/`                        | App root                             |
+| `/var/www/eva/.env.local`              | Environment variables (never commit) |
+| `/var/www/eva/public/uploads/`         | Admin-uploaded images                |
+| `/etc/nginx/sites-available/eva-nepal` | Nginx config                         |
+| `/var/log/nginx/`                      | Nginx access + error logs            |
+
+rsync -avz --delete --exclude node_modules --exclude .next \
+/Users/sanatmool/Documents/website\ _\ Eva\ Nepal/ \
+root@139.59.59.91:/var/www/eva/
