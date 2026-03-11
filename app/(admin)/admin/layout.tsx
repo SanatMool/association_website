@@ -19,14 +19,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
 
-  // Login page must render without session check — no redirect, no sidebar
-  if (pathname === "/admin/login") return <>{children}</>;
-
+  // All hooks must be called before any conditional return
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (pathname !== "/admin/login" && status === "unauthenticated") {
       router.push("/admin/login");
     }
-  }, [status, router]);
+  }, [status, router, pathname]);
+
+  // Login page: render without sidebar or session gate
+  if (pathname === "/admin/login") return <>{children}</>;
 
   if (status === "loading") {
     return (
@@ -75,7 +76,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-t border-white/10">
           <div className="text-xs text-white/40 mb-2 truncate px-1">{session.user?.email}</div>
           <button
-            onClick={() => signOut({ callbackUrl: "/admin/login" })}
+            onClick={() => signOut({ callbackUrl: window.location.origin + "/admin/login" })}
             className="flex items-center gap-2 text-xs text-white/60 hover:text-white transition-colors px-1 py-1"
           >
             <LogOut size={13} />

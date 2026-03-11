@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
+import PublicChrome from "@/components/layout/PublicChrome";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -126,9 +125,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans">
         <LocaleProvider>
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
+          <PublicChrome>{children}</PublicChrome>
         </LocaleProvider>
       </body>
     </html>

@@ -1,137 +1,303 @@
-# Deployment Guide — Vitara Balgram
+# EVA Nepal — VPS Production Deployment Guide
 
-## Local Development
+## Architecture Overview
 
-| Task                       | Command         |
-| -------------------------- | --------------- |
-| Dev server                 | `npm run dev`   |
-| Production build           | `npm run build` |
-| Preview production locally | `npm start`     |
-| Lint                       | `npm run lint`  |
-
-Visit `http://localhost:3000` after running `npm run dev`.
+```
+Browser → Nginx (port 80/443) → Next.js on port 3011 (PM2) → PostgreSQL (localhost:5432)
+```
 
 ---
 
-## Deploy to Digital Ocean (Ubuntu 22.04)
+## Prerequisites
 
-### Prerequisites
-
-- A Digital Ocean droplet running Ubuntu 22.04
-- A domain (`vitarabalgram.com`) pointed to the droplet's IP via DNS A records
+- Ubuntu 20.04 / 22.04 LTS server
+- Domain name pointed to VPS IP (A record: `evanepal.org` → VPS IP)
+- SSH access as root or sudo user
 
 ---
 
-### Step 1 — Install Node.js 20 LTS
+## Step 1 — Server Packages
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js 18 LTS
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt install -y nodejs
-node -v   # should print v20.x.x
-```
 
-### Step 2 — Install PM2 and Nginx
+# Verify
+node -v   # should be v18.x
+npm -v
 
-```bash
+# Install PM2 globally
 sudo npm install -g pm2
+
+# Install Nginx
 sudo apt install -y nginx
+
+# Install PostgreSQL
+sudo apt install -y postgresql postgresql-contrib
+
+# Install Git
+sudo apt install -y git
 ```
 
-### Step 3 — Upload the Project
+---
 
-**Option A — Git clone** (if repo is on GitHub/GitLab):
+## Step 2 — PostgreSQL Database Setup
 
 ```bash
-git clone <repo-url> /var/www/eva
+# Switch to postgres system user
+sudo -u postgres psql
+
+# Inside psql:
+CREATE USER evanepal_user WITH PASSWORD 'choose-a-strong-password';
+CREATE DATABASE evanepal OWNER evanepal_user;
+GRANT ALL PRIVILEGES ON DATABASE evanepal TO evanepal_user;
+\q
 ```
 
-**Option B — rsync from local machine**:
+Note the credentials — you will need them for `DATABASE_URL`.
+
+---
+
+## Step 3 — Clone the Project
 
 ```bash
-rsync -avz --exclude node_modules --exclude .next . user@<droplet-ip>:/var/www/eva
+# Create app directory
+sudo mkdir -p /var/www/eva-nepal
+sudo chown $USER:$USER /var/www/eva-nepal
+
+# Clone
+cd /var/www/eva-nepal
+git clone https://github.com/YOUR_USERNAME/eva-nepal.git .
 ```
 
-### Step 4 — Build the App
+---
+
+## Step 4 — Environment Variables
+
+Create `/var/www/eva-nepal/.env.local`:
 
 ```bash
-cd /var/www/eva
-npm install
+nano /var/www/eva-nepal/.env.local
+```
+
+Paste the following (replace every placeholder):
+
+```
+DATABASE_URL="postgresql://evanepal_user:choose-a-strong-password@localhost:5432/evanepal"
+NEXTAUTH_URL="https://evanepal.org"
+NEXTAUTH_SECRET="paste result of: openssl rand -base64 32"
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+```
+
+Generate NEXTAUTH_SECRET:
+```bash
+openssl rand -base64 32
+```
+
+---
+
+## Step 5 — Install Dependencies & Build
+
+```bash
+cd /var/www/eva-nepal
+
+# Install packages
+npm ci
+
+# Run database migrations (no prompts — safe for production)
+npx prisma migrate deploy
+
+# Generate Prisma client
+npx prisma generate
+
+# Seed the database (first time only)
+npx prisma db seed
+
+# Build the Next.js app
 npm run build
 ```
 
-### Step 5 — Start with PM2
+---
+
+## Step 6 — PM2 Process Manager
 
 ```bash
+# Start the app using the existing PM2 config
 pm2 start ecosystem.config.js
+
+# Save PM2 process list (survives reboots)
 pm2 save
-pm2 startup   # copy and run the printed command to enable on reboot
-```
 
-Verify the app is running:
+# Auto-start PM2 on boot
+pm2 startup
+# Copy and run the sudo command it outputs
 
-```bash
+# Verify
 pm2 status
-curl http://localhost:3011  # should return HTML
+pm2 logs eva-nepal
 ```
 
-### Step 6 — Configure Nginx
+The app runs on **port 3011** (defined in `ecosystem.config.js`).
+
+---
+
+## Step 7 — Nginx Configuration
 
 ```bash
-sudo cp /var/www/eva/nginx-site.conf /etc/nginx/sites-available/eva
-sudo ln -s /etc/nginx/sites-available/eva /etc/nginx/sites-enabled/
-sudo nginx -t        # test config — should say "ok"
+# Copy the config
+sudo cp /var/www/eva-nepal/nginx.conf /etc/nginx/sites-available/evanepal.org
+
+# Edit: set real domain
+sudo nano /etc/nginx/sites-available/evanepal.org
+# Change: server_name _;
+# To:     server_name evanepal.org www.evanepal.org;
+
+# Enable the site
+sudo ln -s /etc/nginx/sites-available/evanepal.org /etc/nginx/sites-enabled/
+
+# Remove default site
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Test and reload
+sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Visit `https://eva.nibjar.com` — the site should load.
+Visit `http://evanepal.org` — website should appear.
 
-### Step 7 — SSL with Let's Encrypt (free HTTPS)
+---
+
+## Step 8 — SSL Certificate (HTTPS)
+
+DNS must be pointing to the VPS before this step.
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d eva.nibjar.com -d www.eva.nibjar.com
+sudo certbot --nginx -d evanepal.org -d www.evanepal.org
+sudo certbot renew --dry-run   # test auto-renewal
 ```
 
-Follow the prompts. Certbot will automatically update the nginx config and set up auto-renewal.
-
-Visit `https://eva.nibjar.com` — padlock should appear.
+After this, `https://evanepal.org` will have a valid certificate.
 
 ---
 
-## Verification Checklist
+## Step 9 — Firewall
 
-- [ ] `npm run dev` → `http://localhost:3000` — all 10 sections visible
-- [ ] `npm run build && npm start` — no build errors, site loads
-- [ ] On droplet: `pm2 status` shows `eva` as `online`
-- [ ] On droplet: `curl http://localhost:3011` returns HTML
-- [ ] `http://eva.nibjar.com` loads via nginx
-- [ ] `https://eva.nibjar.com` loads with valid SSL cert
-- [ ] `http://eva.nibjar.com` redirects to `https://eva.nibjar.com` (certbot handles this)
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+sudo ufw status
+```
+
+Allows: SSH (22), HTTP (80), HTTPS (443). Blocks direct access to port 3011.
 
 ---
 
-## Common Commands (on the droplet)
+## Step 10 — Verify
 
 ```bash
-pm2 logs eva     # view app logs
-pm2 restart eva  # restart after code changes
-pm2 status                     # check process status
-sudo nginx -t                  # validate nginx config
-sudo systemctl reload nginx    # reload nginx without downtime
-sudo certbot --nginx -d eva.nibjar.com -d www.eva.nibjar.com
-sudo certbot renew --dry-run   # test SSL auto-renewal
+# App running
+pm2 status
+
+# DB has data
+psql postgresql://evanepal_user:password@localhost:5432/evanepal \
+  -c 'SELECT COUNT(*) FROM "Member";'
+# Should return 155
+
+# Admin panel
+# https://evanepal.org/admin/login
+# Email: admin@evanepal.org
+# Password: admin123  ← change this immediately (see below)
 ```
 
-## Updating the Site
+---
+
+## Deploying Updates
 
 ```bash
-cd /var/www/eva
-git pull                        # or rsync from local
-npm install
+cd /var/www/eva-nepal
+git pull origin main
+npm ci
+npx prisma migrate deploy
 npm run build
-pm2 restart eva
+pm2 restart eva-nepal
 ```
 
-rsync -avz --delete --exclude node*modules --exclude .next \
-/Users/sanatmool/Documents/website\ *\ Eva\ Nepal/ \
-root@139.59.59.91:/var/www/eva/
+Or use the existing deploy script:
+```bash
+bash deploy.sh
+```
+
+---
+
+## Change Admin Password (Required Before Going Live)
+
+```bash
+# Generate bcrypt hash of new password
+node -e "const b=require('bcryptjs'); b.hash('YourNewPassword', 10).then(h=>console.log(h))"
+
+# Update in DB
+psql postgresql://evanepal_user:password@localhost:5432/evanepal
+UPDATE "AdminUser" SET password = 'PASTE_HASH_HERE', "updatedAt" = now()
+  WHERE email = 'admin@evanepal.org';
+\q
+```
+
+---
+
+## Production Checklist
+
+- [ ] `NEXTAUTH_URL` = `https://evanepal.org` (not localhost)
+- [ ] `NEXTAUTH_SECRET` is a strong random 32+ character string
+- [ ] `DATABASE_URL` uses the production DB credentials
+- [ ] `.env.local` is NOT in git (check `.gitignore`)
+- [ ] Admin password changed from `admin123`
+- [ ] SSL active (`https://` works)
+- [ ] `pm2 startup` run (app restarts on server reboot)
+- [ ] Nginx `server_name` set to real domain
+- [ ] Firewall enabled (UFW)
+- [ ] Real EVA Nepal phone/email/social in Footer and Contact section
+- [ ] `favicon.ico` and `og-image.jpg` (1200×630px) in `/public/`
+
+---
+
+## Useful Commands
+
+```bash
+pm2 status                       # is the app running?
+pm2 restart eva-nepal            # restart after code changes
+pm2 logs eva-nepal               # live logs
+pm2 logs eva-nepal --lines 100   # last 100 log lines
+
+sudo nginx -t                    # test nginx config syntax
+sudo systemctl reload nginx      # reload nginx
+
+npx prisma studio                # DB browser (run on server then SSH tunnel)
+```
+
+## Remote DB Access (Prisma Studio via SSH Tunnel)
+
+Run on your local machine:
+```bash
+ssh -L 5555:localhost:5555 user@YOUR_VPS_IP \
+  "cd /var/www/eva-nepal && npx prisma studio"
+```
+Then open `http://localhost:5555` in your browser.
+
+---
+
+## File Locations on Server
+
+| Path | Purpose |
+|------|---------|
+| `/var/www/eva-nepal/` | App root |
+| `/var/www/eva-nepal/.env.local` | Environment variables (never commit) |
+| `/var/www/eva-nepal/public/uploads/` | Admin-uploaded images |
+| `/etc/nginx/sites-available/evanepal.org` | Nginx config |
+| `/var/log/nginx/` | Nginx access + error logs |
