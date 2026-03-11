@@ -37,7 +37,7 @@ const config: Config = {
       },
       fontFamily: {
         sans:  ["var(--font-inter)", "system-ui", "sans-serif"],
-        serif: ["var(--font-playfair)", "Georgia", "serif"],
+        serif: ["var(--font-dm-serif)", "Georgia", "serif"],
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",

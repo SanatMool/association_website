@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { MapPin, Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 
@@ -32,16 +33,14 @@ export default function Footer() {
 
           {/* ── Brand ── */}
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-12 h-12 bg-gold-500 rounded-xl flex items-center justify-center font-serif font-bold text-navy-900 text-xl shadow-gold">
-                E
-              </div>
-              <div>
-                <div className="font-serif font-bold text-xl text-white">EVA Nepal</div>
-                <div className="text-gold-400/80 text-xs font-medium tracking-wider uppercase">
-                  Event and Venue Association
-                </div>
-              </div>
+            <div className="mb-5">
+              <Image
+                src="/evanepal.png"
+                alt="EVA Nepal"
+                width={160}
+                height={103}
+                className="h-12 w-auto brightness-0 invert"
+              />
             </div>
 
             <p className="text-slate-400 text-sm leading-relaxed mb-7 max-w-sm">

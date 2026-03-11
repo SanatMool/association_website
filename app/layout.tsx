@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
 import PublicChrome from "@/components/layout/PublicChrome";
@@ -10,14 +10,20 @@ const inter = Inter({
   display: "swap",
 });
 
-const playfair = Playfair_Display({
+const dmSerifDisplay = DM_Serif_Display({
   subsets: ["latin"],
-  variable: "--font-playfair",
+  variable: "--font-dm-serif",
+  weight: "400",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://evanepal.org"),
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
+  },
   title: {
     default:
       "EVA Nepal – Event and Venue Association Nepal | Kathmandu's Premier Venue Association",
@@ -86,9 +92,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable} ${dmSerifDisplay.variable}`}>
       <head>
-        <link rel="icon" href="/favicon.ico" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -98,7 +103,7 @@ export default function RootLayout({
               name: "Event and Venue Association Nepal",
               alternateName: "EVA Nepal",
               url: "https://evanepal.org",
-              logo: "https://evanepal.org/logo.png",
+              logo: "https://evanepal.org/evanepal.png",
               description:
                 "The official association of event venues, banquet halls and wedding venues in Kathmandu, Nepal.",
               address: {

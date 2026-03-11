@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Globe } from "lucide-react";
+import Image from "next/image";
 import { useLocale } from "@/context/LocaleContext";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,12 @@ export default function Navbar() {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href.split("#")[0]);
 
+  // On the homepage the hero is dark so we can start transparent.
+  // On every other page (members, events, news, slug pages) the background is
+  // light — always use the solid dark style so text remains visible.
+  const isHomepage = pathname === "/";
+  const solidNav = isScrolled || !isHomepage;
+
   return (
     <motion.header
       initial={{ y: -100, opacity: 0 }}
@@ -41,14 +48,14 @@ export default function Navbar() {
       transition={{ duration: 0.5, ease: [0.21, 0.47, 0.32, 0.98] }}
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-        isScrolled
+        solidNav
           ? "bg-navy-950/95 backdrop-blur-xl shadow-[0_1px_0_rgba(255,255,255,0.06),0_4px_24px_rgba(0,0,0,0.4)] py-2"
           : "bg-transparent py-4"
       )}
     >
-      {/* Top gold line — only when scrolled */}
+      {/* Top gold line — visible on interior pages always, on homepage only when scrolled */}
       <AnimatePresence>
-        {isScrolled && (
+        {solidNav && (
           <motion.div
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
@@ -63,22 +70,20 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
 
           {/* ── Logo ── */}
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/" className="flex items-center group">
             <motion.div
-              whileHover={{ scale: 1.08, rotate: 3 }}
+              whileHover={{ scale: 1.04 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
-              className="w-10 h-10 bg-gold-500 rounded-[10px] flex items-center justify-center font-serif font-bold text-navy-900 text-lg shadow-gold"
             >
-              E
+              <Image
+                src="/evanepal.png"
+                alt="EVA Nepal"
+                width={120}
+                height={77}
+                className="h-10 w-auto brightness-0 invert"
+                priority
+              />
             </motion.div>
-            <div className="hidden sm:block">
-              <div className="font-serif font-bold text-white text-[15px] leading-tight tracking-wide">
-                EVA Nepal
-              </div>
-              <div className="text-gold-400/80 text-[10px] font-medium tracking-[0.15em] uppercase">
-                {locale === "en" ? "Est. 2011" : "स्था. २०११"}
-              </div>
-            </div>
           </Link>
 
           {/* ── Desktop Nav ── */}

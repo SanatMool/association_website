@@ -5,8 +5,8 @@
 
 /* ─── CSS Variables ──────────────────────────────────── */
 :root {
-  --font-inter:    'Inter',           system-ui, sans-serif;
-  --font-playfair: 'Playfair Display', Georgia,   serif;
+  --font-inter:     'Inter',              system-ui, sans-serif;
+  --font-dm-serif:  'DM Serif Display',   Georgia,   serif;
 
   --color-navy:       #0a1040;
   --color-navy-dark:  #060b2c;
@@ -24,6 +24,7 @@ html {
   scroll-behavior: smooth;
   font-family: var(--font-inter);
   -webkit-text-size-adjust: 100%;
+  font-size: 16px;
 }
 
 body {
@@ -32,6 +33,28 @@ body {
   -webkit-font-smoothing:  antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  line-height: 1.6;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* ─── Global serif typography ────────────────────────── */
+/* DM Serif Display only ships weight 400. Apply globally so
+   browsers don't synthesize a fake bold, and enforce
+   the premium tight tracking on all display headings. */
+.font-serif {
+  letter-spacing: -0.02em;
+  font-weight: 400;
+  font-synthesis: none;
+}
+
+/* Improve Inter paragraph readability */
+p {
+  line-height: 1.75;
+}
+
+/* Tighter tracking on Inter labels/UI text */
+.font-sans {
+  letter-spacing: -0.005em;
 }
 
 /* ─── Scrollbar ──────────────────────────────────────── */
@@ -57,13 +80,29 @@ body {
   .section-padding  { @apply py-24 px-4 sm:px-6 lg:px-8; }
   .container-max    { @apply max-w-7xl mx-auto; }
 
-  /* Typography */
-  .heading-xl { @apply font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.05] tracking-tight; }
-  .heading-lg { @apply font-serif text-3xl sm:text-4xl font-bold leading-tight tracking-tight; }
-  .heading-md { @apply font-serif text-2xl sm:text-3xl font-bold tracking-tight; }
-  .heading-sm { @apply font-serif text-xl sm:text-2xl font-bold; }
-  .text-body  { @apply text-base leading-relaxed text-slate-600; }
-  .text-lead  { @apply text-lg leading-relaxed text-slate-500; }
+  /* Typography — DM Serif Display scale */
+  .heading-xl {
+    @apply font-serif text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-normal;
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+  }
+  .heading-lg {
+    @apply font-serif text-4xl sm:text-5xl font-normal;
+    line-height: 1.06;
+    letter-spacing: -0.02em;
+  }
+  .heading-md {
+    @apply font-serif text-3xl sm:text-4xl font-normal;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+  }
+  .heading-sm {
+    @apply font-serif text-2xl sm:text-3xl font-normal;
+    line-height: 1.14;
+    letter-spacing: -0.015em;
+  }
+  .text-body  { @apply text-base text-slate-600; line-height: 1.75; }
+  .text-lead  { @apply text-lg text-slate-500;  line-height: 1.7; }
 
   /* Buttons */
   .btn-primary {
@@ -105,7 +144,9 @@ body {
   /* Section headers */
   .section-label {
     @apply inline-flex items-center gap-2.5 text-gold-500 font-semibold
-           text-xs tracking-[0.18em] uppercase;
+           text-[11px] tracking-[0.22em] uppercase;
+    font-family: var(--font-inter);
+    letter-spacing: 0.22em; /* override the global serif rule — labels stay wide */
   }
   .gold-divider { @apply w-14 h-[3px] bg-gradient-to-r from-gold-500 to-gold-300 rounded-full; }
   .gold-divider-lg { @apply w-24 h-[3px] bg-gradient-to-r from-gold-500 via-gold-300 to-gold-500 rounded-full; }
