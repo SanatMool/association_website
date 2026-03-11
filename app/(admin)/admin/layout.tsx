@@ -5,7 +5,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings, UserCog, CheckSquare } from "lucide-react";
+import "../admin.css";
 
 const navLinks = [
   { href: "/admin/dashboard",  label: "Dashboard",  icon: LayoutDashboard },
@@ -13,6 +14,7 @@ const navLinks = [
   { href: "/admin/events",     label: "Events",     icon: Calendar },
   { href: "/admin/news",       label: "News",       icon: Newspaper },
   { href: "/admin/committee",  label: "Committee",  icon: Award },
+  { href: "/admin/tasks",      label: "Tasks",      icon: CheckSquare },
   { href: "/admin/settings",   label: "Settings",   icon: Settings },
   { href: "/admin/users",      label: "Users",      icon: UserCog },
 ];
@@ -46,12 +48,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="min-h-screen flex bg-gray-50/80">
       {/* Sidebar */}
-      <aside className="w-60 bg-[#0a1040] text-white flex flex-col fixed top-0 left-0 bottom-0 z-40">
+      <aside className="admin-sidebar w-64 text-white flex flex-col fixed top-0 left-0 bottom-0 z-40">
         {/* Logo */}
-        <div className="p-5 border-b border-white/10">
-          <Link href="/admin/dashboard">
+        <div className="px-5 pt-5 pb-4 border-b border-white/10">
+          <Link href="/admin/dashboard" className="block">
             <Image
               src="/evanepal.png"
               alt="EVA Nepal"
@@ -60,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className="h-8 w-auto brightness-0 invert"
             />
           </Link>
-          <div className="text-[10px] text-white/30 mt-1.5 tracking-widest uppercase">Admin Panel</div>
+          <div className="text-[9px] text-white/25 mt-2 tracking-[0.2em] uppercase font-medium">Admin Panel</div>
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -70,13 +72,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-amber-500 text-white"
-                    : "text-white/65 hover:bg-white/8 hover:text-white"
-                }`}
+                className={`admin-sidebar-link${active ? " active" : ""}`}
               >
-                <Icon size={15} />
+                <Icon size={15} strokeWidth={active ? 2.5 : 1.8} />
                 {label}
               </Link>
             );
@@ -84,10 +82,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <div className="p-4 border-t border-white/10">
-          <div className="text-xs text-white/40 mb-2 truncate px-1">{session.user?.email}</div>
+          <div className="flex items-center gap-2.5 mb-3 px-1">
+            <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+              <span className="text-[10px] font-bold text-amber-400">
+                {session.user?.name?.[0]?.toUpperCase() ?? session.user?.email?.[0]?.toUpperCase() ?? "A"}
+              </span>
+            </div>
+            <div className="min-w-0">
+              {session.user?.name && (
+                <div className="text-xs font-medium text-white/70 truncate">{session.user.name}</div>
+              )}
+              <div className="text-[10px] text-white/35 truncate">{session.user?.email}</div>
+            </div>
+          </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center gap-2 text-xs text-white/60 hover:text-white transition-colors px-1 py-1"
+            className="flex items-center gap-2 text-xs text-white/50 hover:text-white/90 transition-colors px-1 py-1 w-full rounded"
           >
             <LogOut size={13} />
             Sign out
@@ -96,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Content */}
-      <main className="flex-1 ml-60 p-8 min-h-screen">
+      <main className="flex-1 ml-64 p-8 min-h-screen admin-page">
         {children}
       </main>
     </div>

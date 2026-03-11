@@ -15,5 +15,6 @@ export const config = {
     "/admin/committee/:path*",
     "/admin/settings/:path*",
     "/admin/users/:path*",
+    "/admin/tasks/:path*",
   ],
 };

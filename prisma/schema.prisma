@@ -93,3 +93,15 @@ model SiteSettings {
   group     String   @default("general")
   updatedAt DateTime @updatedAt
 }
+
+model AdminTask {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  status      String    @default("todo")    // todo | in_progress | done
+  priority    String    @default("medium")  // low | medium | high
+  dueDate     DateTime?
+  assignee    String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
