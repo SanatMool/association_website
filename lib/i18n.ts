@@ -1,0 +1,333 @@
+export type Locale = "en" | "ne";
+
+export const translations = {
+  en: {
+    nav: {
+      home: "Home",
+      about: "About",
+      members: "Members",
+      events: "Events",
+      news: "News",
+      committee: "Committee",
+      join: "Join EVA",
+      contact: "Contact",
+    },
+    hero: {
+      badge: "Official Association Since 2011",
+      title: "Event and Venue Association Nepal",
+      subtitle: "Representing the Future of Event Spaces in Nepal",
+      description:
+        "The leading association uniting banquet halls, wedding venues, and event infrastructure providers across Kathmandu Valley.",
+      cta_primary: "Explore Members",
+      cta_secondary: "Join EVA Nepal",
+      stats_members: "Member Venues",
+      stats_years: "Years of Excellence",
+      stats_events: "Annual Events",
+      stats_coverage: "Valley Coverage",
+    },
+    about: {
+      label: "About EVA Nepal",
+      title: "Leading Nepal's Event Industry Forward",
+      description:
+        "Event and Venue Association Nepal (EVA Nepal) is the premier body representing banquet halls, event venues, and event infrastructure providers in Kathmandu. Established in 2011, we have been the unified voice of Nepal's event industry for over a decade.",
+      established: "Established",
+      hq: "Head Office",
+      coverage: "Coverage",
+    },
+    mission: {
+      label: "Our Mission",
+      title: "Strengthening the Event Industry Together",
+      items: [
+        {
+          title: "Industry Representation",
+          desc: "We advocate for venue owners and event businesses at industry and governmental forums.",
+        },
+        {
+          title: "Quality Standards",
+          desc: "We establish and uphold service quality benchmarks across member venues.",
+        },
+        {
+          title: "Industry Promotion",
+          desc: "We actively promote Nepal's event industry locally and internationally.",
+        },
+        {
+          title: "Networking",
+          desc: "We create meaningful connections between venue owners, suppliers, and clients.",
+        },
+        {
+          title: "Training & Development",
+          desc: "We organize workshops and training programs to elevate industry skills.",
+        },
+        {
+          title: "Collective Growth",
+          desc: "We foster collaboration among members for shared success and growth.",
+        },
+      ],
+    },
+    members: {
+      label: "Member Directory",
+      title: "Our Member Venues",
+      subtitle: "150+ registered event venues across Kathmandu Valley",
+      search_placeholder: "Search venues by name or location...",
+      filter_all: "All Areas",
+      capacity: "Capacity",
+      phone: "Phone",
+      website: "Website",
+      view_profile: "View Profile",
+      guests: "guests",
+    },
+    whyjoin: {
+      label: "Why Join EVA",
+      title: "Benefits of EVA Membership",
+      subtitle:
+        "Join Nepal's premier event venue association and elevate your business.",
+      benefits: [
+        {
+          title: "Industry Recognition",
+          desc: "Get official recognition as a certified member of Nepal's leading venue association.",
+        },
+        {
+          title: "Networking Opportunities",
+          desc: "Connect with 150+ venue owners, suppliers, and event professionals.",
+        },
+        {
+          title: "Training Programs",
+          desc: "Access exclusive workshops, skill development, and industry training sessions.",
+        },
+        {
+          title: "Collective Representation",
+          desc: "Have your interests represented at industry meetings and government forums.",
+        },
+        {
+          title: "Member Directory",
+          desc: "Get listed on our official member directory, boosting your venue's visibility.",
+        },
+        {
+          title: "Priority Support",
+          desc: "Receive priority assistance with industry challenges and regulatory matters.",
+        },
+      ],
+    },
+    events: {
+      label: "Events & Activities",
+      title: "What We Do",
+      subtitle: "Bringing the event industry together through meaningful programs",
+      upcoming: "Upcoming",
+      past: "Past Events",
+      view_all: "View All Events",
+    },
+    news: {
+      label: "News & Announcements",
+      title: "Latest from EVA Nepal",
+      subtitle: "Stay updated with industry news, training announcements, and association updates",
+      read_more: "Read More",
+      view_all: "View All News",
+    },
+    committee: {
+      label: "Executive Committee",
+      title: "Our Leadership",
+      subtitle: "Experienced leaders guiding Nepal's event industry",
+      president: "President",
+      vice_president: "Vice President",
+      secretary: "Secretary",
+      treasurer: "Treasurer",
+      member: "Committee Member",
+    },
+    join: {
+      label: "Membership Application",
+      title: "Become a Member",
+      subtitle: "Join EVA Nepal and be part of the official event venue community",
+      venue_name: "Venue Name",
+      owner_name: "Owner / Manager Name",
+      phone: "Phone Number",
+      email: "Email Address",
+      location: "Location / Address",
+      capacity: "Venue Capacity",
+      website: "Website (Optional)",
+      submit: "Submit Application",
+      success: "Application submitted successfully! We will contact you soon.",
+      required: "Required field",
+    },
+    contact: {
+      label: "Get in Touch",
+      title: "Contact EVA Nepal",
+      address: "Maitidevi, Kathmandu, Nepal",
+      phone: "+977-1-XXXXXXX",
+      email: "info@evanepal.org",
+      follow: "Follow Us",
+    },
+    footer: {
+      tagline: "Representing the Future of Event Spaces in Nepal",
+      quick_links: "Quick Links",
+      contact_info: "Contact Info",
+      follow_us: "Follow Us",
+      rights: "All rights reserved.",
+      association: "Event and Venue Association Nepal",
+    },
+  },
+  ne: {
+    nav: {
+      home: "गृहपृष्ठ",
+      about: "हाम्रोबारे",
+      members: "सदस्यहरू",
+      events: "कार्यक्रमहरू",
+      news: "समाचार",
+      committee: "कार्यकारिणी",
+      join: "सदस्य बन्नुहोस्",
+      contact: "सम्पर्क",
+    },
+    hero: {
+      badge: "२०११ देखि आधिकारिक संघ",
+      title: "इभेन्ट एन्ड भेन्यू एसोसिएसन नेपाल",
+      subtitle: "नेपालका इभेन्ट स्पेसहरूको भविष्य प्रतिनिधित्व गर्दै",
+      description:
+        "काठमाडौं उपत्यकाभरका ब्यान्क्वेट हल, विवाह स्थल, र इभेन्ट पूर्वाधार प्रदायकहरूलाई एकजुट गर्ने प्रमुख संघ।",
+      cta_primary: "सदस्यहरू हेर्नुहोस्",
+      cta_secondary: "ईभीए नेपालमा सामेल हुनुहोस्",
+      stats_members: "सदस्य भेन्युहरू",
+      stats_years: "उत्कृष्टताका वर्षहरू",
+      stats_events: "वार्षिक कार्यक्रमहरू",
+      stats_coverage: "उपत्यका कभरेज",
+    },
+    about: {
+      label: "ईभीए नेपालबारे",
+      title: "नेपालको इभेन्ट उद्योगलाई अगाडि लैजाँदै",
+      description:
+        "इभेन्ट एन्ड भेन्यू एसोसिएसन नेपाल (EVA Nepal) काठमाडौंका ब्यान्क्वेट हल, इभेन्ट भेन्यू, र इभेन्ट पूर्वाधार प्रदायकहरूको प्रमुख प्रतिनिधि निकाय हो। २०११ मा स्थापित भएदेखि, हामी एक दशकभन्दा बढी समयदेखि नेपालको इभेन्ट उद्योगको एकीकृत आवाज बनेका छौं।",
+      established: "स्थापना",
+      hq: "मुख्यालय",
+      coverage: "कभरेज",
+    },
+    mission: {
+      label: "हाम्रो उद्देश्य",
+      title: "मिलेर इभेन्ट उद्योग बलियो बनाउँदै",
+      items: [
+        {
+          title: "उद्योग प्रतिनिधित्व",
+          desc: "हामी उद्योग र सरकारी मञ्चहरूमा भेन्यू सञ्चालकहरू र इभेन्ट व्यवसायहरूको पक्षमा वकालत गर्छौं।",
+        },
+        {
+          title: "गुणस्तर मापदण्ड",
+          desc: "हामी सदस्य भेन्युहरूमा सेवा गुणस्तरका मापदण्डहरू स्थापित र कायम गर्छौं।",
+        },
+        {
+          title: "उद्योग प्रवर्धन",
+          desc: "हामी नेपालको इभेन्ट उद्योगलाई स्थानीय र अन्तर्राष्ट्रिय रूपमा सक्रिय रूपले प्रवर्धन गर्छौं।",
+        },
+        {
+          title: "नेटवर्किङ",
+          desc: "हामी भेन्यू सञ्चालकहरू, आपूर्तिकर्ताहरू, र ग्राहकहरूबीच अर्थपूर्ण सम्बन्धहरू सिर्जना गर्छौं।",
+        },
+        {
+          title: "तालिम र विकास",
+          desc: "हामी उद्योग सीपहरू उन्नत गर्न कार्यशालाहरू र तालिम कार्यक्रमहरू आयोजना गर्छौं।",
+        },
+        {
+          title: "सामूहिक वृद्धि",
+          desc: "हामी साझा सफलता र विकासको लागि सदस्यहरूबीच सहकार्यलाई प्रोत्साहित गर्छौं।",
+        },
+      ],
+    },
+    members: {
+      label: "सदस्य निर्देशिका",
+      title: "हाम्रा सदस्य भेन्युहरू",
+      subtitle: "काठमाडौं उपत्यकाभर १५०+ दर्ता भेन्युहरू",
+      search_placeholder: "नाम वा ठेगानाले भेन्यु खोज्नुहोस्...",
+      filter_all: "सबै क्षेत्र",
+      capacity: "क्षमता",
+      phone: "फोन",
+      website: "वेबसाइट",
+      view_profile: "प्रोफाइल हेर्नुहोस्",
+      guests: "अतिथिहरू",
+    },
+    whyjoin: {
+      label: "ईभीए किन?",
+      title: "ईभीए सदस्यताका फाइदाहरू",
+      subtitle: "नेपालको प्रमुख इभेन्ट भेन्यू संघमा सामेल हुनुहोस् र आफ्नो व्यवसाय उकास्नुहोस्।",
+      benefits: [
+        {
+          title: "उद्योग मान्यता",
+          desc: "नेपालको प्रमुख भेन्यू संघको प्रमाणित सदस्यको रूपमा आधिकारिक मान्यता पाउनुहोस्।",
+        },
+        {
+          title: "नेटवर्किङ अवसरहरू",
+          desc: "१५०+ भेन्यू सञ्चालकहरू, आपूर्तिकर्ताहरू, र इभेन्ट पेशेवरहरूसँग जोडिनुहोस्।",
+        },
+        {
+          title: "तालिम कार्यक्रमहरू",
+          desc: "एक्सक्लुसिभ कार्यशालाहरू, सीप विकास, र उद्योग तालिम सत्रहरूमा पहुँच पाउनुहोस्।",
+        },
+        {
+          title: "सामूहिक प्रतिनिधित्व",
+          desc: "उद्योग बैठकहरू र सरकारी मञ्चहरूमा आफ्नो हितको प्रतिनिधित्व गराउनुहोस्।",
+        },
+        {
+          title: "सदस्य निर्देशिका",
+          desc: "हाम्रो आधिकारिक सदस्य निर्देशिकामा सूचीबद्ध हुनुहोस्, आफ्नो भेन्युको दृश्यता बढाउनुहोस्।",
+        },
+        {
+          title: "प्राथमिकता सहयोग",
+          desc: "उद्योग चुनौतीहरू र नियामक मामिलाहरूमा प्राथमिकता सहायता पाउनुहोस्।",
+        },
+      ],
+    },
+    events: {
+      label: "कार्यक्रमहरू र गतिविधिहरू",
+      title: "हाम्रो काम",
+      subtitle: "अर्थपूर्ण कार्यक्रमहरू मार्फत इभेन्ट उद्योगलाई एकसाथ ल्याउँदै",
+      upcoming: "आगामी",
+      past: "विगतका कार्यक्रमहरू",
+      view_all: "सबै कार्यक्रमहरू हेर्नुहोस्",
+    },
+    news: {
+      label: "समाचार र घोषणाहरू",
+      title: "ईभीए नेपालबाट ताजा",
+      subtitle: "उद्योग समाचार, तालिम घोषणाहरू, र संघ अपडेटहरूसँग अद्यावधिक रहनुहोस्",
+      read_more: "थप पढ्नुहोस्",
+      view_all: "सबै समाचार हेर्नुहोस्",
+    },
+    committee: {
+      label: "कार्यकारिणी समिति",
+      title: "हाम्रो नेतृत्व",
+      subtitle: "नेपालको इभेन्ट उद्योगलाई मार्गदर्शन गर्ने अनुभवी नेताहरू",
+      president: "अध्यक्ष",
+      vice_president: "उपाध्यक्ष",
+      secretary: "महासचिव",
+      treasurer: "कोषाध्यक्ष",
+      member: "समिति सदस्य",
+    },
+    join: {
+      label: "सदस्यता आवेदन",
+      title: "सदस्य बन्नुहोस्",
+      subtitle: "ईभीए नेपालमा सामेल हुनुहोस् र आधिकारिक इभेन्ट भेन्यू समुदायको हिस्सा बन्नुहोस्",
+      venue_name: "भेन्युको नाम",
+      owner_name: "सञ्चालक / व्यवस्थापकको नाम",
+      phone: "फोन नम्बर",
+      email: "इमेल ठेगाना",
+      location: "ठेगाना",
+      capacity: "भेन्यु क्षमता",
+      website: "वेबसाइट (वैकल्पिक)",
+      submit: "आवेदन पेश गर्नुहोस्",
+      success: "आवेदन सफलतापूर्वक पेश भयो! हामी चाँडै तपाईंलाई सम्पर्क गर्नेछौं।",
+      required: "अनिवार्य",
+    },
+    contact: {
+      label: "सम्पर्क गर्नुहोस्",
+      title: "ईभीए नेपाललाई सम्पर्क गर्नुहोस्",
+      address: "मैतीदेवी, काठमाडौं, नेपाल",
+      phone: "+977-1-XXXXXXX",
+      email: "info@evanepal.org",
+      follow: "हामीलाई फलो गर्नुहोस्",
+    },
+    footer: {
+      tagline: "नेपालका इभेन्ट स्पेसहरूको भविष्य प्रतिनिधित्व गर्दै",
+      quick_links: "द्रुत लिंकहरू",
+      contact_info: "सम्पर्क जानकारी",
+      follow_us: "हामीलाई फलो गर्नुहोस्",
+      rights: "सर्वाधिकार सुरक्षित।",
+      association: "इभेन्ट एन्ड भेन्यू एसोसिएसन नेपाल",
+    },
+  },
+} as const;
+
+export type TranslationKeys = typeof translations.en;
