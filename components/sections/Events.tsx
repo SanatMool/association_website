@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { ArrowRight, Calendar, MapPin, Clock, Tag, Zap } from "lucide-react";
-import { events, Event } from "@/data/events";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 import { motion } from "framer-motion";
 import { formatDate, formatDay, formatMonthShort, formatMonthYear } from "@/lib/utils";
+import { EventType } from "@/lib/types";
 
-const typeConfig: Record<Event["type"], { color: string; bg: string; icon: string }> = {
+const typeConfig: Record<string, { color: string; bg: string; icon: string }> = {
   networking: { color: "text-purple-700", bg: "bg-purple-50 border-purple-200", icon: "🤝" },
   training: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: "📚" },
   meeting: { color: "text-slate-700", bg: "bg-slate-50 border-slate-200", icon: "🏛️" },
@@ -16,8 +16,14 @@ const typeConfig: Record<Event["type"], { color: string; bg: string; icon: strin
   conference: { color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: "🎤" },
 };
 
-function UpcomingEventCard({ event, index }: { event: Event; index: number }) {
-  const cfg = typeConfig[event.type];
+const defaultTypeConfig = { color: "text-gray-700", bg: "bg-gray-50 border-gray-200", icon: "📅" };
+
+interface EventsProps {
+  events: EventType[];
+}
+
+function UpcomingEventCard({ event, index }: { event: EventType; index: number }) {
+  const cfg = typeConfig[event.type] ?? defaultTypeConfig;
 
   return (
     <motion.div
@@ -88,8 +94,8 @@ function UpcomingEventCard({ event, index }: { event: Event; index: number }) {
   );
 }
 
-function PastEventRow({ event, index }: { event: Event; index: number }) {
-  const cfg = typeConfig[event.type];
+function PastEventRow({ event, index }: { event: EventType; index: number }) {
+  const cfg = typeConfig[event.type] ?? defaultTypeConfig;
 
   return (
     <motion.div
@@ -126,7 +132,7 @@ function PastEventRow({ event, index }: { event: Event; index: number }) {
           </div>
           <div className="flex items-center gap-1 text-slate-400 text-xs">
             <Clock size={10} />
-            <span>{event.date.split("-")[0]}</span>
+            <span>{new Date(event.date).getFullYear()}</span>
           </div>
         </div>
       </div>
@@ -134,14 +140,14 @@ function PastEventRow({ event, index }: { event: Event; index: number }) {
   );
 }
 
-export default function Events() {
+export default function Events({ events }: EventsProps) {
   const { t } = useLocale();
 
   const upcoming = events.filter((e) => e.status === "upcoming").slice(0, 3);
   const past = events.filter((e) => e.status === "past").slice(0, 5);
 
   // Group upcoming by month for pseudo-calendar display
-  const monthGroups = upcoming.reduce<Record<string, Event[]>>((acc, ev) => {
+  const monthGroups = upcoming.reduce<Record<string, EventType[]>>((acc, ev) => {
     const month = formatMonthYear(ev.date);
     if (!acc[month]) acc[month] = [];
     acc[month].push(ev);

@@ -3,11 +3,11 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Search, ArrowRight, X, LayoutGrid, List, SlidersHorizontal, Building2 } from "lucide-react";
-import { members, getAreaList, type Member } from "@/data/members";
 import MemberCard from "@/components/ui/MemberCard";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { MemberType } from "@/lib/types";
 
 const CAPACITY_TIERS = [
   { label: "All Sizes", min: 0, max: Infinity },
@@ -17,7 +17,11 @@ const CAPACITY_TIERS = [
   { label: "Grand (1000+)", min: 1000, max: Infinity },
 ];
 
-export default function MemberDirectory() {
+interface MemberDirectoryProps {
+  members: MemberType[];
+}
+
+export default function MemberDirectory({ members }: MemberDirectoryProps) {
   const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [selectedArea, setSelectedArea] = useState("All");
@@ -25,9 +29,12 @@ export default function MemberDirectory() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [showFilters, setShowFilters] = useState(false);
 
-  const areas = useMemo(() => ["All", ...getAreaList()].slice(0, 12), []);
+  const areas = useMemo(() => {
+    const areaSet = new Set(members.map((m) => m.area).filter(Boolean));
+    return ["All", ...Array.from(areaSet).sort()].slice(0, 12);
+  }, [members]);
 
-  const featured = useMemo(() => members.filter((m) => m.featured).slice(0, 6), []);
+  const featured = useMemo(() => members.filter((m) => m.featured).slice(0, 6), [members]);
 
   const filtered = useMemo(() => {
     const tier = CAPACITY_TIERS[capacityTier];
@@ -35,7 +42,7 @@ export default function MemberDirectory() {
       const matchSearch =
         !search ||
         m.name.toLowerCase().includes(search.toLowerCase()) ||
-        m.location.toLowerCase().includes(search.toLowerCase());
+        (m.location ?? "").toLowerCase().includes(search.toLowerCase());
       const matchArea = selectedArea === "All" || m.area === selectedArea;
       const matchCap = m.capacity >= tier.min && m.capacity <= tier.max;
       return matchSearch && matchArea && matchCap;
@@ -263,7 +270,7 @@ export default function MemberDirectory() {
   );
 }
 
-function ListMemberRow({ member }: { member: Member }) {
+function ListMemberRow({ member }: { member: MemberType }) {
   return (
     <Link
       href={`/members/${member.slug}`}

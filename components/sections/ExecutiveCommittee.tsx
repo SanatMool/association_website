@@ -1,11 +1,15 @@
 "use client";
 
-import { committee } from "@/data/committee";
 import CommitteeCard from "@/components/ui/CommitteeCard";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
+import { CommitteeType } from "@/lib/types";
 
-export default function ExecutiveCommittee() {
+interface ExecutiveCommitteeProps {
+  committee: CommitteeType[];
+}
+
+export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProps) {
   const { t } = useLocale();
 
   const leadership = committee.filter((m) => m.order <= 4);

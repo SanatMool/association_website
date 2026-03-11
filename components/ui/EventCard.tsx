@@ -2,11 +2,11 @@
 
 import { motion } from "framer-motion";
 import { MapPin, ArrowRight } from "lucide-react";
-import { Event } from "@/data/events";
+import { EventType } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-const typeConfig: Record<Event["type"], { label: string; bg: string; text: string; dot: string }> = {
+const typeConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   networking: { label: "Networking",  bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-400" },
   training:   { label: "Training",    bg: "bg-blue-50",   text: "text-blue-700",   dot: "bg-blue-400"   },
   meeting:    { label: "Meeting",     bg: "bg-slate-50",  text: "text-slate-600",  dot: "bg-slate-400"  },
@@ -14,13 +14,15 @@ const typeConfig: Record<Event["type"], { label: string; bg: string; text: strin
   conference: { label: "Conference",  bg: "bg-emerald-50",text: "text-emerald-700",dot: "bg-emerald-400"},
 };
 
+const defaultTypeConfig = { label: "Event", bg: "bg-gray-50", text: "text-gray-700", dot: "bg-gray-400" };
+
 interface EventCardProps {
-  event: Event;
+  event: EventType;
   compact?: boolean;
 }
 
 export default function EventCard({ event, compact = false }: EventCardProps) {
-  const config = typeConfig[event.type];
+  const config = typeConfig[event.type] ?? defaultTypeConfig;
   const isUpcoming = event.status === "upcoming";
 
   return (

@@ -55,3 +55,5 @@ next-env.d.ts
 # OS files
 
 Thumbs.db
+
+/lib/generated/prisma

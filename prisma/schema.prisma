@@ -1,0 +1,86 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Member {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  location    String?
+  area        String
+  capacity    Int
+  type        String
+  category    String?
+  phone       String
+  email       String?
+  website     String?
+  description String?
+  amenities   String[]
+  memberSince String?
+  established Int?
+  featured    Boolean  @default(false)
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  titleNe     String?
+  description String
+  date        DateTime
+  endDate     DateTime?
+  location    String
+  type        String
+  status      String
+  attendees   Int?
+  image       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model News {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  titleNe     String?
+  excerpt     String
+  content     String
+  author      String
+  category    String
+  image       String?
+  featured    Boolean  @default(false)
+  publishedAt DateTime
+  updatedAt   DateTime @updatedAt
+}
+
+model CommitteeMember {
+  id           String   @id @default(cuid())
+  name         String
+  role         String
+  roleKey      String   @default("member")
+  organization String?
+  venue        String?
+  bio          String?
+  order        Int      @default(99)
+  highlighted  Boolean  @default(false)
+  image        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String?
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

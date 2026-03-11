@@ -1,12 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CommitteeMember } from "@/data/committee";
+import { CommitteeType } from "@/lib/types";
 import { useLocale } from "@/context/LocaleContext";
 import { cn } from "@/lib/utils";
 
 interface CommitteeCardProps {
-  member: CommitteeMember;
+  member: CommitteeType;
   highlighted?: boolean;
 }
 

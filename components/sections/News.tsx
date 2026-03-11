@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { ArrowRight, Calendar, Tag, User, ChevronRight } from "lucide-react";
-import { news, NewsItem } from "@/data/news";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 import { motion } from "framer-motion";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { NewsType } from "@/lib/types";
 
-const categoryStyles: Record<NewsItem["category"], { color: string; bg: string; dot: string }> = {
+const categoryStyles: Record<string, { color: string; bg: string; dot: string }> = {
   announcement: { color: "text-blue-700", bg: "bg-blue-50 border-blue-200", dot: "bg-blue-500" },
   training: { color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
   event: { color: "text-amber-700", bg: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
@@ -17,8 +17,14 @@ const categoryStyles: Record<NewsItem["category"], { color: string; bg: string; 
   member: { color: "text-rose-700", bg: "bg-rose-50 border-rose-200", dot: "bg-rose-500" },
 };
 
-function FeaturedNewsCard({ item }: { item: NewsItem }) {
-  const style = categoryStyles[item.category];
+const defaultCategoryStyle = { color: "text-gray-700", bg: "bg-gray-50 border-gray-200", dot: "bg-gray-500" };
+
+interface NewsProps {
+  news: NewsType[];
+}
+
+function FeaturedNewsCard({ item }: { item: NewsType }) {
+  const style = categoryStyles[item.category] ?? defaultCategoryStyle;
 
   return (
     <motion.div
@@ -88,8 +94,8 @@ function FeaturedNewsCard({ item }: { item: NewsItem }) {
   );
 }
 
-function SmallNewsCard({ item, index }: { item: NewsItem; index: number }) {
-  const style = categoryStyles[item.category];
+function SmallNewsCard({ item, index }: { item: NewsType; index: number }) {
+  const style = categoryStyles[item.category] ?? defaultCategoryStyle;
 
   return (
     <motion.div
@@ -147,8 +153,8 @@ function SmallNewsCard({ item, index }: { item: NewsItem; index: number }) {
   );
 }
 
-function NewsListRow({ item, index }: { item: NewsItem; index: number }) {
-  const style = categoryStyles[item.category];
+function NewsListRow({ item, index }: { item: NewsType; index: number }) {
+  const style = categoryStyles[item.category] ?? defaultCategoryStyle;
 
   return (
     <motion.div
@@ -177,7 +183,7 @@ function NewsListRow({ item, index }: { item: NewsItem; index: number }) {
   );
 }
 
-export default function News() {
+export default function News({ news }: NewsProps) {
   const { t } = useLocale();
 
   const featured = news[0];

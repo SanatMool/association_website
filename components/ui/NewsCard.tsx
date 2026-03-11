@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
-import { NewsItem } from "@/data/news";
+import { NewsType } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-const categoryConfig: Record<NewsItem["category"], { label: string; bg: string; text: string; bar: string }> = {
+const categoryConfig: Record<string, { label: string; bg: string; text: string; bar: string }> = {
   announcement: { label: "Announcement", bg: "bg-blue-50",   text: "text-blue-700",   bar: "from-blue-500 to-blue-400"    },
   training:     { label: "Training",     bg: "bg-emerald-50",text: "text-emerald-700", bar: "from-emerald-500 to-emerald-400"},
   event:        { label: "Event",        bg: "bg-amber-50",  text: "text-amber-700",   bar: "from-gold-500 to-gold-400"    },
@@ -15,13 +15,15 @@ const categoryConfig: Record<NewsItem["category"], { label: string; bg: string; 
   member:       { label: "Member",       bg: "bg-rose-50",   text: "text-rose-700",    bar: "from-rose-500 to-rose-400"    },
 };
 
+const defaultCategoryConfig = { label: "News", bg: "bg-gray-50", text: "text-gray-700", bar: "from-gray-400 to-gray-300" };
+
 interface NewsCardProps {
-  item: NewsItem;
+  item: NewsType;
   compact?: boolean;
 }
 
 export default function NewsCard({ item, compact = false }: NewsCardProps) {
-  const config = categoryConfig[item.category];
+  const config = categoryConfig[item.category] ?? defaultCategoryConfig;
 
   return (
     <motion.div

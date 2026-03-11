@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { MapPin, Phone, Globe, ArrowRight, Building2, Star, Users } from "lucide-react";
 import { motion } from "framer-motion";
-import { Member } from "@/data/members";
+import { MemberType } from "@/lib/types";
 import { useLocale } from "@/context/LocaleContext";
 
 interface MemberCardProps {
-  member: Member;
+  member: MemberType;
   index?: number;
 }
 
@@ -67,7 +67,7 @@ export default function MemberCard({ member, index = 0 }: MemberCardProps) {
   const { t } = useLocale();
   const tier = getTierConfig(member.capacity);
   const fillPct = Math.min(100, Math.round((member.capacity / 1200) * 100));
-  const pattern = categoryPattern(member.category);
+  const pattern = categoryPattern(member.category ?? "");
 
   return (
     <motion.div
