@@ -12,6 +12,7 @@ import MembershipForm from "@/components/sections/MembershipForm";
 import Contact from "@/components/sections/Contact";
 import Timeline from "@/components/sections/Timeline";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/settings";
 import { MemberType, EventType, NewsType, CommitteeType } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -24,12 +25,17 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 export default async function Home() {
-  const [dbMembers, dbEvents, dbNews, dbCommittee] = await Promise.all([
+  const [dbMembers, dbEvents, dbNews, dbCommittee, memberCount, siteSettings] = await Promise.all([
     prisma.member.findMany({ orderBy: [{ featured: "desc" }, { name: "asc" }] }),
     prisma.event.findMany({ orderBy: { date: "desc" } }),
     prisma.news.findMany({ orderBy: { publishedAt: "desc" } }),
     prisma.committeeMember.findMany({ orderBy: { order: "asc" } }),
+    prisma.member.count(),
+    getSettings(),
   ]);
+
+  const yearsActive = new Date().getFullYear() - 2011;
+  const eventsHosted = parseInt(siteSettings.stats_events_hosted ?? "20000", 10);
 
   const members: MemberType[] = dbMembers.map((m) => ({
     id: m.id,
@@ -92,7 +98,7 @@ export default async function Home() {
   return (
     <>
       <Hero />
-      <StatsSection />
+      <StatsSection memberCount={memberCount} eventsHosted={eventsHosted} yearsActive={yearsActive} />
       <About />
       <Mission />
       <MemberDirectory members={members} />
@@ -102,7 +108,16 @@ export default async function Home() {
       <News news={news} />
       <ExecutiveCommittee committee={committee} />
       <MembershipForm />
-      <Contact />
+      <Contact settings={{
+        phone:     siteSettings.contact_phone,
+        email:     siteSettings.contact_email,
+        address:   siteSettings.contact_address,
+        hours:     siteSettings.contact_hours,
+        mapUrl:    siteSettings.contact_map_url,
+        facebook:  siteSettings.social_facebook,
+        instagram: siteSettings.social_instagram,
+        youtube:   siteSettings.social_youtube,
+      }} />
     </>
   );
 }

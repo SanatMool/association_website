@@ -4,40 +4,11 @@ import { useRef, useEffect, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { Building2, Award, Calendar, MapPin } from "lucide-react";
 
-const stats = [
-  {
-    value: 150,
-    suffix: "+",
-    label: "Member Venues",
-    desc: "Registered banquet halls & event spaces",
-    icon: Building2,
-    delay: 0,
-  },
-  {
-    value: 14,
-    suffix: "+",
-    label: "Years Leading",
-    desc: "Serving Nepal's event industry since 2011",
-    icon: Award,
-    delay: 0.1,
-  },
-  {
-    value: 20000,
-    suffix: "+",
-    label: "Events Hosted",
-    desc: "Across all member venues collectively",
-    icon: Calendar,
-    delay: 0.2,
-  },
-  {
-    value: 100,
-    suffix: "%",
-    label: "Valley Coverage",
-    desc: "Kathmandu's largest venue network",
-    icon: MapPin,
-    delay: 0.3,
-  },
-];
+interface StatsSectionProps {
+  memberCount?: number;
+  eventsHosted?: number;
+  yearsActive?: number;
+}
 
 function Counter({
   value,
@@ -77,7 +48,14 @@ function Counter({
   );
 }
 
-export default function StatsSection() {
+export default function StatsSection({ memberCount = 150, eventsHosted = 20000, yearsActive = 14 }: StatsSectionProps) {
+  const stats = [
+    { value: memberCount, suffix: "+", label: "Member Venues",  desc: "Registered banquet halls & event spaces",    icon: Building2, delay: 0   },
+    { value: yearsActive, suffix: "+", label: "Years Leading",  desc: "Serving Nepal's event industry since 2011",  icon: Award,     delay: 0.1 },
+    { value: eventsHosted, suffix: "+", label: "Events Hosted", desc: "Across all member venues collectively",      icon: Calendar,  delay: 0.2 },
+    { value: 100,         suffix: "%", label: "Valley Coverage",desc: "Kathmandu's largest venue network",          icon: MapPin,    delay: 0.3 },
+  ];
+
   return (
     <section className="relative overflow-hidden py-20 sm:py-28">
       {/* Rich dark background */}

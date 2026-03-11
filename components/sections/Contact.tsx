@@ -5,8 +5,28 @@ import { MapPin, Phone, Mail, Facebook, Instagram, Youtube, Clock, ArrowUpRight 
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 
-export default function Contact() {
+interface ContactSettings {
+  phone?: string;
+  email?: string;
+  address?: string;
+  hours?: string;
+  mapUrl?: string;
+  facebook?: string;
+  instagram?: string;
+  youtube?: string;
+}
+
+export default function Contact({ settings }: { settings?: ContactSettings }) {
   const { t } = useLocale();
+
+  const phone   = settings?.phone   ?? "+977-1-XXXXXXX";
+  const email   = settings?.email   ?? "info@evanepal.org";
+  const address = settings?.address ?? "Maitidevi, Kathmandu, Nepal";
+  const hours   = settings?.hours   ?? "Sun–Fri: 10am – 5pm";
+  const mapUrl  = settings?.mapUrl  ?? "https://maps.google.com";
+  const facebook  = settings?.facebook  ?? "https://facebook.com";
+  const instagram = settings?.instagram ?? "https://instagram.com";
+  const youtube   = settings?.youtube   ?? "https://youtube.com";
 
   const cards = [
     {
@@ -15,10 +35,12 @@ export default function Contact() {
       content: (
         <>
           <p className="text-slate-400 text-sm leading-relaxed">
-            Maitidevi<br />Kathmandu, Nepal
+            {address.split(",").map((line, i) => (
+              <span key={i}>{line.trim()}{i < address.split(",").length - 1 ? <br /> : null}</span>
+            ))}
           </p>
           <a
-            href="https://maps.google.com"
+            href={mapUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 mt-4 text-gold-400 text-sm hover:text-gold-300 transition-colors font-medium"
@@ -34,9 +56,9 @@ export default function Contact() {
       content: (
         <div className="space-y-3.5">
           {[
-            { Icon: Phone, href: "tel:+977-1-XXXXXXX",    text: "+977-1-XXXXXXX",    isLink: true  },
-            { Icon: Mail,  href: "mailto:info@evanepal.org", text: "info@evanepal.org", isLink: true  },
-            { Icon: Clock, href: null,                    text: "Sun–Fri: 10am – 5pm",isLink: false },
+            { Icon: Phone, href: `tel:${phone}`,    text: phone,  isLink: true  },
+            { Icon: Mail,  href: `mailto:${email}`, text: email,  isLink: true  },
+            { Icon: Clock, href: null,              text: hours,  isLink: false },
           ].map(({ Icon, href, text, isLink }) => (
             <div key={text} className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/8 flex items-center justify-center flex-shrink-0">
@@ -61,9 +83,9 @@ export default function Contact() {
         <>
           <div className="flex items-center justify-center gap-3 mt-1">
             {[
-              { href: "https://facebook.com", Icon: Facebook, hover: "hover:bg-blue-600",  label: "Facebook"  },
-              { href: "https://instagram.com",Icon: Instagram, hover: "hover:bg-pink-600", label: "Instagram" },
-              { href: "https://youtube.com",  Icon: Youtube,  hover: "hover:bg-red-600",   label: "YouTube"   },
+              { href: facebook,  Icon: Facebook,  hover: "hover:bg-blue-600",  label: "Facebook"  },
+              { href: instagram, Icon: Instagram, hover: "hover:bg-pink-600",  label: "Instagram" },
+              { href: youtube,   Icon: Youtube,   hover: "hover:bg-red-600",   label: "YouTube"   },
             ].map(({ href, Icon, hover, label }) => (
               <motion.a
                 key={label}

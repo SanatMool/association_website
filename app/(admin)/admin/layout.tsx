@@ -4,14 +4,17 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
-import { LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Building2 } from "lucide-react";
+import Image from "next/image";
+import { LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings, UserCog } from "lucide-react";
 
 const navLinks = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/members", label: "Members", icon: Users },
-  { href: "/admin/events", label: "Events", icon: Calendar },
-  { href: "/admin/news", label: "News", icon: Newspaper },
-  { href: "/admin/committee", label: "Committee", icon: Award },
+  { href: "/admin/dashboard",  label: "Dashboard",  icon: LayoutDashboard },
+  { href: "/admin/members",    label: "Members",    icon: Users },
+  { href: "/admin/events",     label: "Events",     icon: Calendar },
+  { href: "/admin/news",       label: "News",       icon: Newspaper },
+  { href: "/admin/committee",  label: "Committee",  icon: Award },
+  { href: "/admin/settings",   label: "Settings",   icon: Settings },
+  { href: "/admin/users",      label: "Users",      icon: UserCog },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,14 +22,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
 
-  // All hooks must be called before any conditional return
   useEffect(() => {
     if (pathname !== "/admin/login" && status === "unauthenticated") {
       router.push("/admin/login");
     }
   }, [status, router, pathname]);
 
-  // Login page: render without sidebar or session gate
   if (pathname === "/admin/login") return <>{children}</>;
 
   if (status === "loading") {
@@ -39,18 +40,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!session) return null;
 
+  async function handleSignOut() {
+    await signOut({ redirect: false });
+    router.push("/admin/login");
+  }
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
       <aside className="w-60 bg-[#0a1040] text-white flex flex-col fixed top-0 left-0 bottom-0 z-40">
+        {/* Logo */}
         <div className="p-5 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <Building2 size={20} className="text-amber-400 flex-shrink-0" />
-            <div>
-              <div className="font-bold text-sm leading-tight">EVA Nepal</div>
-              <div className="text-xs text-white/40">Admin Panel</div>
-            </div>
-          </div>
+          <Link href="/admin/dashboard">
+            <Image
+              src="/evanepal.png"
+              alt="EVA Nepal"
+              width={120}
+              height={77}
+              className="h-8 w-auto brightness-0 invert"
+            />
+          </Link>
+          <div className="text-[10px] text-white/30 mt-1.5 tracking-widest uppercase">Admin Panel</div>
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -76,7 +86,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="p-4 border-t border-white/10">
           <div className="text-xs text-white/40 mb-2 truncate px-1">{session.user?.email}</div>
           <button
-            onClick={() => signOut({ callbackUrl: window.location.origin + "/admin/login" })}
+            onClick={handleSignOut}
             className="flex items-center gap-2 text-xs text-white/60 hover:text-white transition-colors px-1 py-1"
           >
             <LogOut size={13} />

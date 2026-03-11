@@ -3,6 +3,7 @@ import { Inter, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
 import PublicChrome from "@/components/layout/PublicChrome";
+import FooterWrapper from "@/components/layout/FooterWrapper";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,7 +19,7 @@ const dmSerifDisplay = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://evanepal.org"),
+  metadataBase: new URL("https://eva.nibjar.com"),
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
@@ -130,7 +131,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans">
         <LocaleProvider>
-          <PublicChrome>{children}</PublicChrome>
+          <PublicChrome footer={<FooterWrapper />}>{children}</PublicChrome>
         </LocaleProvider>
       </body>
     </html>

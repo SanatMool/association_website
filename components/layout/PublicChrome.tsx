@@ -2,9 +2,13 @@
 
 import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
-import Footer from "./Footer";
 
-export default function PublicChrome({ children }: { children: React.ReactNode }) {
+interface PublicChromeProps {
+  children: React.ReactNode;
+  footer: React.ReactNode;
+}
+
+export default function PublicChrome({ children, footer }: PublicChromeProps) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
 
@@ -14,7 +18,7 @@ export default function PublicChrome({ children }: { children: React.ReactNode }
     <>
       <Navbar />
       <main>{children}</main>
-      <Footer />
+      {footer}
     </>
   );
 }

@@ -5,8 +5,26 @@ import Image from "next/image";
 import { MapPin, Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 
-export default function Footer() {
+interface FooterSettings {
+  tagline?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  facebook?: string;
+  instagram?: string;
+  youtube?: string;
+}
+
+export default function Footer({ settings }: { settings?: FooterSettings }) {
   const { t } = useLocale();
+
+  const tagline   = settings?.tagline   ?? "";
+  const phone     = settings?.phone     ?? "+977-1-XXXXXXX";
+  const email     = settings?.email     ?? "info@evanepal.org";
+  const address   = settings?.address   ?? "Maitidevi, Kathmandu\nNepal";
+  const facebook  = settings?.facebook  ?? "https://facebook.com";
+  const instagram = settings?.instagram ?? "https://instagram.com";
+  const youtube   = settings?.youtube   ?? "https://youtube.com";
 
   const quickLinks = [
     { href: "/",           label: t.nav.home },
@@ -44,16 +62,16 @@ export default function Footer() {
             </div>
 
             <p className="text-slate-400 text-sm leading-relaxed mb-7 max-w-sm">
-              {t.footer.tagline}. {t.about.description.slice(0, 120)}...
+              {tagline || `${t.footer.tagline}. ${t.about.description.slice(0, 120)}...`}
             </p>
 
             {/* Social Links */}
             <div className="flex items-center gap-3">
               <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">{t.footer.follow_us}:</span>
               {[
-                { href: "https://facebook.com", Icon: Facebook, hover: "hover:bg-blue-600",  label: "Facebook"  },
-                { href: "https://instagram.com",Icon: Instagram, hover: "hover:bg-pink-600", label: "Instagram" },
-                { href: "https://youtube.com",  Icon: Youtube,  hover: "hover:bg-red-600",   label: "YouTube"   },
+                { href: facebook,  Icon: Facebook,  hover: "hover:bg-blue-600",  label: "Facebook"  },
+                { href: instagram, Icon: Instagram, hover: "hover:bg-pink-600",  label: "Instagram" },
+                { href: youtube,   Icon: Youtube,   hover: "hover:bg-red-600",   label: "YouTube"   },
               ].map(({ href, Icon, hover, label }) => (
                 <a
                   key={label}
@@ -99,24 +117,22 @@ export default function Footer() {
                 <div className="w-8 h-8 rounded-lg bg-white/8 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <MapPin size={14} className="text-gold-500" />
                 </div>
-                <span className="text-slate-400 text-sm leading-relaxed">
-                  Maitidevi, Kathmandu<br />Nepal
-                </span>
+                <span className="text-slate-400 text-sm leading-relaxed whitespace-pre-line">{address}</span>
               </li>
               <li className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-white/8 flex items-center justify-center flex-shrink-0">
                   <Phone size={14} className="text-gold-500" />
                 </div>
-                <a href="tel:+977-1-XXXXXXX" className="text-slate-400 hover:text-gold-400 text-sm transition-colors">
-                  +977-1-XXXXXXX
+                <a href={`tel:${phone}`} className="text-slate-400 hover:text-gold-400 text-sm transition-colors">
+                  {phone}
                 </a>
               </li>
               <li className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-white/8 flex items-center justify-center flex-shrink-0">
                   <Mail size={14} className="text-gold-500" />
                 </div>
-                <a href="mailto:info@evanepal.org" className="text-slate-400 hover:text-gold-400 text-sm transition-colors">
-                  info@evanepal.org
+                <a href={`mailto:${email}`} className="text-slate-400 hover:text-gold-400 text-sm transition-colors">
+                  {email}
                 </a>
               </li>
             </ul>
