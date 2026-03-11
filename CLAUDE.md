@@ -21,50 +21,70 @@
 - **Accent color**: Gold `#f59e0b` → Tailwind class `gold-500`
 - **Typography**: `font-serif` = Playfair Display, `font-sans` = Inter
 - **Layout utilities** (in `globals.css`): `.section-padding`, `.container-max`, `.card`, `.btn-primary`, `.btn-secondary`, `.btn-outline`, `.gold-divider`, `.section-label`
-- **Custom shadows**: `shadow-gold`, `shadow-navy`, `shadow-card`, `shadow-card-hover`
+- **Custom shadows**: `shadow-gold`, `shadow-navy`, `shadow-card`, `shadow-card-hover`, `shadow-gold-glow`, `shadow-card-md`, `shadow-card-gold`, `shadow-glass`
+- **Glass morphism**: `.card-glass` (bg-white/5 + backdrop-blur), `.card-navy` (navy glass)
+- **Gradient text**: `.text-gradient-gold` (gold shimmer gradient text)
+- **Mesh backgrounds**: `.bg-mesh-navy`, `.bg-mesh-light` (animated gradient mesh)
+- **Texture**: `.texture-noise` (SVG noise overlay), `.scan-line` (film grain)
+- **Animations** (`tailwind.config.ts`): `float`, `pulse-gold`, `border-glow`, `bokehFloat`, `scanLine`, `glowPulse`, `gradientShift`, `fadeUpIn`
+- **Easing**: `spring`, `bounce-soft`
+- **Border radius**: `4xl`, `5xl`
+- **Section transitions**: `.section-fade-into-dark`, `.section-fade-into-light`, `.animated-gradient-border`, `.gold-glow-pulse`
 
 ## Project Structure
 ```
 app/
   layout.tsx              Root layout — LocaleProvider, Navbar, Footer, JSON-LD schema
-  page.tsx                Homepage (all section components composed here)
-  globals.css             Tailwind base + custom utilities (NO @import — use next/font)
+  page.tsx                Homepage: Hero → StatsSection → About → Mission → MemberDirectory
+                          → WhyJoin → Events → News → Timeline → ExecutiveCommittee
+                          → MembershipForm → Contact
+  globals.css             Tailwind base + full design-system utilities (NO @import)
   members/
-    page.tsx              "use client" — full member directory with search/filter/view toggle
-    [slug]/page.tsx       Static member profile page
-  events/page.tsx         "use client" — events list with filter
+    page.tsx              "use client" — full member directory with search/area/capacity filter + grid/list toggle
+    [slug]/page.tsx       Static member profile page (155 pages via generateStaticParams)
+  events/page.tsx         "use client" — events list with status/type filters
   news/
     page.tsx              "use client" — news list with category filter
-    [slug]/page.tsx       Static article page
+    [slug]/page.tsx       Static article page (6 pages via generateStaticParams)
   sitemap.ts              Auto-generated from members + news data
   robots.ts               Robots.txt
   not-found.tsx           404 page
 
 components/
   layout/
-    Navbar.tsx            Fixed scroll-aware navbar, language switcher, mobile menu
-    Footer.tsx            Full footer with links, contact, social icons
+    Navbar.tsx            Fixed scroll-aware navbar; gold top-line on scroll, spring logo,
+                          animated underlines (layoutId), flag emoji locale switcher,
+                          stagger mobile menu, animated hamburger↔close icon
+    Footer.tsx            Top gold accent line, mesh background, icon-box social links,
+                          full links + contact columns
   sections/
-    Hero.tsx              Slideshow hero (4 Unsplash images), floating thumbnails, stats bar
-    About.tsx             Association overview + info cards
-    Mission.tsx           6 mission pillars grid
-    MemberDirectory.tsx   Featured venues + search/filter/view toggle + CTA
-    WhyJoin.tsx           6 benefit cards on navy bg
-    Events.tsx            Calendar-style: month groups for upcoming, sidebar for past
-    News.tsx              Editorial layout: featured card + 3-card grid + sidebar list
-    Timeline.tsx          9 milestones 2011-2025, alternating layout, animated spine
-    ExecutiveCommittee.tsx Leadership grid + committee members
-    MembershipForm.tsx    7-field form with simulated submission + success state
-    Contact.tsx           3-panel contact info on navy bg
+    Hero.tsx              Cinematic hero: scroll-parallax (useScroll/useTransform), 5 bokeh
+                          orbs, film grain, slide progress bar, 01/04 counter, ping badge,
+                          shine sweep CTA, text-gradient-gold title, bottom-fade transition
+    StatsSection.tsx      Animated count-up stats (150+/14+/20k+/100%), dark navy + mesh bg
+    About.tsx             Real Unsplash venue image + spring-animated detail cards
+    Mission.tsx           Dark navy mesh bg, glass cards, large bg numbers, bottom accent lines
+    MemberDirectory.tsx   Featured venues + search/area/capacity filters + grid/list toggle + CTA
+    WhyJoin.tsx           Mesh bg, white numbered-badge benefit cards, dark navy CTA block
+    Events.tsx            Calendar-style grouped by month, side panel for past events, type legend
+    News.tsx              Editorial: featured hero card + 3-card grid + sidebar list, category colors
+    Timeline.tsx          Dark navy, glass morphism cards, gold spine + animated progress,
+                          watermark year, glow dots, glass summary block
+    ExecutiveCommittee.tsx Leadership grid + styled divider + committee members grid
+    MembershipForm.tsx    White card shadow, mesh bg, 7-field form, simulated success state
+    Contact.tsx           Dark navy mesh bg, glass cards with icon boxes, 3-panel layout
   ui/
     AnimatedSection.tsx   Scroll-triggered fade/slide wrapper (framer-motion useInView)
-    MemberCard.tsx        Venue card: capacity bar, shine hover, gold glow, category badge
-    EventCard.tsx         Event card with status/type styling
-    NewsCard.tsx          News card with category color system
-    CommitteeCard.tsx     Profile card, gold highlighted for president/VP
+    MemberCard.tsx        176px gradient image area (capacity-tier: gold/blue/emerald/purple),
+                          pulsing building icon, SVG pattern overlay, hover glow border,
+                          capacity overlay in image, thin capacity bar at bottom, category badge
+    EventCard.tsx         Pattern overlay image area, per-type color bar, date badge in image
+    NewsCard.tsx          Per-category colored bar, motion hover lift
+    CommitteeCard.tsx     Deterministic-color gradient initials avatar, animated star pulse
+                          on highlighted (president/VP)
 
 data/
-  members.ts              155 members (first 20 detailed + 135 generated). Exports: members[], getAreaList(), getMemberBySlug()
+  members.ts              155 members (6 detailed + 149 generated). Exports: members[], getAreaList(), getMemberBySlug()
   events.ts               10 events (5 upcoming, 5 past). Types: networking|training|meeting|exhibition|conference
   news.ts                 6 news items. Categories: announcement|training|event|industry|member
   committee.ts            9 committee members
@@ -75,6 +95,15 @@ context/
 lib/
   i18n.ts                 Full EN + NE translation objects for all sections
   utils.ts                cn(), slugify(), formatDate(), formatMonthYear(), formatDay(), formatMonthShort()
+
+Root config files:
+  next.config.mjs         Next.js config (must be .mjs, not .ts)
+  tailwind.config.ts      Extended palette (navy/gold), expanded shadows, animations, easing, radii
+  tsconfig.json           target: es2017, downlevelIteration: true (Set spread support)
+  ecosystem.config.js     PM2 config — runs Next.js on port 3011
+  nginx.conf              Nginx reverse proxy: 80 → 3011 (HTTPS block commented until SSL setup)
+  deploy.sh               One-command deploy: git pull → npm ci → build → pm2 restart
+  .env.example            Template for environment variables
 ```
 
 ## Critical Rules / Gotchas
@@ -186,11 +215,26 @@ Then uncomment the HTTPS server block in `nginx.conf`.
 - venue association Nepal
 - event management Nepal
 
+## Completed (do not re-implement)
+- [x] Full Next.js 14 App Router project scaffold with TypeScript + Tailwind
+- [x] EN/NE bilingual i18n system via React Context
+- [x] 155-member data layer with slug routing (6 detailed + 149 generated)
+- [x] All homepage sections: Hero, StatsSection, About, Mission, MemberDirectory, WhyJoin, Events, News, Timeline, ExecutiveCommittee, MembershipForm, Contact
+- [x] Full member directory page with search + area + capacity filter + grid/list view
+- [x] Events page with status/type filters
+- [x] News page with category filter + individual article pages
+- [x] V1 base design system (navy/gold, fonts, layout utilities)
+- [x] V2 visual overhaul (slideshow hero, editorial news, calendar events, MemberCard capacity bar)
+- [x] V3 glass morphism, mesh backgrounds, gradient text, animation tokens
+- [x] V4 wow-factor redesign: cinematic Hero parallax, StatsSection count-up, new MemberCard image tiles, Timeline glass morphism, bokeh orbs, film grain
+- [x] PM2 + Nginx deployment config + deploy.sh script
+
 ## TODO / Pending
 - [ ] Add real EVA Nepal contact: phone, email, Facebook URL, Instagram URL
 - [ ] Replace `metadataBase` URL in `layout.tsx` with actual domain
 - [ ] Add `/public/favicon.ico` and `/public/og-image.jpg` (1200×630px)
 - [ ] Wire membership form to backend (Resend/Nodemailer or a form service)
-- [ ] Add real venue photos to member profile pages
+- [ ] Add real venue photos to member profile pages (member profile `[slug]/page.tsx`)
+- [ ] Replace committee member initials avatars with real photos
 - [ ] Update `nginx.conf` `server_name` with actual domain
-- [ ] Set up SSL via Certbot
+- [ ] Set up SSL via Certbot (after DNS is pointing)
