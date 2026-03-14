@@ -3,7 +3,7 @@
 ## Architecture Overview
 
 ```
-Browser → Nginx (port 80/443) → Next.js on port 3011 (PM2) → PostgreSQL (localhost:5432)
+Browser → Nginx (port 80/443) → Next.js on port 3002 (PM2) → PostgreSQL (localhost:5432)
 ```
 
 ---
@@ -52,9 +52,9 @@ sudo apt install -y git
 sudo -u postgres psql
 
 # Inside psql:
-CREATE USER evanepal_user WITH PASSWORD 'ev@Nep@l2026';
-CREATE DATABASE evanepal OWNER evanepal_user;
-GRANT ALL PRIVILEGES ON DATABASE evanepal TO evanepal_user;
+CREATE USER eva_user WITH PASSWORD 'eva2026';
+CREATE DATABASE evanepal OWNER eva_user;
+GRANT ALL PRIVILEGES ON DATABASE evanepal TO eva_user;
 \q
 ```
 
@@ -66,11 +66,11 @@ Note the credentials — you will need them for `DATABASE_URL`.
 
 ```bash
 # Create app directory
-sudo mkdir -p /var/www/eva
-sudo chown $USER:$USER /var/www/eva
+sudo mkdir -p /var/www/eva-nepal
+sudo chown $USER:$USER /var/www/eva-nepal
 
 # Clone
-cd /var/www/eva
+cd /var/www/eva-nepal
 git clone https://github.com/YOUR_USERNAME/eva-nepal.git .
 ```
 
@@ -87,7 +87,7 @@ nano /var/www/eva/.env.local
 Paste the following (replace every placeholder):
 
 ```
-DATABASE_URL="postgresql://evanepal_user:choose-a-strong-password@localhost:5432/evanepal"
+DATABASE_URL="postgresql://eva_user:choose-a-strong-password@localhost:5432/evanepal"
 NEXTAUTH_URL="https://evanepal.org"
 NEXTAUTH_SECRET="paste result of: openssl rand -base64 32"
 GOOGLE_CLIENT_ID=""
@@ -105,7 +105,7 @@ openssl rand -base64 32
 ## Step 5 — Install Dependencies & Build
 
 ```bash
-cd /var/www/eva
+cd /var/www/eva-nepal
 
 # Install packages
 npm ci
@@ -143,7 +143,7 @@ pm2 status
 pm2 logs eva-nepal
 ```
 
-The app runs on **port 3011** (defined in `ecosystem.config.js`).
+The app runs on **port 3002** (defined in `ecosystem.config.js`).
 
 ---
 
@@ -196,7 +196,7 @@ sudo ufw enable
 sudo ufw status
 ```
 
-Allows: SSH (22), HTTP (80), HTTPS (443). Blocks direct access to port 3011.
+Allows: SSH (22), HTTP (80), HTTPS (443). Blocks direct access to port 3002.
 
 ---
 
@@ -207,7 +207,7 @@ Allows: SSH (22), HTTP (80), HTTPS (443). Blocks direct access to port 3011.
 pm2 status
 
 # DB has data
-psql postgresql://evanepal_user:password@localhost:5432/evanepal \
+psql postgresql://eva_user:password@localhost:5432/evanepal \
   -c 'SELECT COUNT(*) FROM "Member";'
 # Should return 155
 
@@ -245,7 +245,7 @@ bash deploy.sh
 node -e "const b=require('bcryptjs'); b.hash('YourNewPassword', 10).then(h=>console.log(h))"
 
 # Update in DB
-psql postgresql://evanepal_user:password@localhost:5432/evanepal
+psql postgresql://eva_user:password@localhost:5432/evanepal
 UPDATE "AdminUser" SET password = 'PASTE_HASH_HERE', "updatedAt" = now()
   WHERE email = 'admin@evanepal.org';
 \q
@@ -300,12 +300,12 @@ Then open `http://localhost:5555` in your browser.
 
 | Path                                   | Purpose                              |
 | -------------------------------------- | ------------------------------------ |
-| `/var/www/eva/`                        | App root                             |
-| `/var/www/eva/.env.local`              | Environment variables (never commit) |
-| `/var/www/eva/public/uploads/`         | Admin-uploaded images                |
+| `/var/www/eva-nepal/`                  | App root                             |
+| `/var/www/eva-nepal/.env.local`        | Environment variables (never commit) |
+| `/var/www/eva-nepal/public/uploads/`   | Admin-uploaded images                |
 | `/etc/nginx/sites-available/eva-nepal` | Nginx config                         |
 | `/var/log/nginx/`                      | Nginx access + error logs            |
 
-rsync -avz --delete --exclude node_modules --exclude .next \
-/Users/sanatmool/Documents/website\ _\ Eva\ Nepal/ \
-root@139.59.59.91:/var/www/eva/
+rsync -avz --delete --exclude node*modules --exclude .next --exclude .git \
+/Users/sanatmool/Documents/website\ *\ Eva\ Nepal/ \
+sysadmin@139.59.65.222:/var/www/eva-nepal/

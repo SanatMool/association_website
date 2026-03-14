@@ -105,8 +105,8 @@ Root config files:
   next.config.mjs         Next.js config (must be .mjs, not .ts)
   tailwind.config.ts      Extended palette (navy/gold), expanded shadows, animations, easing, radii
   tsconfig.json           target: es2017, downlevelIteration: true (Set spread support)
-  ecosystem.config.js     PM2 config — runs Next.js on port 3011
-  nginx.conf              Nginx reverse proxy: 80 → 3011 (HTTPS block commented until SSL setup)
+  ecosystem.config.js     PM2 config — runs Next.js on port 3002
+  nginx.conf              Nginx reverse proxy: 80 → 3002 (HTTPS block commented until SSL setup)
   deploy.sh               One-command deploy: git pull → npm ci → build → pm2 restart
   .env.example            Template for environment variables
 ```
@@ -166,7 +166,7 @@ Set `"target": "es2017"` and `"downlevelIteration": true` (with `"ignoreDeprecat
 
 ### Port
 
-Next.js runs on **port 3011** via PM2. Nginx proxies public traffic (80/443) → 3011.
+Next.js runs on **port 3002** via PM2. Nginx proxies public traffic (80/443) → 3002.
 
 ### PM2
 

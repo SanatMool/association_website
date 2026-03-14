@@ -19,7 +19,7 @@ Set in **`.env.local`** (never committed to git):
 
 ```
 DATABASE_URL="postgresql://sanatmool@localhost:5432/evanepal"
-NEXTAUTH_URL="http://localhost:3011"
+NEXTAUTH_URL="http://localhost:3002"
 NEXTAUTH_SECRET="<generate with: openssl rand -base64 32>"
 GOOGLE_CLIENT_ID=""         # optional — leave blank to disable Google login
 GOOGLE_CLIENT_SECRET=""     # optional
@@ -37,14 +37,14 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
-  migrations: {
-    path: "prisma/migrations",
-    seed: "ts-node -P tsconfig.seed.json prisma/seed.ts",
-  },
-  datasource: {
-    url: process.env["DATABASE_URL"],
-  },
+	schema: "prisma/schema.prisma",
+	migrations: {
+		path: "prisma/migrations",
+		seed: "ts-node -P tsconfig.seed.json prisma/seed.ts",
+	},
+	datasource: {
+		url: process.env["DATABASE_URL"],
+	},
 });
 ```
 
@@ -57,8 +57,10 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-  return new PrismaClient({ adapter });
+	const adapter = new PrismaPg({
+		connectionString: process.env.DATABASE_URL!,
+	});
+	return new PrismaClient({ adapter });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
@@ -92,6 +94,7 @@ SELECT COUNT(*) FROM "Member"; # should return 155
 ```
 
 Or use Prisma Studio:
+
 ```bash
 npx prisma studio              # opens browser UI at http://localhost:5555
 ```
@@ -198,12 +201,12 @@ model AdminUser {
 
 ### Default Seeded User
 
-| Field    | Value                  |
-|----------|------------------------|
-| Email    | `admin@evanepal.org`   |
-| Password | `admin123`             |
-| Role     | `admin`                |
-| Name     | `EVA Nepal Admin`      |
+| Field    | Value                |
+| -------- | -------------------- |
+| Email    | `admin@evanepal.org` |
+| Password | `admin123`           |
+| Role     | `admin`              |
+| Name     | `EVA Nepal Admin`    |
 
 > **Change this password immediately after first login.** The seed stores it as a bcrypt hash.
 
@@ -212,6 +215,7 @@ model AdminUser {
 Two options:
 
 **Option A — Via psql directly:**
+
 ```bash
 # Generate bcrypt hash first (Node.js one-liner)
 node -e "const b=require('bcryptjs'); b.hash('newpassword123',10).then(h=>console.log(h))"
@@ -233,42 +237,44 @@ All routes are under `/api/`. JSON request/response. Protected routes require Ne
 
 ### Members
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/api/members` | List all members. Optional `?search=` query param. |
-| `POST` | `/api/members` | Create a new member. Body: member fields as JSON. |
-| `GET` | `/api/members/[id]` | Get single member by ID. |
-| `PUT` | `/api/members/[id]` | Update member. Body: fields to update. |
-| `DELETE` | `/api/members/[id]` | Delete member. |
+| Method   | Route               | Description                                        |
+| -------- | ------------------- | -------------------------------------------------- |
+| `GET`    | `/api/members`      | List all members. Optional `?search=` query param. |
+| `POST`   | `/api/members`      | Create a new member. Body: member fields as JSON.  |
+| `GET`    | `/api/members/[id]` | Get single member by ID.                           |
+| `PUT`    | `/api/members/[id]` | Update member. Body: fields to update.             |
+| `DELETE` | `/api/members/[id]` | Delete member.                                     |
 
 **GET `/api/members`** — Response shape:
+
 ```json
 [
-  {
-    "id": "cuid...",
-    "name": "Bagmati Hall",
-    "slug": "bagmati-hall",
-    "area": "Teku",
-    "capacity": 500,
-    "type": "banquet",
-    "phone": "9851234567",
-    "featured": true,
-    "image": "/uploads/1234-bagmati.jpg"
-  }
+	{
+		"id": "cuid...",
+		"name": "Bagmati Hall",
+		"slug": "bagmati-hall",
+		"area": "Teku",
+		"capacity": 500,
+		"type": "banquet",
+		"phone": "9851234567",
+		"featured": true,
+		"image": "/uploads/1234-bagmati.jpg"
+	}
 ]
 ```
 
 **POST `/api/members`** — Request body:
+
 ```json
 {
-  "name": "New Venue",
-  "slug": "new-venue",
-  "area": "Lalitpur",
-  "capacity": 200,
-  "type": "banquet",
-  "phone": "9800000000",
-  "amenities": ["parking", "catering"],
-  "featured": false
+	"name": "New Venue",
+	"slug": "new-venue",
+	"area": "Lalitpur",
+	"capacity": 200,
+	"type": "banquet",
+	"phone": "9800000000",
+	"amenities": ["parking", "catering"],
+	"featured": false
 }
 ```
 
@@ -276,24 +282,25 @@ All routes are under `/api/`. JSON request/response. Protected routes require Ne
 
 ### Events
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/api/events` | List all events. |
-| `POST` | `/api/events` | Create event. |
-| `GET` | `/api/events/[id]` | Get single event. |
-| `PUT` | `/api/events/[id]` | Update event. |
-| `DELETE` | `/api/events/[id]` | Delete event. |
+| Method   | Route              | Description       |
+| -------- | ------------------ | ----------------- |
+| `GET`    | `/api/events`      | List all events.  |
+| `POST`   | `/api/events`      | Create event.     |
+| `GET`    | `/api/events/[id]` | Get single event. |
+| `PUT`    | `/api/events/[id]` | Update event.     |
+| `DELETE` | `/api/events/[id]` | Delete event.     |
 
 **POST `/api/events`** — Request body:
+
 ```json
 {
-  "slug": "networking-2025",
-  "title": "Annual Networking Meet",
-  "description": "...",
-  "date": "2025-06-15T10:00:00.000Z",
-  "location": "Hotel Yak & Yeti, Kathmandu",
-  "type": "networking",
-  "status": "upcoming"
+	"slug": "networking-2025",
+	"title": "Annual Networking Meet",
+	"description": "...",
+	"date": "2025-06-15T10:00:00.000Z",
+	"location": "Hotel Yak & Yeti, Kathmandu",
+	"type": "networking",
+	"status": "upcoming"
 }
 ```
 
@@ -304,25 +311,26 @@ All routes are under `/api/`. JSON request/response. Protected routes require Ne
 
 ### News
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/api/news` | List all news articles. |
-| `POST` | `/api/news` | Create article. |
-| `GET` | `/api/news/[id]` | Get single article. |
-| `PUT` | `/api/news/[id]` | Update article. |
-| `DELETE` | `/api/news/[id]` | Delete article. |
+| Method   | Route            | Description             |
+| -------- | ---------------- | ----------------------- |
+| `GET`    | `/api/news`      | List all news articles. |
+| `POST`   | `/api/news`      | Create article.         |
+| `GET`    | `/api/news/[id]` | Get single article.     |
+| `PUT`    | `/api/news/[id]` | Update article.         |
+| `DELETE` | `/api/news/[id]` | Delete article.         |
 
 **POST `/api/news`** — Request body:
+
 ```json
 {
-  "slug": "eva-nepal-2025-update",
-  "title": "EVA Nepal 2025 Update",
-  "excerpt": "Short summary...",
-  "content": "Full article text...",
-  "author": "EVA Nepal Secretariat",
-  "category": "announcement",
-  "publishedAt": "2025-03-11T00:00:00.000Z",
-  "featured": false
+	"slug": "eva-nepal-2025-update",
+	"title": "EVA Nepal 2025 Update",
+	"excerpt": "Short summary...",
+	"content": "Full article text...",
+	"author": "EVA Nepal Secretariat",
+	"category": "announcement",
+	"publishedAt": "2025-03-11T00:00:00.000Z",
+	"featured": false
 }
 ```
 
@@ -332,25 +340,26 @@ All routes are under `/api/`. JSON request/response. Protected routes require Ne
 
 ### Committee
 
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/api/committee` | List all committee members (ordered by `order` field). |
-| `POST` | `/api/committee` | Add committee member. |
-| `GET` | `/api/committee/[id]` | Get single member. |
-| `PUT` | `/api/committee/[id]` | Update member. |
-| `DELETE` | `/api/committee/[id]` | Delete member. |
+| Method   | Route                 | Description                                            |
+| -------- | --------------------- | ------------------------------------------------------ |
+| `GET`    | `/api/committee`      | List all committee members (ordered by `order` field). |
+| `POST`   | `/api/committee`      | Add committee member.                                  |
+| `GET`    | `/api/committee/[id]` | Get single member.                                     |
+| `PUT`    | `/api/committee/[id]` | Update member.                                         |
+| `DELETE` | `/api/committee/[id]` | Delete member.                                         |
 
 ---
 
 ### Image Upload
 
-| Method | Route | Description |
-|--------|-------|-------------|
+| Method | Route         | Description                             |
+| ------ | ------------- | --------------------------------------- |
 | `POST` | `/api/upload` | Upload image file. Multipart form data. |
 
 **Request**: `multipart/form-data` with field `file` (image file).
 
 **Response**:
+
 ```json
 { "url": "/uploads/1710000000000-venue.jpg" }
 ```
@@ -420,10 +429,10 @@ npx prisma migrate reset
 
 ## Common Issues
 
-| Problem | Cause | Fix |
-|---------|-------|-----|
-| `url is not supported in schema.prisma` | Prisma v7 breaking change | Set `url` in `prisma.config.ts` datasource, not in `schema.prisma` |
-| `role "postgres" does not exist` | macOS has no `postgres` system user | Use your macOS username (e.g. `sanatmool`) in DATABASE_URL |
-| `PrismaPg is not a constructor` | Missing driver adapter | Install `@prisma/adapter-pg` and `pg` |
-| Seed fails with duplicate key | Generated member slugs collide | Seed script deduplicates automatically with suffix `-2`, `-3` etc. |
-| `NEXTAUTH_SECRET` missing | Not set in .env.local | Run `openssl rand -base64 32` and paste into `.env.local` |
+| Problem                                 | Cause                               | Fix                                                                |
+| --------------------------------------- | ----------------------------------- | ------------------------------------------------------------------ |
+| `url is not supported in schema.prisma` | Prisma v7 breaking change           | Set `url` in `prisma.config.ts` datasource, not in `schema.prisma` |
+| `role "postgres" does not exist`        | macOS has no `postgres` system user | Use your macOS username (e.g. `sanatmool`) in DATABASE_URL         |
+| `PrismaPg is not a constructor`         | Missing driver adapter              | Install `@prisma/adapter-pg` and `pg`                              |
+| Seed fails with duplicate key           | Generated member slugs collide      | Seed script deduplicates automatically with suffix `-2`, `-3` etc. |
+| `NEXTAUTH_SECRET` missing               | Not set in .env.local               | Run `openssl rand -base64 32` and paste into `.env.local`          |

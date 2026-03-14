@@ -23,6 +23,6 @@ pm2 restart $APP_NAME || pm2 start ecosystem.config.js
 echo "==> Saving PM2 process list..."
 pm2 save
 
-echo "==> Done. App running on port 3011."
+echo "==> Done. App running on port 3002."
 echo "    Check status: pm2 status"
 echo "    Check logs:   pm2 logs eva-nepal"

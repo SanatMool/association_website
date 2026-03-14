@@ -1,23 +1,25 @@
 # EVA Nepal Website — Build Progress
 
 ## What Is This Project
+
 Full public-facing website for the **Event and Venue Association Nepal (EVA Nepal)**, an official industry body for event venues in Kathmandu, founded 2011. The site serves as the primary digital presence: member directory, events calendar, news, association history, and membership applications.
 
 ---
 
 ## Tech Stack
-| Layer | Choice | Reason |
-|-------|--------|--------|
-| Framework | Next.js 14 (App Router) | Static + client hybrid, great SEO |
-| Language | TypeScript (strict) | Type safety throughout |
-| Styling | TailwindCSS 3 | Utility-first, custom design tokens |
-| Animations | Framer Motion 11 | Scroll effects, layout animations |
-| Icons | lucide-react | Consistent icon set |
-| Fonts | next/font/google | Inter (sans) + Playfair Display (serif), no layout shift |
-| ORM | Prisma v7 | Type-safe DB queries |
-| Database | PostgreSQL | Relational, hosted locally |
-| Auth | NextAuth v4 (JWT) | Admin authentication |
-| Password hashing | bcryptjs | Secure credential storage |
+
+| Layer            | Choice                  | Reason                                                   |
+| ---------------- | ----------------------- | -------------------------------------------------------- |
+| Framework        | Next.js 14 (App Router) | Static + client hybrid, great SEO                        |
+| Language         | TypeScript (strict)     | Type safety throughout                                   |
+| Styling          | TailwindCSS 3           | Utility-first, custom design tokens                      |
+| Animations       | Framer Motion 11        | Scroll effects, layout animations                        |
+| Icons            | lucide-react            | Consistent icon set                                      |
+| Fonts            | next/font/google        | Inter (sans) + Playfair Display (serif), no layout shift |
+| ORM              | Prisma v7               | Type-safe DB queries                                     |
+| Database         | PostgreSQL              | Relational, hosted locally                               |
+| Auth             | NextAuth v4 (JWT)       | Admin authentication                                     |
+| Password hashing | bcryptjs                | Secure credential storage                                |
 
 ---
 
@@ -148,47 +150,49 @@ project-root/
 
 ## Pages & Routes
 
-| Route | Render Type | Description |
-|-------|-------------|-------------|
-| `/` | SSR (Server Component) | Full homepage — fetches members/events/news/committee from DB |
-| `/members` | SSR + Client | Server fetches all members → passes to MembersClient for filtering |
-| `/members/[slug]` | ISR (revalidate=3600) | Venue profile page — queried from DB on-demand, cached 1hr |
-| `/events` | SSR + Client | Server fetches events → EventsClient for filter state |
-| `/news` | SSR + Client | Server fetches news → NewsClient for category filter |
-| `/news/[slug]` | ISR (revalidate=3600) | Article page — queried from DB, cached 1hr |
-| `/sitemap.xml` | ISR (revalidate=3600) | Generated from member + news slugs in DB |
-| `/robots.txt` | Static | Search engine directives |
-| `/admin/login` | Static | Admin login page |
-| `/admin/dashboard` | SSR | Stat cards (entity counts from DB) |
-| `/admin/members` | SSR | Table of all members with Edit/Delete |
-| `/admin/members/new` | Static | Create member form |
-| `/admin/members/[id]` | SSR | Edit member form (pre-filled from DB) |
-| `/admin/events` | SSR | Table of all events |
-| `/admin/events/new` | Static | Create event form |
-| `/admin/events/[id]` | SSR | Edit event form |
-| `/admin/news` | SSR | Table of all news articles |
-| `/admin/news/new` | Static | Create article form |
-| `/admin/news/[id]` | SSR | Edit article form |
-| `/admin/committee` | SSR | Table of committee members |
-| `/admin/committee/new` | Static | Add committee member form |
-| `/admin/committee/[id]` | SSR | Edit committee member form |
-| `/api/members` | API | GET list / POST create |
-| `/api/members/[id]` | API | GET / PUT / DELETE |
-| `/api/events` | API | GET / POST |
-| `/api/events/[id]` | API | GET / PUT / DELETE |
-| `/api/news` | API | GET / POST |
-| `/api/news/[id]` | API | GET / PUT / DELETE |
-| `/api/committee` | API | GET / POST |
-| `/api/committee/[id]` | API | GET / PUT / DELETE |
-| `/api/upload` | API | POST — multipart image upload |
-| `/api/auth/[...nextauth]` | API | NextAuth handler |
+| Route                     | Render Type            | Description                                                        |
+| ------------------------- | ---------------------- | ------------------------------------------------------------------ |
+| `/`                       | SSR (Server Component) | Full homepage — fetches members/events/news/committee from DB      |
+| `/members`                | SSR + Client           | Server fetches all members → passes to MembersClient for filtering |
+| `/members/[slug]`         | ISR (revalidate=3600)  | Venue profile page — queried from DB on-demand, cached 1hr         |
+| `/events`                 | SSR + Client           | Server fetches events → EventsClient for filter state              |
+| `/news`                   | SSR + Client           | Server fetches news → NewsClient for category filter               |
+| `/news/[slug]`            | ISR (revalidate=3600)  | Article page — queried from DB, cached 1hr                         |
+| `/sitemap.xml`            | ISR (revalidate=3600)  | Generated from member + news slugs in DB                           |
+| `/robots.txt`             | Static                 | Search engine directives                                           |
+| `/admin/login`            | Static                 | Admin login page                                                   |
+| `/admin/dashboard`        | SSR                    | Stat cards (entity counts from DB)                                 |
+| `/admin/members`          | SSR                    | Table of all members with Edit/Delete                              |
+| `/admin/members/new`      | Static                 | Create member form                                                 |
+| `/admin/members/[id]`     | SSR                    | Edit member form (pre-filled from DB)                              |
+| `/admin/events`           | SSR                    | Table of all events                                                |
+| `/admin/events/new`       | Static                 | Create event form                                                  |
+| `/admin/events/[id]`      | SSR                    | Edit event form                                                    |
+| `/admin/news`             | SSR                    | Table of all news articles                                         |
+| `/admin/news/new`         | Static                 | Create article form                                                |
+| `/admin/news/[id]`        | SSR                    | Edit article form                                                  |
+| `/admin/committee`        | SSR                    | Table of committee members                                         |
+| `/admin/committee/new`    | Static                 | Add committee member form                                          |
+| `/admin/committee/[id]`   | SSR                    | Edit committee member form                                         |
+| `/api/members`            | API                    | GET list / POST create                                             |
+| `/api/members/[id]`       | API                    | GET / PUT / DELETE                                                 |
+| `/api/events`             | API                    | GET / POST                                                         |
+| `/api/events/[id]`        | API                    | GET / PUT / DELETE                                                 |
+| `/api/news`               | API                    | GET / POST                                                         |
+| `/api/news/[id]`          | API                    | GET / PUT / DELETE                                                 |
+| `/api/committee`          | API                    | GET / POST                                                         |
+| `/api/committee/[id]`     | API                    | GET / PUT / DELETE                                                 |
+| `/api/upload`             | API                    | POST — multipart image upload                                      |
+| `/api/auth/[...nextauth]` | API                    | NextAuth handler                                                   |
 
 ---
 
 ## Components — What Each Does
 
 ### Layout
+
 **`Navbar.tsx`**
+
 - Fixed to top, changes style on scroll (gold top-line appears)
 - Logo with spring hover animation
 - Nav links with animated underline (Framer Motion `layoutId="nav-underline"`)
@@ -196,6 +200,7 @@ project-root/
 - Mobile: animated hamburger ↔ close icon, stagger-animated menu items
 
 **`Footer.tsx`**
+
 - Gold accent line at top
 - Navy mesh gradient background
 - Three columns: brand/description, quick links, contact info
@@ -207,6 +212,7 @@ project-root/
 ### Homepage Sections (order in page.tsx)
 
 **`Hero.tsx`** — Cinematic full-screen hero
+
 - 5 slides cycling through Kathmandu venue imagery (Unsplash)
 - Scroll-parallax: background and text move at different rates (`useScroll`, `useTransform`)
 - 5 animated bokeh orbs floating in background
@@ -219,22 +225,26 @@ project-root/
 - Bottom fade transition into next section
 
 **`StatsSection.tsx`** — Animated statistics
+
 - 4 stats: 150+ Members, 14+ Years, 20k+ Events, 100% Dedicated
 - Count-up animation triggered by scroll into view
 - Dark navy background with animated mesh gradient
 - Placed directly after Hero on homepage
 
 **`About.tsx`** — Association overview
+
 - Left: real Unsplash venue interior photo (aspect-video, rounded)
 - Right: headline + description + 3 detail cards (Year founded, Members, Coverage)
 - Cards spring-animate in on scroll
 
 **`Mission.tsx`** — 6 mission pillars
+
 - Dark navy background with mesh gradient
 - 3×2 grid of glass-morphism cards
 - Each card: large decorative background number, icon, title, description, gold bottom accent line
 
 **`MemberDirectory.tsx`** — Featured member showcase
+
 - Accepts `members: MemberType[]` prop (was: static import)
 - Search input + area dropdown + capacity dropdown filter panel
 - Grid/list view toggle (animated)
@@ -242,11 +252,13 @@ project-root/
 - "View All Members" CTA → `/members`
 
 **`WhyJoin.tsx`** — Membership benefits
+
 - Light mesh background
 - 6 white benefit cards, each with numbered navy badge, icon, title, description
 - Bottom CTA block on dark navy background
 
 **`Events.tsx`** — Events calendar
+
 - Accepts `events: EventType[]` prop (was: static import)
 - Upcoming events grouped by month (calendar-style vertical layout)
 - Past events in a sidebar panel
@@ -254,6 +266,7 @@ project-root/
 - Uses `formatMonthYear()` for locale-safe month headings
 
 **`News.tsx`** — Editorial news layout
+
 - Accepts `news: NewsType[]` prop (was: static import)
 - Featured hero card (full-width, large image area)
 - 3-card grid of recent articles
@@ -261,6 +274,7 @@ project-root/
 - Category color system: announcement (blue) / training (green) / event (purple) / industry (orange) / member (gold)
 
 **`Timeline.tsx`** — Association history 2011–2025
+
 - 9 milestones in alternating left/right layout
 - Dark navy background, glass morphism cards (`bg-white/5 backdrop-blur`)
 - Animated gold spine (progress fills as you scroll)
@@ -269,18 +283,21 @@ project-root/
 - Glass summary block at bottom
 
 **`ExecutiveCommittee.tsx`** — Leadership section
+
 - Accepts `committee: CommitteeType[]` prop (was: static import)
 - President + Vice President in prominent cards
 - Styled gold divider between leadership and committee
 - 7 committee members in a responsive grid
 
 **`MembershipForm.tsx`** — Application form
+
 - White card on mesh background
 - 7 fields: Name, Organization, Position, Area, Venue Type, Phone, Email
 - Animated step indicators on hover
 - Simulated submit with loading state → success message (no backend yet)
 
 **`Contact.tsx`** — Contact information
+
 - Dark navy mesh background
 - 3 glass cards: Address (with map pin), Phone, Email
 - Each card has icon box + label + value
@@ -290,13 +307,15 @@ project-root/
 ### UI Components
 
 **`AnimatedSection.tsx`**
+
 - Wraps any content with a scroll-triggered fade + slide-up animation
 - Uses Framer Motion `useInView` with configurable threshold and delay
 - Used by almost every section
 
 **`MemberCard.tsx`** — Uses `MemberType` from `lib/types.ts`
+
 - 176px gradient image area — color tier based on capacity:
-  - Gold (500+), Blue (200–499), Emerald (100–199), Purple (<100)
+    - Gold (500+), Blue (200–499), Emerald (100–199), Purple (<100)
 - Animated pulsing building icon in image area
 - SVG pattern overlay on image
 - Capacity number displayed in image
@@ -304,17 +323,20 @@ project-root/
 - Bottom: thin colored capacity bar, venue name, area, category badge
 
 **`EventCard.tsx`** — Uses `EventType` from `lib/types.ts`
+
 - Image area with decorative pattern overlay
 - Color bar per event type (left edge)
 - Date badge overlaid on image
 - Status chip (Upcoming / Past)
 
 **`NewsCard.tsx`** — Uses `NewsType` from `lib/types.ts`
+
 - Colored top bar per category
 - Hover: lifts with motion
 - Shows: category badge, date, title, excerpt, read-more link
 
 **`CommitteeCard.tsx`** — Uses `CommitteeType` from `lib/types.ts`
+
 - Gradient initials avatar — color is deterministic by name (always same person = same color)
 - President/VP: animated gold star pulse, highlighted border
 - Shows name, role, organization
@@ -324,17 +346,21 @@ project-root/
 ### Admin Components
 
 **`MemberForm.tsx`** — Full form for creating/editing members:
+
 - Fields: name, slug, area, capacity, type/category, phone, email, website, description, amenities, memberSince, established, featured, image
 - Image upload via `ImageUpload` component
 - Submits to `POST /api/members` or `PUT /api/members/[id]`
 
 **`EventForm.tsx`** — Create/edit events:
+
 - Fields: title, titleNe, slug, date, endDate, location, type, status, description, attendees, image
 
 **`NewsForm.tsx`** — Create/edit news articles:
+
 - Fields: title, titleNe, slug, author, category, excerpt, content, publishedAt, featured, image
 
 **`CommitteeForm.tsx`** — Create/edit committee members:
+
 - Fields: name, role, roleKey, organization, venue, bio, order, highlighted, image
 
 **`DeleteButton.tsx`** — Inline delete with browser confirm dialog
@@ -348,10 +374,12 @@ project-root/
 ### Before CMS (static files — kept as seed source only)
 
 **`data/members.ts`**
+
 - 155 venue records total; 6 detailed + 149 generated
 - No longer imported by app pages — only used by `prisma/seed.ts`
 
 **`data/events.ts`**, **`data/news.ts`**, **`data/committee.ts`**
+
 - Same — kept as seed source only
 
 ### After CMS (database via Prisma)
@@ -375,11 +403,13 @@ project-root/
 ## Design System Evolution
 
 ### V1 — Base
+
 - Navy (#0a1040) + Gold (#f59e0b) palette in `tailwind.config.ts`
 - Basic layout utilities: `.section-padding`, `.container-max`, `.card`, `.btn-primary/secondary/outline`, `.gold-divider`, `.section-label`
 - Shadows: `shadow-gold`, `shadow-navy`, `shadow-card`, `shadow-card-hover`
 
 ### V2 — Visual Upgrade
+
 - Hero: full-screen image slideshow, floating venue thumbnails, stats bar
 - MemberCard: capacity bar with color tier, shimmer hover sweep, gold glow
 - MemberDirectory: search + area + capacity filters, grid/list view toggle
@@ -388,6 +418,7 @@ project-root/
 - Timeline: alternating milestone layout, animated spine
 
 ### V3 — Glass & Atmosphere
+
 - Glass morphism: `.card-glass` (bg-white/5 + backdrop-blur), `.card-navy`
 - Gradient text: `.text-gradient-gold`
 - Mesh backgrounds: `.bg-mesh-navy`, `.bg-mesh-light` (animated CSS gradients)
@@ -400,6 +431,7 @@ project-root/
 - Component overhauls: About, Mission, WhyJoin, CommitteeCard, EventCard, NewsCard, ExecutiveCommittee, Contact, Footer, MembershipForm
 
 ### V4 — Wow Factor
+
 - Hero: full cinematic rewrite with useScroll parallax, 5 bokeh orbs, film grain, progress bar, shine sweep
 - StatsSection: new component with count-up numbers, placed after Hero
 - MemberCard: full image tile redesign (176px gradient, tier colors, pulsing icon, SVG pattern)
@@ -407,6 +439,7 @@ project-root/
 - globals.css additions: `bokehFloat`, `scanLine`, `glowPulse`, `gradientShift`, `fadeUpIn` keyframes; `.animated-gradient-border`, `.gold-glow-pulse`, `.scan-line`, `.section-fade-into-dark/light`
 
 ### V5 — CMS Backend
+
 - Added Prisma v7 + PostgreSQL as data layer
 - All static imports removed from pages and section components
 - Admin panel added at `/admin/*` (protected by NextAuth middleware)
@@ -419,12 +452,12 @@ project-root/
 ## Deployment Architecture
 
 ```
-Internet → Nginx (80/443) → Next.js on port 3011 (managed by PM2)
+Internet → Nginx (80/443) → Next.js on port 3002 (managed by PM2)
                                       ↓
                               PostgreSQL on localhost:5432
 ```
 
-- **`ecosystem.config.js`** — PM2 config: `name: "eva-nepal"`, port 3011
+- **`ecosystem.config.js`** — PM2 config: `name: "eva-nepal"`, port 3002
 - **`nginx.conf`** — Reverse proxy; HTTP block active, HTTPS block commented (enable after Certbot)
 - **`deploy.sh`** — `git pull → npm ci → npm run build → pm2 restart eva-nepal`
 - Server target: Ubuntu 20.04+, Node 18 LTS, PM2, Nginx, PostgreSQL 14+, 1 vCPU / 1GB RAM minimum
@@ -453,18 +486,18 @@ npx prisma db seed
 
 ## Known Pending Items
 
-| Item | File to edit |
-|------|-------------|
-| Real phone/email/social URLs for EVA Nepal | `components/layout/Footer.tsx`, `components/sections/Contact.tsx` |
-| Replace metadataBase URL | `app/layout.tsx` |
-| Add favicon.ico + og-image.jpg (1200×630px) | `/public/` directory |
-| Wire membership form to real backend | `components/sections/MembershipForm.tsx` |
-| Real venue photos for member profiles | Admin panel → Members → upload image per member |
-| Real photos for committee members | Admin panel → Committee → upload image per member |
-| Update nginx.conf server_name | `nginx.conf` |
-| Set up SSL via Certbot | Server-side after DNS points |
-| Change admin password | `/admin/login` → log in → update via DB or new admin endpoint |
-| Set NEXTAUTH_SECRET in production | `.env.local` on server |
+| Item                                        | File to edit                                                      |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| Real phone/email/social URLs for EVA Nepal  | `components/layout/Footer.tsx`, `components/sections/Contact.tsx` |
+| Replace metadataBase URL                    | `app/layout.tsx`                                                  |
+| Add favicon.ico + og-image.jpg (1200×630px) | `/public/` directory                                              |
+| Wire membership form to real backend        | `components/sections/MembershipForm.tsx`                          |
+| Real venue photos for member profiles       | Admin panel → Members → upload image per member                   |
+| Real photos for committee members           | Admin panel → Committee → upload image per member                 |
+| Update nginx.conf server_name               | `nginx.conf`                                                      |
+| Set up SSL via Certbot                      | Server-side after DNS points                                      |
+| Change admin password                       | `/admin/login` → log in → update via DB or new admin endpoint     |
+| Set NEXTAUTH_SECRET in production           | `.env.local` on server                                            |
 
 ---
 
