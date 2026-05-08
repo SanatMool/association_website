@@ -57,3 +57,6 @@ next-env.d.ts
 Thumbs.db
 
 /lib/generated/prisma
+
+# uploaded images
+/public/uploads/
