@@ -516,11 +516,18 @@ npx prisma db seed
 ## Build Status
 
 ```
-✓ npm run build — passes cleanly (46 routes)
-✓ Multi-tenancy: Step 1–5 complete
+✓ npm run build — passes cleanly
+✓ Multi-tenancy: Step 1–6 complete
 ✓ DB seeded: 2 associations, 196 members (155 EVA + 41 Bhaktapur), 10 events, 6 news, 9 committee, 9 timeline entries
 ✓ All admin routes scoped by associationId from session
 ✓ Platform panel live at /platform/* (assoc-platform.nibjar.com)
+✓ Admin member visibility toggle — VisibilityToggle.tsx, /api/members/[id]/visibility/route.ts
+✓ MembershipApplication — model + migration + POST/GET/PATCH/DELETE API + /admin/applications admin page
+✓ Platform create association — /platform/associations/new + /api/platform/associations POST
+✓ Platform edit association — /platform/associations/[id]/edit + /api/platform/associations/[id] PUT
+✓ Dynamic multi-tenant content — all hardcoded "EVA" text replaced with association name/shortName props
+✓ SiteSettings: favicon_image, default_member_image keys; Bhaktapur data seeded
+✓ MemberCard: defaultImage prop for per-association fallback image
 ```
 
 ## Multi-Tenancy Implementation
@@ -554,6 +561,31 @@ npx prisma db seed
 - app/api/platform-auth/route.ts: POST login (sets JWT cookie), DELETE logout
 - Middleware: assoc-platform.nibjar.com → enforces platform-session-token
 - Platform sidebar uses indigo theme, distinct from association admin panels
+
+### Step 5.5 — Platform create/edit association ✓
+- /platform/associations/new — form: name, slug, domain, foundedYear, description, plan
+- /platform/associations/[id]/edit — full edit form (AssociationEditForm.tsx client component)
+- /api/platform/associations — POST create
+- /api/platform/associations/[id] — PUT update
+- "New Association" button on list page, "Edit" button on detail page
+
+### Step 5.6 — Admin member visibility toggle ✓
+- /api/members/[id]/visibility — PATCH updates MemberAssociation.visible
+- components/admin/VisibilityToggle.tsx — client toggle with useTransition + router.refresh()
+- /admin/members — now queries ALL members (visible + hidden) via memberAssociation.findMany
+
+### Step 5.7 — Membership applications ✓
+- MembershipApplication model: id, venueName, ownerName, phone, email, location, capacity?, website?, status, associationId?, createdAt, updatedAt
+- Migration: 20260609091232_add_membership_application
+- /api/membership-applications — POST (public, scoped by domain) / GET (admin only)
+- /api/membership-applications/[id] — PATCH (status update), DELETE
+- /admin/applications — list with status filter chips, detail panel, status update, delete
+- MembershipForm.tsx — now POSTs to /api/membership-applications with error handling
+
+### Step 6 — Dynamic PWA manifest ✓
+- /api/manifest/route.ts — returns manifest.json driven by Association record
+- Returns name, short_name, description, icons (logo), theme_color, background_color per association
+- app/layout.tsx — manifest: "/api/manifest" added to generateMetadata return
 
 Add this at the very BOTTOM of your progress.md
 

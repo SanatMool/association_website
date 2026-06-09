@@ -115,7 +115,7 @@ async function main() {
       nameNe: "इभेन्ट एण्ड भेन्यु एसोसिएशन नेपाल",
       slug: "eva-nepal",
       domain: "eva.nibjar.com",
-      logo: "/evanepal.png",
+      logo: "/eva/evanepal_transparent.png",
       themeColor: "#0a1040",
       accentColor: "#f59e0b",
       foundedYear: 2011,
@@ -131,10 +131,10 @@ async function main() {
       nameNe: "भक्तपुर पार्टी प्यालेस तथा क्याटरिङ संघ",
       slug: "bhaktapur",
       domain: "bhaktapur.nibjar.com",
-      logo: "/bhaktapur.png",
+      logo: "/bhaktapur/bhaktapur.png",
       themeColor: "#1e3a5f",
       accentColor: "#c0392b",
-      foundedYear: 2069, // BS year shown in logo (स्था. २०६९)
+      foundedYear: 2012, // AD year (2069 BS ≈ 2012 AD)
       description: "Association of party palaces and catering services in Bhaktapur district.",
       active: true,
       plan: "basic",

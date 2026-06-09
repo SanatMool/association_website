@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { slugify } from "@/lib/utils";
+import { logApiCall } from "@/lib/apiLogger";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const members = await prisma.member.findMany({
     where: {
-      associations: { some: { associationId, visible: true } },
+      associations: { some: { associationId: associationId ?? undefined, visible: true } },
       ...(featured === "true" ? { featured: true } : {}),
       ...(area ? { area } : {}),
     },
@@ -26,6 +27,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const start = Date.now();
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { associationId } = ctx;
@@ -47,5 +49,14 @@ export async function POST(req: NextRequest) {
     return m;
   });
 
+  logApiCall({
+    associationId,
+    path: new URL(req.url).pathname,
+    method: "POST",
+    statusCode: 201,
+    responseTimeMs: Date.now() - start,
+    adminUserId: (ctx.session.user as { id?: string }).id ?? null,
+    ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
+  });
   return NextResponse.json(member, { status: 201 });
 }

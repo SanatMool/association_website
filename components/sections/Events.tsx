@@ -143,6 +143,8 @@ function PastEventRow({ event, index }: { event: EventType; index: number }) {
 export default function Events({ events }: EventsProps) {
   const { t } = useLocale();
 
+  if (!events || events.length === 0) return null;
+
   const upcoming = events.filter((e) => e.status === "upcoming").slice(0, 3);
   const past = events.filter((e) => e.status === "past").slice(0, 5);
 

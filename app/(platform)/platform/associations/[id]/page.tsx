@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getPlatformUser } from "@/lib/platformAuth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, XCircle, Users, Calendar, Newspaper, Award, Clock, ExternalLink } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Users, Calendar, Newspaper, Award, Clock, ExternalLink, Pencil } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -77,15 +77,24 @@ export default async function AssociationDetailPage({ params }: Props) {
             {association.nameNe && <p className="text-gray-500 text-sm">{association.nameNe}</p>}
             {association.description && <p className="text-gray-400 text-sm mt-2 max-w-2xl">{association.description}</p>}
           </div>
-          <a
-            href={`https://${association.domain}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium border border-indigo-200 px-3 py-1.5 rounded-lg flex-shrink-0"
-          >
-            Visit Site
-            <ExternalLink size={11} />
-          </a>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Link
+              href={`/platform/associations/${association.id}/edit`}
+              className="inline-flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 font-medium border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Pencil size={11} />
+              Edit
+            </Link>
+            <a
+              href={`https://${association.domain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium border border-indigo-200 px-3 py-1.5 rounded-lg"
+            >
+              Visit Site
+              <ExternalLink size={11} />
+            </a>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">

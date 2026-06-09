@@ -9,9 +9,10 @@ import { MemberType } from "@/lib/types";
 
 interface MembersClientProps {
   members: MemberType[];
+  defaultMemberImage?: string;
 }
 
-export default function MembersClient({ members }: MembersClientProps) {
+export default function MembersClient({ members, defaultMemberImage }: MembersClientProps) {
   const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [selectedArea, setSelectedArea] = useState("All");
@@ -109,7 +110,7 @@ export default function MembersClient({ members }: MembersClientProps) {
         {filtered.length > 0 ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {filtered.map((member, i) => (
-              <MemberCard key={member.id} member={member} index={i} />
+              <MemberCard key={member.id} member={member} index={i} defaultImage={defaultMemberImage} />
             ))}
           </div>
         ) : (

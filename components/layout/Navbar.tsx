@@ -9,7 +9,13 @@ import Image from "next/image";
 import { useLocale } from "@/context/LocaleContext";
 import { cn } from "@/lib/utils";
 
-export default function Navbar() {
+interface NavbarProps {
+  logo: string;
+  name: string;
+  logoInvert?: boolean;
+}
+
+export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -76,11 +82,11 @@ export default function Navbar() {
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
               <Image
-                src="/evanepal.png"
-                alt="EVA Nepal"
+                src={logo}
+                alt={name}
                 width={120}
                 height={77}
-                className="h-10 w-auto brightness-0 invert"
+                className={`h-10 w-auto${logoInvert ? " brightness-0 invert" : ""}`}
                 priority
               />
             </motion.div>
@@ -176,7 +182,7 @@ export default function Navbar() {
                 href="/#join"
                 className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold text-sm px-4 py-2.5 rounded-xl transition-all duration-200 hover:shadow-gold"
               >
-                {t.nav.join}
+                Join {name.split(" ")[0]}
               </Link>
             </motion.div>
 
@@ -249,7 +255,7 @@ export default function Navbar() {
                   onClick={() => setIsMobileOpen(false)}
                   className="block w-full text-center bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold text-sm px-4 py-3.5 rounded-xl mt-1 transition-colors"
                 >
-                  {t.nav.join}
+                  Join {name.split(" ")[0]}
                 </Link>
               </motion.div>
             </div>

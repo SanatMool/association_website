@@ -16,7 +16,7 @@ interface FormData {
   website: string;
 }
 
-export default function MembershipForm() {
+export default function MembershipForm({ name = "EVA Nepal" }: { name?: string }) {
   const { t } = useLocale();
   const [form, setForm] = useState<FormData>({
     venueName: "",
@@ -29,13 +29,26 @@ export default function MembershipForm() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setSubmitted(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/membership-applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json() as { success: boolean; error?: string };
+      if (!data.success) throw new Error(data.error ?? "Submission failed");
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fields = [
@@ -126,7 +139,7 @@ export default function MembershipForm() {
               {[
                 { step: "01", title: "Fill the Application", desc: "Complete the membership application form with your venue details." },
                 { step: "02", title: "Review Process", desc: "Our team reviews your application within 3-5 business days." },
-                { step: "03", title: "Welcome to EVA", desc: "Get officially listed in our member directory and start enjoying benefits." },
+                { step: "03", title: `Welcome to ${name.split(" ")[0]}`, desc: "Get officially listed in our member directory and start enjoying benefits." },
               ].map((item, i) => (
                 <AnimatedSection key={item.step} delay={0.2 + i * 0.1}>
                   <motion.div
@@ -266,6 +279,12 @@ export default function MembershipForm() {
                         />
                       </div>
                     </div>
+
+                    {error && (
+                      <p className="text-red-500 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                        {error}
+                      </p>
+                    )}
 
                     <motion.button
                       type="submit"

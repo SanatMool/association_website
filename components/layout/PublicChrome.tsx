@@ -1,14 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import Navbar from "./Navbar";
 
 interface PublicChromeProps {
   children: React.ReactNode;
+  navbar: React.ReactNode;
   footer: React.ReactNode;
 }
 
-export default function PublicChrome({ children, footer }: PublicChromeProps) {
+export default function PublicChrome({ children, navbar, footer }: PublicChromeProps) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
   const isPlatform = pathname?.startsWith("/platform");
@@ -17,7 +17,7 @@ export default function PublicChrome({ children, footer }: PublicChromeProps) {
 
   return (
     <>
-      <Navbar />
+      {navbar}
       <main>{children}</main>
       {footer}
     </>

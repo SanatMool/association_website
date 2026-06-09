@@ -5,13 +5,14 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings, UserCog, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings, UserCog, CheckSquare, ClipboardList } from "lucide-react";
 import "../admin.css";
 
 const navLinks = [
   { href: "/admin/dashboard",  label: "Dashboard",  icon: LayoutDashboard },
-  { href: "/admin/members",    label: "Members",    icon: Users },
-  { href: "/admin/events",     label: "Events",     icon: Calendar },
+  { href: "/admin/members",      label: "Members",      icon: Users },
+  { href: "/admin/applications", label: "Applications", icon: ClipboardList },
+  { href: "/admin/events",       label: "Events",       icon: Calendar },
   { href: "/admin/news",       label: "News",       icon: Newspaper },
   { href: "/admin/committee",  label: "Committee",  icon: Award },
   { href: "/admin/tasks",      label: "Tasks",      icon: CheckSquare },

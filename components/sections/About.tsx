@@ -5,14 +5,24 @@ import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 import { Building2, Calendar, MapPin, Globe, TrendingUp } from "lucide-react";
 
-export default function About() {
+interface AboutProps {
+  foundedYear?: number;
+  location?: string;
+  memberCount?: number;
+  yearsActive?: number;
+  name?: string;
+  description?: string;
+}
+
+export default function About({ foundedYear = 2011, location = "Maitidevi, Kathmandu", memberCount = 150, yearsActive = 14, name = "EVA Nepal", description }: AboutProps) {
   const { t } = useLocale();
+  const shortName = name.split(" ")[0];
 
   const details = [
-    { icon: Calendar,   label: t.about.established, value: "2011" },
-    { icon: MapPin,     label: t.about.hq,          value: "Maitidevi, Kathmandu" },
+    { icon: Calendar,   label: t.about.established, value: String(foundedYear) },
+    { icon: MapPin,     label: t.about.hq,          value: location },
     { icon: Globe,      label: t.about.coverage,    value: "Kathmandu Valley" },
-    { icon: Building2,  label: "Members",            value: "150+ Venues" },
+    { icon: Building2,  label: "Members",            value: `${memberCount}+ Venues` },
   ];
 
   return (
@@ -25,7 +35,7 @@ export default function About() {
             <AnimatedSection>
               <span className="section-label">
                 <span className="w-8 h-px bg-gold-500" />
-                {t.about.label}
+                About {shortName}
               </span>
             </AnimatedSection>
 
@@ -37,7 +47,7 @@ export default function About() {
 
             <AnimatedSection delay={0.2}>
               <p className="text-body text-lg mb-8">
-                {t.about.description}
+                {description || t.about.description}
               </p>
             </AnimatedSection>
 
@@ -91,7 +101,7 @@ export default function About() {
                     </span>
                   </div>
                   <p className="text-white/80 text-sm leading-relaxed">
-                    Representing Nepal's premier event venues since 2011
+                    Representing {shortName}&apos;s premier event venues since {foundedYear}
                   </p>
                 </div>
               </div>
@@ -103,7 +113,7 @@ export default function About() {
                 transition={{ delay: 0.5, duration: 0.5 }}
                 className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-card-hover p-5 border border-slate-100/80"
               >
-                <div className="text-3xl font-serif font-bold text-navy-900">150+</div>
+                <div className="text-3xl font-serif font-bold text-navy-900">{memberCount}+</div>
                 <div className="text-xs text-slate-500 font-medium mt-0.5 uppercase tracking-wide">
                   Member Venues
                 </div>
@@ -120,7 +130,7 @@ export default function About() {
                   <TrendingUp size={14} className="text-navy-900/70" />
                   <span className="text-xs font-bold uppercase tracking-wide">Growing</span>
                 </div>
-                <div className="text-2xl font-serif font-bold mt-1">14 Yrs</div>
+                <div className="text-2xl font-serif font-bold mt-1">{yearsActive} Yrs</div>
               </motion.div>
 
               {/* Decorative ring */}

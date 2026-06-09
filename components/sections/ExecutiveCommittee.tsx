@@ -12,6 +12,8 @@ interface ExecutiveCommitteeProps {
 export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProps) {
   const { t } = useLocale();
 
+  if (!committee || committee.length === 0) return null;
+
   const leadership = committee.filter((m) => m.order <= 4);
   const rest = committee.filter((m) => m.order > 4);
 

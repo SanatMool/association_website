@@ -16,7 +16,7 @@ interface ContactSettings {
   youtube?: string;
 }
 
-export default function Contact({ settings }: { settings?: ContactSettings }) {
+export default function Contact({ settings, name = "EVA Nepal" }: { settings?: ContactSettings; name?: string }) {
   const { t } = useLocale();
 
   const phone   = settings?.phone   ?? "+977-1-XXXXXXX";
@@ -102,7 +102,7 @@ export default function Contact({ settings }: { settings?: ContactSettings }) {
             ))}
           </div>
           <p className="text-slate-500 text-xs mt-5 text-center leading-relaxed">
-            Stay updated with latest news<br />and events from EVA Nepal
+            Stay updated with latest news<br />and events from {name}
           </p>
         </>
       ),
@@ -125,7 +125,7 @@ export default function Contact({ settings }: { settings?: ContactSettings }) {
             </span>
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
-            <h2 className="heading-lg text-white mt-4">{t.contact.title}</h2>
+            <h2 className="heading-lg text-white mt-4">Contact {name}</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.2}>
             <div className="gold-divider mx-auto mt-5" />

@@ -33,12 +33,7 @@ const slides = [
   },
 ];
 
-const stats = [
-  { icon: Users,    value: "150+", keyLabel: "stats_members"  as const },
-  { icon: Award,    value: "14+",  keyLabel: "stats_years"    as const },
-  { icon: Calendar, value: "20+",  keyLabel: "stats_events"   as const },
-  { icon: MapPin,   value: "100%", keyLabel: "stats_coverage" as const },
-];
+// Stats are populated dynamically in the component using props
 
 // Bokeh orbs config
 const BOKEH = [
@@ -49,8 +44,36 @@ const BOKEH = [
   { cx: "88%",  cy: "55%",  size: 180, color: "rgba(245,158,11,0.06)",  dur: 15 },
 ];
 
-export default function Hero() {
+interface HeroProps {
+  name?: string;
+  foundedYear?: number;
+  memberCount?: number;
+  yearsActive?: number;
+  heroImage?: string | null;
+}
+
+export default function Hero({ name = "Event and Venue Association Nepal", foundedYear = 2011, memberCount = 150, yearsActive = 14, heroImage }: HeroProps) {
   const { t } = useLocale();
+
+  // Split association name into two display lines for the hero title
+  const words = name.split(" ");
+  const splitAt = words.length <= 4 ? Math.floor(words.length / 2) : 3;
+  const titleLine1 = words.slice(0, splitAt).join(" ");
+  const titleLine2 = words.slice(splitAt).join(" ") || name;
+
+  // Dynamic stats bar
+  const stats = [
+    { icon: Users,    value: `${memberCount}+`, keyLabel: "stats_members"  as const },
+    { icon: Award,    value: `${yearsActive}+`, keyLabel: "stats_years"    as const },
+    { icon: Calendar, value: "20+",             keyLabel: "stats_events"   as const },
+    { icon: MapPin,   value: "100%",            keyLabel: "stats_coverage" as const },
+  ];
+
+  // Use association's hero image as first slide if provided
+  const activeSlides = heroImage
+    ? [{ ...slides[0], image: heroImage }, ...slides.slice(1)]
+    : slides;
+
   const [current, setCurrent] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [slideProgress, setSlideProgress] = useState(0);
@@ -70,7 +93,7 @@ export default function Hero() {
     }, 50);
 
     const slideTimer = setTimeout(() => {
-      setCurrent((c) => (c + 1) % slides.length);
+      setCurrent((c) => (c + 1) % activeSlides.length);
     }, SLIDE_DURATION);
 
     return () => {
@@ -82,12 +105,12 @@ export default function Hero() {
   const prev = () => {
     setIsAutoPlaying(false);
     setSlideProgress(0);
-    setCurrent((c) => (c - 1 + slides.length) % slides.length);
+    setCurrent((c) => (c - 1 + activeSlides.length) % activeSlides.length);
   };
   const next = () => {
     setIsAutoPlaying(false);
     setSlideProgress(0);
-    setCurrent((c) => (c + 1) % slides.length);
+    setCurrent((c) => (c + 1) % activeSlides.length);
   };
 
   // Parallax on scroll
@@ -112,8 +135,8 @@ export default function Hero() {
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={slides[current].image}
-            alt={slides[current].label}
+            src={activeSlides[current].image}
+            alt={activeSlides[current].label}
             className="w-full h-full object-cover"
           />
         </motion.div>
@@ -199,7 +222,7 @@ export default function Hero() {
             transition={{ duration: 0.3 }}
             className="text-white/45 text-xs tracking-[0.2em] uppercase font-medium"
           >
-            {slides[current].label}
+            {activeSlides[current].label}
           </motion.span>
         </AnimatePresence>
 
@@ -230,7 +253,7 @@ export default function Hero() {
         <div className="flex items-center gap-1.5 text-[11px] font-mono text-white/35">
           <span className="text-white/60">0{current + 1}</span>
           <span>/</span>
-          <span>0{slides.length}</span>
+          <span>0{activeSlides.length}</span>
         </div>
       </div>
 
@@ -257,9 +280,7 @@ export default function Hero() {
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-gold-400" />
                 </div>
                 <Award size={13} className="text-gold-400" />
-                <span className="text-gold-300 text-sm font-medium tracking-wide">{t.hero.badge}</span>
-                <span className="w-px h-3.5 bg-gold-500/40" />
-                <span className="text-gold-400/70 text-xs font-mono">Est. 2011</span>
+                <span className="text-gold-300 text-sm font-medium tracking-wide">Official Association Since {foundedYear}</span>
               </div>
             </motion.div>
 
@@ -273,7 +294,7 @@ export default function Hero() {
                 transition={{ duration: 0.4 }}
                 className="text-gold-400/70 text-xs font-semibold tracking-[0.25em] uppercase mb-4"
               >
-                {slides[current].accent}
+                {activeSlides[current].accent}
               </motion.p>
             </AnimatePresence>
 
@@ -285,7 +306,7 @@ export default function Hero() {
                 transition={{ duration: 0.8, delay: 0.3, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-[4.5rem] font-bold text-white leading-[1.05]"
               >
-                Event and Venue
+                {titleLine1}
               </motion.h1>
             </div>
             <div className="overflow-hidden mb-7">
@@ -295,7 +316,7 @@ export default function Hero() {
                 transition={{ duration: 0.8, delay: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
                 className="font-serif text-4xl sm:text-5xl lg:text-6xl xl:text-[4.5rem] font-bold leading-[1.05]"
               >
-                <span className="text-gradient-gold">Association Nepal</span>
+                <span className="text-gradient-gold">{titleLine2}</span>
               </motion.h1>
             </div>
 
@@ -352,7 +373,7 @@ export default function Hero() {
                 href="/#join"
                 className="inline-flex items-center gap-2 bg-white/8 hover:bg-white/15 border border-white/20 hover:border-white/35 text-white font-semibold px-7 py-4 rounded-xl transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm text-base"
               >
-                {t.hero.cta_secondary}
+                Join {name.split(" ")[0]}
               </Link>
             </motion.div>
           </div>
@@ -415,7 +436,7 @@ export default function Hero() {
               className="absolute top-[42%] left-[28%] bg-gold-500 rounded-2xl px-5 py-4 text-navy-900"
               style={{ boxShadow: "0 12px 40px rgba(245,158,11,0.5), 0 4px 16px rgba(245,158,11,0.3)" }}
             >
-              <div className="font-serif font-bold text-3xl leading-none">150+</div>
+              <div className="font-serif font-bold text-3xl leading-none">{memberCount}+</div>
               <div className="text-xs font-bold mt-1 uppercase tracking-wide opacity-75">
                 Member Venues
               </div>

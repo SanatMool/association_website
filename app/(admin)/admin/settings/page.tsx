@@ -16,9 +16,11 @@ const groupLabels: Record<string, string> = {
   social: "Social Media Links",
   stats: "Statistics",
   footer: "Footer",
+  hero: "Hero Section",
+  assets: "Images & Assets",
 };
 
-const groupOrder = ["contact", "social", "stats", "footer"];
+const groupOrder = ["contact", "social", "stats", "footer", "hero", "assets"];
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Setting[]>([]);
@@ -98,7 +100,7 @@ export default function SettingsPage() {
                       {s.label}
                     </label>
                     <div className="flex-1">
-                      {s.value.length > 80 || s.key.includes("tagline") ? (
+                      {(values[s.key] ?? "").length > 80 || s.key.includes("tagline") || s.key.includes("address") ? (
                         <textarea
                           value={values[s.key] ?? ""}
                           onChange={(e) => setValues((p) => ({ ...p, [s.key]: e.target.value }))}
@@ -107,7 +109,7 @@ export default function SettingsPage() {
                         />
                       ) : (
                         <input
-                          type={s.key.includes("url") || s.key.includes("social") ? "url" : "text"}
+                          type={s.key.includes("map_url") || s.key.includes("social") ? "url" : "text"}
                           value={values[s.key] ?? ""}
                           onChange={(e) => setValues((p) => ({ ...p, [s.key]: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"

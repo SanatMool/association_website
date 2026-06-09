@@ -21,6 +21,7 @@ const defaultCategoryStyle = { color: "text-gray-700", bg: "bg-gray-50 border-gr
 
 interface NewsProps {
   news: NewsType[];
+  name?: string;
 }
 
 function FeaturedNewsCard({ item }: { item: NewsType }) {
@@ -183,8 +184,11 @@ function NewsListRow({ item, index }: { item: NewsType; index: number }) {
   );
 }
 
-export default function News({ news }: NewsProps) {
+export default function News({ news, name = "EVA Nepal" }: NewsProps) {
   const { t } = useLocale();
+  const shortName = name.split(" ")[0];
+
+  if (!news || news.length === 0) return null;
 
   const featured = news[0];
   const cards = news.slice(1, 4);
@@ -203,7 +207,7 @@ export default function News({ news }: NewsProps) {
             </span>
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
-            <h2 className="heading-lg text-navy-900 mt-4">{t.news.title}</h2>
+            <h2 className="heading-lg text-navy-900 mt-4">Latest from {shortName}</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.15}>
             <p className="text-body mt-3 max-w-xl mx-auto">{t.news.subtitle}</p>

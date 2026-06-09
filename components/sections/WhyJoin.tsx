@@ -8,8 +8,9 @@ import { useLocale } from "@/context/LocaleContext";
 
 const icons = [Award, Network, BookOpen, Megaphone, ListChecks, HeartHandshake];
 
-export default function WhyJoin() {
+export default function WhyJoin({ name = "EVA Nepal", memberCount = 150 }: { name?: string; memberCount?: number }) {
   const { t } = useLocale();
+  const shortName = name.split(" ")[0];
 
   return (
     <section id="join" className="section-padding bg-white relative overflow-hidden">
@@ -25,12 +26,12 @@ export default function WhyJoin() {
           <AnimatedSection>
             <span className="section-label justify-center">
               <span className="w-8 h-px bg-gold-500" />
-              {t.whyjoin.label}
+              Why Join {shortName}
               <span className="w-8 h-px bg-gold-500" />
             </span>
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
-            <h2 className="heading-lg text-navy-900 mt-4">{t.whyjoin.title}</h2>
+            <h2 className="heading-lg text-navy-900 mt-4">Benefits of {shortName} Membership</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.15}>
             <p className="text-lead mt-3 max-w-xl mx-auto">
@@ -96,7 +97,7 @@ export default function WhyJoin() {
                 Ready to join Nepal's premier venue network?
               </h3>
               <p className="text-white/60 mb-8 max-w-md mx-auto text-sm leading-relaxed">
-                Become part of EVA Nepal and access exclusive benefits, industry advocacy, and a community of 150+ professional venues.
+                Become part of {name} and access exclusive benefits, industry advocacy, and a community of {memberCount}+ professional venues.
               </p>
 
               <motion.div

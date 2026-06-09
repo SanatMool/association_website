@@ -19,9 +19,12 @@ const CAPACITY_TIERS = [
 
 interface MemberDirectoryProps {
   members: MemberType[];
+  defaultMemberImage?: string;
+  memberCount?: number;
 }
 
-export default function MemberDirectory({ members }: MemberDirectoryProps) {
+export default function MemberDirectory({ members, defaultMemberImage, memberCount }: MemberDirectoryProps) {
+  const displayCount = memberCount ?? members.length;
   const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [selectedArea, setSelectedArea] = useState("All");
@@ -70,7 +73,7 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
             <h2 className="heading-lg text-navy-900 mt-4">{t.members.title}</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.15}>
-            <p className="text-body mt-3">{t.members.subtitle}</p>
+            <p className="text-body mt-3">{displayCount}+ registered event venues across Kathmandu Valley</p>
           </AnimatedSection>
           <AnimatedSection delay={0.2}>
             <div className="gold-divider mx-auto mt-5" />
@@ -205,7 +208,7 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
                   {view === "list" ? (
                     <ListMemberRow member={m} />
                   ) : (
-                    <MemberCard member={m} index={i} />
+                    <MemberCard member={m} index={i} defaultImage={defaultMemberImage} />
                   )}
                 </AnimatedSection>
               ))}
@@ -238,7 +241,7 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
               view === "list" ? (
                 <ListMemberRow key={m.id} member={m} />
               ) : (
-                <MemberCard key={m.id} member={m} index={i} />
+                <MemberCard key={m.id} member={m} index={i} defaultImage={defaultMemberImage} />
               )
             ))}
           </div>
@@ -253,7 +256,7 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
             />
             <div className="relative">
               <h3 className="font-serif font-bold text-white text-xl">
-                Browse All 150+ Member Venues
+                Browse All {displayCount}+ Member Venues
               </h3>
               <p className="text-white/50 text-sm mt-1">
                 Full searchable directory with advanced filters

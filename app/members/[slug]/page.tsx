@@ -197,7 +197,7 @@ export default async function MemberProfilePage({ params }: Props) {
                   member.memberSince ? { label: "Member Since", value: member.memberSince } : null,
                   member.phone ? { label: "Contact", value: member.phone } : null,
                 ]
-                  .filter(Boolean)
+                  .filter((x): x is { label: string; value: string | null } => x !== null)
                   .map(({ label, value }) => (
                     <div key={label} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                       <div className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">{label}</div>

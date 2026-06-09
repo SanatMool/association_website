@@ -11,12 +11,12 @@ export default async function DashboardPage() {
 
   const [memberCount, eventCount, newsCount, committeeCount, recentMembers, recentNews, recentEvents, settings, pendingTasks] =
     await Promise.all([
-      prisma.memberAssociation.count({ where: { associationId, visible: true } }),
-      prisma.event.count({ where: { associationId } }),
-      prisma.news.count({ where: { associationId } }),
-      prisma.committeeMember.count({ where: { associationId } }),
+      prisma.memberAssociation.count({ where: { associationId: associationId ?? undefined, visible: true } }),
+      prisma.event.count({ where: { associationId: associationId ?? undefined } }),
+      prisma.news.count({ where: { associationId: associationId ?? undefined } }),
+      prisma.committeeMember.count({ where: { associationId: associationId ?? undefined } }),
       prisma.member.findMany({
-        where: { associations: { some: { associationId, visible: true } } },
+        where: { associations: { some: { associationId: associationId ?? undefined, visible: true } } },
         take: 4,
         orderBy: { createdAt: "desc" },
         select: { id: true, name: true, area: true, createdAt: true },

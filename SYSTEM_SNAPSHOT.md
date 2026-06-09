@@ -3,7 +3,7 @@
 Read this before any schema change, API change, or structural decision.
 Update this after every migration or architectural change.
 
-Last updated: 2026-06-09 (Steps 1–5 of multi-tenancy complete)
+Last updated: 2026-06-09 (Steps 1–6 of multi-tenancy complete)
 
 ---
 
@@ -195,6 +195,25 @@ Unique constraint changed from `key @unique` to `@@unique([key, associationId])`
 
 `associationId String?` added.
 
+### MembershipApplication
+
+| Field         | Type          | Notes                                        |
+| ------------- | ------------- | -------------------------------------------- |
+| id            | String (cuid) | PK                                           |
+| venueName     | String        | Required                                     |
+| ownerName     | String        | Required                                     |
+| phone         | String        | Required                                     |
+| email         | String        | Required                                     |
+| location      | String        | Required                                     |
+| capacity      | String?       | Optional (e.g. "500")                        |
+| website       | String?       | Optional                                     |
+| status        | String        | Default "pending" — pending/reviewed/accepted/rejected |
+| associationId | String?       | FK → Association (nullable)                  |
+| createdAt     | DateTime      | Auto                                         |
+| updatedAt     | DateTime      | Auto                                         |
+
+Admin route: `/admin/applications` — list + status filter + detail panel + status update + delete.
+
 ### PlatformUser
 
 | Field     | Type            | Notes         |
@@ -232,6 +251,7 @@ Unique constraint changed from `key @unique` to `@@unique([key, associationId])`
 | 20260311074654_add_admin_tasks                         | AdminTask model                                                     |
 | 20260508120000_add_committee_nepali_fields             | nameNe, venueNe on CommitteeMember                                  |
 | 20260609000000_add_multi_tenancy_association_platform  | Full multi-tenancy: 5 new models, associationId on all content rows |
+| 20260609091232_add_membership_application              | MembershipApplication model                                         |
 
 ---
 

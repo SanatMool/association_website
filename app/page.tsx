@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Hero from "@/components/sections/Hero";
 import StatsSection from "@/components/sections/StatsSection";
 import About from "@/components/sections/About";
@@ -16,12 +15,7 @@ import { getSettings } from "@/lib/settings";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 import { MemberType, EventType, NewsType, CommitteeType, TimelineType } from "@/lib/types";
 
-export const metadata: Metadata = {
-  title:
-    "EVA Nepal – Event and Venue Association Nepal | Representing Nepal's Event Industry",
-  description:
-    "EVA Nepal is the official association of event venues, banquet halls and wedding venues in Kathmandu. Representing 150+ member venues across Kathmandu Valley since 2011.",
-};
+// Page-level metadata is handled by generateMetadata() in app/layout.tsx
 
 export const revalidate = 3600;
 
@@ -54,8 +48,11 @@ export default async function Home() {
     getSettings(associationId),
   ]);
 
-  const yearsActive = new Date().getFullYear() - (association.foundedYear ?? 2011);
+  const foundedYear = association.foundedYear ?? 2011;
+  const yearsActive = Math.max(1, new Date().getFullYear() - foundedYear);
   const eventsHosted = parseInt(siteSettings.stats_events_hosted ?? "20000", 10);
+  const shortName = association.name.split(" ")[0];
+  const hqLocation = siteSettings.contact_address?.split("\n")[0] ?? "Kathmandu";
 
   const members: MemberType[] = dbMembers.map((m) => ({
     id: m.id,
@@ -134,27 +131,49 @@ export default async function Home() {
 
   return (
     <>
-      <Hero />
-      <StatsSection memberCount={memberCount} eventsHosted={eventsHosted} yearsActive={yearsActive} />
-      <About />
+      <Hero
+        name={association.name}
+        foundedYear={foundedYear}
+        memberCount={memberCount}
+        yearsActive={yearsActive}
+        heroImage={siteSettings.hero_image ?? null}
+      />
+      <StatsSection
+        memberCount={memberCount}
+        eventsHosted={eventsHosted}
+        yearsActive={yearsActive}
+        foundedYear={foundedYear}
+        shortName={shortName}
+      />
+      <About
+        foundedYear={foundedYear}
+        location={hqLocation}
+        memberCount={memberCount}
+        yearsActive={yearsActive}
+        name={association.name}
+        description={association.description ?? undefined}
+      />
       <Mission />
-      <MemberDirectory members={members} />
-      <WhyJoin />
+      <MemberDirectory members={members} defaultMemberImage={siteSettings.default_member_image} memberCount={memberCount} />
+      <WhyJoin name={association.name} memberCount={memberCount} />
       <Timeline entries={timeline} />
       <Events events={events} />
-      <News news={news} />
+      <News news={news} name={association.name} />
       <ExecutiveCommittee committee={committee} />
-      <MembershipForm />
-      <Contact settings={{
-        phone:     siteSettings.contact_phone,
-        email:     siteSettings.contact_email,
-        address:   siteSettings.contact_address,
-        hours:     siteSettings.contact_hours,
-        mapUrl:    siteSettings.contact_map_url,
-        facebook:  siteSettings.social_facebook,
-        instagram: siteSettings.social_instagram,
-        youtube:   siteSettings.social_youtube,
-      }} />
+      <MembershipForm name={association.name} />
+      <Contact
+        name={association.name}
+        settings={{
+          phone:     siteSettings.contact_phone,
+          email:     siteSettings.contact_email,
+          address:   siteSettings.contact_address,
+          hours:     siteSettings.contact_hours,
+          mapUrl:    siteSettings.contact_map_url,
+          facebook:  siteSettings.social_facebook,
+          instagram: siteSettings.social_instagram,
+          youtube:   siteSettings.social_youtube,
+        }}
+      />
     </>
   );
 }

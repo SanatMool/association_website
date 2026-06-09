@@ -9,6 +9,7 @@ import { useLocale } from "@/context/LocaleContext";
 interface MemberCardProps {
   member: MemberType;
   index?: number;
+  defaultImage?: string;
 }
 
 // Capacity tier configuration
@@ -64,11 +65,12 @@ const categoryPattern = (category: string) => {
   return PATTERNS.default;
 };
 
-export default function MemberCard({ member, index = 0 }: MemberCardProps) {
+export default function MemberCard({ member, index = 0, defaultImage }: MemberCardProps) {
   const { t } = useLocale();
   const tier = getTierConfig(member.capacity);
   const fillPct = Math.min(100, Math.round(((member.capacity ?? 0) / 1200) * 100));
   const pattern = categoryPattern(member.category ?? "");
+  const heroImage = member.image || defaultImage || null;
 
   return (
     <motion.div
@@ -90,40 +92,56 @@ export default function MemberCard({ member, index = 0 }: MemberCardProps) {
         className="relative h-44 overflow-hidden"
         style={{ background: tier.gradient }}
       >
-        {/* Pattern overlay */}
-        <div
-          className="absolute inset-0"
-          style={{ backgroundImage: pattern }}
-        />
+        {heroImage ? (
+          /* Real / default image */
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroImage}
+              alt={member.name}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)" }} />
+          </>
+        ) : (
+          /* Gradient placeholder */
+          <>
+            {/* Pattern overlay */}
+            <div
+              className="absolute inset-0"
+              style={{ backgroundImage: pattern }}
+            />
 
-        {/* Ambient glow in center */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(ellipse at 50% 120%, ${tier.accentColor}18 0%, transparent 65%)`,
-          }}
-        />
+            {/* Ambient glow in center */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `radial-gradient(ellipse at 50% 120%, ${tier.accentColor}18 0%, transparent 65%)`,
+              }}
+            />
 
-        {/* Shine sweep on hover */}
-        <motion.div
-          initial={{ x: "-100%", opacity: 0 }}
-          whileHover={{ x: "200%", opacity: 1 }}
-          transition={{ duration: 0.55, ease: "easeInOut" }}
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{
-            background: "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.08) 50%, transparent 65%)",
-          }}
-        />
+            {/* Shine sweep on hover */}
+            <motion.div
+              initial={{ x: "-100%", opacity: 0 }}
+              whileHover={{ x: "200%", opacity: 1 }}
+              transition={{ duration: 0.55, ease: "easeInOut" }}
+              className="absolute inset-0 z-10 pointer-events-none"
+              style={{
+                background: "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.08) 50%, transparent 65%)",
+              }}
+            />
 
-        {/* Center icon */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            animate={{ scale: [1, 1.04, 1], opacity: [0.15, 0.22, 0.15] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Building2 size={80} className="text-white" strokeWidth={0.7} />
-          </motion.div>
-        </div>
+            {/* Center icon */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <motion.div
+                animate={{ scale: [1, 1.04, 1], opacity: [0.15, 0.22, 0.15] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Building2 size={80} className="text-white" strokeWidth={0.7} />
+              </motion.div>
+            </div>
+          </>
+        )}
 
         {/* Top badges row */}
         <div className="absolute top-3 left-3 right-3 flex items-start justify-between z-10">

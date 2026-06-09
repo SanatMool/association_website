@@ -27,14 +27,15 @@ model Association {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  memberLinks MemberAssociation[]
-  events      Event[]
-  news        News[]
-  committee   CommitteeMember[]
-  admins      AdminUser[]
-  settings    SiteSettings[]
-  timeline    TimelineEntry[]
-  apiLogs     ApiLog[]
+  memberLinks          MemberAssociation[]
+  events               Event[]
+  news                 News[]
+  committee            CommitteeMember[]
+  admins               AdminUser[]
+  settings             SiteSettings[]
+  timeline             TimelineEntry[]
+  apiLogs              ApiLog[]
+  membershipApplications MembershipApplication[]
 }
 
 // Join table — a venue can belong to multiple associations
@@ -193,6 +194,23 @@ model SiteSettings {
   association Association? @relation(fields: [associationId], references: [id])
 
   @@unique([key, associationId])
+}
+
+model MembershipApplication {
+  id            String   @id @default(cuid())
+  venueName     String
+  ownerName     String
+  phone         String
+  email         String
+  location      String
+  capacity      String?
+  website       String?
+  status        String   @default("pending") // pending | reviewed | accepted | rejected
+  associationId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id])
 }
 
 model AdminTask {

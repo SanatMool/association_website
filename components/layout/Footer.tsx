@@ -6,6 +6,12 @@ import { MapPin, Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react"
 import { useLocale } from "@/context/LocaleContext";
 
 interface FooterSettings {
+  logo?: string;
+  name?: string;
+  logoInvert?: boolean;
+  foundedYear?: number;
+  hqLocation?: string;
+  memberCount?: number;
   tagline?: string;
   phone?: string;
   email?: string;
@@ -18,13 +24,18 @@ interface FooterSettings {
 export default function Footer({ settings }: { settings?: FooterSettings }) {
   const { t } = useLocale();
 
-  const tagline   = settings?.tagline   ?? "";
-  const phone     = settings?.phone     ?? "+977-1-XXXXXXX";
-  const email     = settings?.email     ?? "info@evanepal.org";
-  const address   = settings?.address   ?? "Maitidevi, Kathmandu\nNepal";
-  const facebook  = settings?.facebook  ?? "https://facebook.com";
-  const instagram = settings?.instagram ?? "https://instagram.com";
-  const youtube   = settings?.youtube   ?? "https://youtube.com";
+  const logo        = settings?.logo        ?? "/eva/evanepal_transparent.png";
+  const logoInvert  = settings?.logoInvert  ?? logo.includes("_transparent");
+  const foundedYear = settings?.foundedYear ?? 2011;
+  const hqLocation  = settings?.hqLocation  ?? "Maitidevi, Kathmandu";
+  const memberCount = settings?.memberCount ?? 150;
+  const tagline     = settings?.tagline     ?? "";
+  const phone       = settings?.phone       ?? "+977-1-XXXXXXX";
+  const email       = settings?.email       ?? "info@evanepal.org";
+  const address     = settings?.address     ?? "Maitidevi, Kathmandu\nNepal";
+  const facebook    = settings?.facebook    ?? "https://facebook.com";
+  const instagram   = settings?.instagram   ?? "https://instagram.com";
+  const youtube     = settings?.youtube     ?? "https://youtube.com";
 
   const quickLinks = [
     { href: "/",           label: t.nav.home },
@@ -33,7 +44,7 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
     { href: "/events",     label: t.nav.events },
     { href: "/news",       label: t.nav.news },
     { href: "/#committee", label: t.nav.committee },
-    { href: "/#join",      label: t.nav.join },
+    { href: "/#join",      label: `Join ${(settings?.name ?? "EVA Nepal").split(" ")[0]}` },
     { href: "/#contact",   label: t.nav.contact },
   ];
 
@@ -53,11 +64,11 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
           <div className="lg:col-span-2">
             <div className="mb-5">
               <Image
-                src="/evanepal.png"
-                alt="EVA Nepal"
+                src={logo}
+                alt={settings?.name ?? "EVA Nepal"}
                 width={160}
                 height={103}
-                className="h-12 w-auto brightness-0 invert"
+                className={`h-12 w-auto${logoInvert ? " brightness-0 invert" : ""}`}
               />
             </div>
 
@@ -139,7 +150,7 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
 
             <div className="mt-6 inline-flex items-center gap-2 bg-gold-500/10 border border-gold-500/20 rounded-lg px-4 py-2">
               <div className="w-2 h-2 rounded-full bg-gold-500 animate-pulse" />
-              <span className="text-gold-400 text-xs font-semibold">150+ Active Members</span>
+              <span className="text-gold-400 text-xs font-semibold">{memberCount}+ Active Members</span>
             </div>
           </div>
 
@@ -153,7 +164,7 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
             &copy; 2025 {t.footer.association}. {t.footer.rights}
           </p>
           <p className="text-slate-600 text-xs">
-            Established 2011 &middot; Maitidevi, Kathmandu
+            Established {foundedYear} &middot; {hqLocation}
           </p>
         </div>
       </div>

@@ -8,6 +8,8 @@ interface StatsSectionProps {
   memberCount?: number;
   eventsHosted?: number;
   yearsActive?: number;
+  foundedYear?: number;
+  shortName?: string;
 }
 
 function Counter({
@@ -48,10 +50,10 @@ function Counter({
   );
 }
 
-export default function StatsSection({ memberCount = 150, eventsHosted = 20000, yearsActive = 14 }: StatsSectionProps) {
+export default function StatsSection({ memberCount = 150, eventsHosted = 20000, yearsActive = 14, foundedYear = 2011, shortName = "EVA" }: StatsSectionProps) {
   const stats = [
     { value: memberCount, suffix: "+", label: "Member Venues",  desc: "Registered banquet halls & event spaces",    icon: Building2, delay: 0   },
-    { value: yearsActive, suffix: "+", label: "Years Leading",  desc: "Serving Nepal's event industry since 2011",  icon: Award,     delay: 0.1 },
+    { value: yearsActive, suffix: "+", label: "Years Leading",  desc: `Serving Nepal's event industry since ${foundedYear}`, icon: Award, delay: 0.1 },
     { value: eventsHosted, suffix: "+", label: "Events Hosted", desc: "Across all member venues collectively",      icon: Calendar,  delay: 0.2 },
     { value: 100,         suffix: "%", label: "Valley Coverage",desc: "Kathmandu's largest venue network",          icon: MapPin,    delay: 0.3 },
   ];
@@ -75,7 +77,7 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
       {/* Decorative large faded text */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
         <span className="text-[20rem] font-serif font-bold text-white/[0.015] leading-none select-none">
-          EVA
+          {shortName}
         </span>
       </div>
 
@@ -152,7 +154,7 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
           className="text-center mt-12"
         >
           <p className="text-white/35 text-sm font-medium tracking-wider uppercase">
-            Nepal's Premier Event &amp; Venue Association · Est. 2011
+            Nepal's Premier Event &amp; Venue Association · Est. {foundedYear}
           </p>
         </motion.div>
       </div>

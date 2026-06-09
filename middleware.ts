@@ -45,8 +45,26 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── 2. Block /platform/* on non-platform domains ──────────────────────────
+  // In development (localhost), allow /platform/* so you can test without subdomains
   if (pathname.startsWith("/platform")) {
-    return NextResponse.redirect(new URL("/", request.url));
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    // Dev: apply same auth logic as PLATFORM_DOMAIN
+    if (pathname !== "/platform/login") {
+      const token = await getToken({
+        req: request,
+        secret: process.env.NEXTAUTH_SECRET,
+        cookieName: "platform-session-token",
+      });
+      if (!token) {
+        return NextResponse.redirect(new URL("/platform/login", request.url));
+      }
+    }
+    const headers = new Headers(request.headers);
+    headers.set("x-hostname", hostname);
+    headers.set("x-is-platform", "1");
+    return NextResponse.next({ request: { headers } });
   }
 
   // ── 3. Protect /admin/* routes (association admin) ────────────────────────

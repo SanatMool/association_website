@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getPlatformUser } from "@/lib/platformAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, XCircle, ExternalLink } from "lucide-react";
+import { CheckCircle, XCircle, ExternalLink, Plus } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +28,18 @@ export default async function PlatformAssociationsPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Associations</h1>
-        <p className="text-gray-400 text-sm mt-0.5">{associations.length} association{associations.length !== 1 ? "s" : ""} registered</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Associations</h1>
+          <p className="text-gray-400 text-sm mt-0.5">{associations.length} association{associations.length !== 1 ? "s" : ""} registered</p>
+        </div>
+        <Link
+          href="/platform/associations/new"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          <Plus size={14} />
+          New Association
+        </Link>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
