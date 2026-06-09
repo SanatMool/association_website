@@ -11,8 +11,9 @@ interface PublicChromeProps {
 export default function PublicChrome({ children, footer }: PublicChromeProps) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
+  const isPlatform = pathname?.startsWith("/platform");
 
-  if (isAdmin) return <>{children}</>;
+  if (isAdmin || isPlatform) return <>{children}</>;
 
   return (
     <>

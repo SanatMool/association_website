@@ -2,11 +2,16 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Plus, Pencil } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
+import { getAdminContext } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
 export default async function MembersPage() {
+  const ctx = await getAdminContext();
+  const associationId = ctx?.associationId ?? null;
+
   const members = await prisma.member.findMany({
+    where: { associations: { some: { associationId, visible: true } } },
     orderBy: [{ featured: "desc" }, { name: "asc" }],
   });
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAdminContext } from "@/lib/adminAuth";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const event = await prisma.event.findUnique({ where: { id: params.id } });
@@ -10,8 +9,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const existing = await prisma.event.findFirst({
+    where: { id: params.id, associationId: ctx.associationId },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const data = await req.json();
   const event = await prisma.event.update({
@@ -26,8 +30,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const existing = await prisma.event.findFirst({
+    where: { id: params.id, associationId: ctx.associationId },
+  });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.event.delete({ where: { id: params.id } });
   return NextResponse.json({ success: true });

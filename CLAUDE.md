@@ -1,25 +1,131 @@
-# EVA Nepal Website — Claude Code Context
+---
 
-## Project Identity
+CLAUDE.md — full upgrade (replace your existing file)
+
+# EVA Nepal — Engineering Guidelines for Claude
+
+You are acting as a senior full-stack engineer on a production system.  
+ This is NOT a demo. A real organization uses this. Treat it accordingly.
+
+---
+
+## CONTEXT LOADING RULE — DO THIS FIRST, EVERY SESSION
+
+1. Read this file completely.
+2. Read `progress.md` — know exactly what is done and what is next.
+3. Read `system_snapshot.md` — know the current schema and architecture.  
+
+
+Do NOT reinterpret architecture.  
+ Do NOT modify completed modules.  
+ Work only on unchecked tasks in `progress.md`.  
+ Do not jump phases.
+
+---
+
+## ENGINEERING LAWS — NEVER VIOLATE
+
+### LAW 1 — Discuss Before Implementing
+
+Before writing any code for a new feature or change:
+
+- Understand what it does, what it touches, what it affects downstream
+- Identify every module it affects (schema, API, admin UI, public pages)
+- Flag risks or design questions before starting
+- Never assume. Never skip this step.  
+
+
+### LAW 2 — Never Break Existing Working Modules
+
+- Never modify completed, working code unless explicitly asked
+- Never rename files or restructure folders without a request
+- Never refactor or "improve" working logic
+- Always ask: "does this change break anything already working?" If yes — stop and discuss.  
+
+
+### LAW 3 — Database Changes Are Additive Only
+
+- Every new column must be nullable OR have a default value — never break existing rows
+- Never drop a column, table, or relation without explicit instruction
+- Never edit existing migrations — always create a new one
+- After every schema change: run `npx prisma generate` and update `system_snapshot.md`
+- Seed scripts must never overwrite production data  
+
+
+### LAW 4 — Every Feature Must Be Fully Wired
+
+A feature is NOT done when the happy path works.  
+ It is done when ALL of the following are complete:
+
+- [ ] Prisma schema updated (if needed) + migration applied + client regenerated
+- [ ] API route created with proper input validation and error handling
+- [ ] Admin page built (list + create + edit + delete + confirmation dialogs)
+- [ ] Public page updated (if the feature is visible publicly)
+- [ ] Loading state, empty state, and error state handled
+- [ ] `progress.md` and `system_snapshot.md` updated  
+
+
+### LAW 5 — Progress Tracking Is Mandatory
+
+After completing any task:
+
+- Check it off in `progress.md`
+- Update `system_snapshot.md` if schema or architecture changed
+- Do not start the next task without doing this  
+
+
+---
+
+## PROJECT IDENTITY
 
 **Event and Venue Association Nepal (EVA Nepal)**
 
 - Official industry body for event venues in Kathmandu since 2011
 - 150+ member venues across Kathmandu Valley
-- Head office: Maitidevi, Kathmandu, Nepal
+- Head office: Maitidevi, Kathmandu, Nepal  
 
-## Tech Stack
 
-| Layer      | Technology                                                 |
-| ---------- | ---------------------------------------------------------- |
-| Framework  | Next.js 14 (App Router)                                    |
-| Language   | TypeScript (strict)                                        |
-| Styling    | TailwindCSS 3                                              |
-| Animations | Framer Motion 11                                           |
-| Icons      | lucide-react                                               |
-| Fonts      | next/font/google — Inter (sans) + Playfair Display (serif) |
+Two surfaces (today):
 
-## Design System
+- **Public website** (`/`) — for the public and members to browse content
+- **Admin panel** (`/admin/*`) — for admins to manage all content via CMS  
+
+
+Upcoming surfaces (do not build yet — design with them in mind):
+
+- **Member Portal** — authenticated area where members log in to see their status, event registrations, membership, payment history
+- **Event Ticket Sales** — public-facing ticket purchase flow with capacity tracking
+- **Meeting / Agenda Module** — AGM, committee meetings, minutes, resolutions
+- **Membership Management** — tiers, dues, renewal dates, status (active/lapsed)
+- **Reporting Dashboard** — member growth, event revenue, dues collected  
+
+
+This is a **single-tenant** system. One association. No multi-tenancy.
+
+---
+
+## TECH STACK — LAW
+
+| Layer         | Technology                                                 |
+| ------------- | ---------------------------------------------------------- |
+| Framework     | Next.js 14 (App Router)                                    |
+| Language      | TypeScript (strict, no `any`)                              |
+| Styling       | TailwindCSS 3                                              |
+| Animations    | Framer Motion 11                                           |
+| Icons         | lucide-react                                               |
+| Fonts         | next/font/google — Inter (sans) + Playfair Display (serif) |
+| ORM           | Prisma                                                     |
+| Database      | PostgreSQL                                                 |
+| Auth          | NextAuth.js (credentials provider)                         |
+| Image Storage | Local filesystem (`/public/uploads`)                       |
+| Deployment    | PM2 (port 3002) + Nginx on Linux VPS                       |
+
+Never introduce a new major dependency without discussion.  
+ If it can be done with what's already installed, do it that way.
+
+---
+
+## DESIGN SYSTEM
 
 - **Primary color**: Navy `#0a1040` → Tailwind class `navy-900`
 - **Accent color**: Gold `#f59e0b` → Tailwind class `gold-500`
@@ -33,414 +139,303 @@
 - **Animations** (`tailwind.config.ts`): `float`, `pulse-gold`, `border-glow`, `bokehFloat`, `scanLine`, `glowPulse`, `gradientShift`, `fadeUpIn`
 - **Easing**: `spring`, `bounce-soft`
 - **Border radius**: `4xl`, `5xl`
-- **Section transitions**: `.section-fade-into-dark`, `.section-fade-into-light`, `.animated-gradient-border`, `.gold-glow-pulse`
+- **Section transitions**: `.section-fade-into-dark`, `.section-fade-into-light`, `.animated-gradient-border`, `.gold-glow-pulse`  
 
-## Project Structure
 
-```
+Do NOT redesign the public website. Do NOT rebuild public UI components.  
+ The design system is complete. Use it as-is.
+
+---
+
+## PROJECT STRUCTURE
+
 app/
-  layout.tsx              Root layout — LocaleProvider, Navbar, Footer, JSON-LD schema
-  page.tsx                Homepage: Hero → StatsSection → About → Mission → MemberDirectory
-                          → WhyJoin → Events → News → Timeline → ExecutiveCommittee
-                          → MembershipForm → Contact
-  globals.css             Tailwind base + full design-system utilities (NO @import)
-  members/
-    page.tsx              "use client" — full member directory with search/area/capacity filter + grid/list toggle
-    [slug]/page.tsx       Static member profile page (155 pages via generateStaticParams)
-  events/page.tsx         "use client" — events list with status/type filters
-  news/
-    page.tsx              "use client" — news list with category filter
-    [slug]/page.tsx       Static article page (6 pages via generateStaticParams)
-  sitemap.ts              Auto-generated from members + news data
-  robots.ts               Robots.txt
-  not-found.tsx           404 page
+layout.tsx Root layout — LocaleProvider, Navbar, Footer, JSON-LD schema
+page.tsx Homepage: Hero → StatsSection → About → Mission → MemberDirectory  
+ → WhyJoin → Events → News → Timeline → ExecutiveCommittee  
+ → MembershipForm → Contact  
+ globals.css Tailwind base + full design-system utilities (NO @import)  
+ (admin)/  
+ admin/  
+ login/  
+ dashboard/  
+ members/  
+ events/
+news/
+committee/
+users/
+settings/  
+ tasks/
+meetings/ ← future phase  
+ tickets/ ← future phase  
+ membership/ ← future phase  
+ members/
+page.tsx  
+ [slug]/page.tsx  
+ events/page.tsx  
+ news/
+page.tsx  
+ [slug]/page.tsx  
+ sitemap.ts  
+ robots.ts
+not-found.tsx
 
 components/
-  layout/
-    Navbar.tsx            Fixed scroll-aware navbar; gold top-line on scroll, spring logo,
-                          animated underlines (layoutId), flag emoji locale switcher,
-                          stagger mobile menu, animated hamburger↔close icon
-    Footer.tsx            Top gold accent line, mesh background, icon-box social links,
-                          full links + contact columns
-  sections/
-    Hero.tsx              Cinematic hero: scroll-parallax (useScroll/useTransform), 5 bokeh
-                          orbs, film grain, slide progress bar, 01/04 counter, ping badge,
-                          shine sweep CTA, text-gradient-gold title, bottom-fade transition
-    StatsSection.tsx      Animated count-up stats (150+/14+/20k+/100%), dark navy + mesh bg
-    About.tsx             Real Unsplash venue image + spring-animated detail cards
-    Mission.tsx           Dark navy mesh bg, glass cards, large bg numbers, bottom accent lines
-    MemberDirectory.tsx   Featured venues + search/area/capacity filters + grid/list toggle + CTA
-    WhyJoin.tsx           Mesh bg, white numbered-badge benefit cards, dark navy CTA block
-    Events.tsx            Calendar-style grouped by month, side panel for past events, type legend
-    News.tsx              Editorial: featured hero card + 3-card grid + sidebar list, category colors
-    Timeline.tsx          Dark navy, glass morphism cards, gold spine + animated progress,
-                          watermark year, glow dots, glass summary block
-    ExecutiveCommittee.tsx Leadership grid + styled divider + committee members grid
-    MembershipForm.tsx    White card shadow, mesh bg, 7-field form, simulated success state
-    Contact.tsx           Dark navy mesh bg, glass cards with icon boxes, 3-panel layout
-  ui/
-    AnimatedSection.tsx   Scroll-triggered fade/slide wrapper (framer-motion useInView)
-    MemberCard.tsx        176px gradient image area (capacity-tier: gold/blue/emerald/purple),
-                          pulsing building icon, SVG pattern overlay, hover glow border,
-                          capacity overlay in image, thin capacity bar at bottom, category badge
-    EventCard.tsx         Pattern overlay image area, per-type color bar, date badge in image
-    NewsCard.tsx          Per-category colored bar, motion hover lift
-    CommitteeCard.tsx     Deterministic-color gradient initials avatar, animated star pulse
-                          on highlighted (president/VP)
+layout/
+Navbar.tsx
+Footer.tsx
+sections/ ← public homepage sections (DO NOT MODIFY)
+admin/ ← shared admin UI components  
+ ui/ ← design system primitives (MemberCard, EventCard, etc.)
 
-data/
-  members.ts              155 members (6 detailed + 149 generated). Exports: members[], getAreaList(), getMemberBySlug()
-  events.ts               10 events (5 upcoming, 5 past). Types: networking|training|meeting|exhibition|conference
-  news.ts                 6 news items. Categories: announcement|training|event|industry|member
-  committee.ts            9 committee members
+lib/  
+ prisma.ts ← singleton Prisma client  
+ auth.ts ← NextAuth config  
+ i18n.ts ← EN + NE translations  
+ utils.ts ← cn(), slugify(), formatDate(), etc.
+
+prisma/  
+ schema.prisma  
+ migrations/  
+ seed.ts
+
+data/ ← LEGACY static files (reference only, replaced by DB)  
+ members.ts
+events.ts  
+ news.ts  
+ committee.ts
 
 context/
-  LocaleContext.tsx       React context for EN/NE locale. Hook: useLocale() → { locale, setLocale, t }
+LocaleContext.tsx
 
-lib/
-  i18n.ts                 Full EN + NE translation objects for all sections
-  utils.ts                cn(), slugify(), formatDate(), formatMonthYear(), formatDay(), formatMonthShort()
+types/
+index.ts ← shared TypeScript types
 
-Root config files:
-  next.config.mjs         Next.js config (must be .mjs, not .ts)
-  tailwind.config.ts      Extended palette (navy/gold), expanded shadows, animations, easing, radii
-  tsconfig.json           target: es2017, downlevelIteration: true (Set spread support)
-  ecosystem.config.js     PM2 config — runs Next.js on port 3002
-  nginx.conf              Nginx reverse proxy: 80 → 3002 (HTTPS block commented until SSL setup)
-  deploy.sh               One-command deploy: git pull → npm ci → build → pm2 restart
-  .env.example            Template for environment variables
-```
+public/
+uploads/ ← image uploads
 
-## Critical Rules / Gotchas
+---
 
-### 1. NO `@import` in globals.css
+## ARCHITECTURE PATTERNS
 
-Fonts are loaded via `next/font/google` in `app/layout.tsx`. Never add `@import url(...)` to globals.css — Tailwind directives must be at the top and CSS @import must precede all other rules.
+### Server Components (default for reads)
 
-### 2. Locale-safe date formatting
+Use React Server Components for all data-fetching pages.  
+ Call Prisma directly in server components for straightforward reads.
 
-Never use `new Date().toLocaleString()` or `toLocaleDateString()` — causes SSR/CSR hydration mismatches. Always use the utils helpers:
+```typescript
+// app/(public)/members/page.tsx
+import { prisma } from '@/lib/prisma'
 
-```ts
-import {
-	formatDate,
-	formatDay,
-	formatMonthShort,
-	formatMonthYear,
-} from "@/lib/utils";
-formatDate("2025-03-10"); // "March 10, 2025"
-formatMonthShort("2025-03-10"); // "Mar"
-formatDay("2025-03-10"); // 10
-formatMonthYear("2025-03-10"); // "March 2025"
-```
+export default async function MembersPage() {
+  const members = await prisma.member.findMany({ where: { active: true } })
+  return <MemberList members={members} />
+}
 
-### 3. i18n type is `any`
+API Routes (for all mutations)
 
-The `t` object from `useLocale()` is typed as `any` to avoid TypeScript literal string conflicts between EN and NE translations. When using `.map()` on arrays inside `t`, annotate callback params explicitly:
+Use /app/api/* routes for create / update / delete operations called from admin forms.
 
-```tsx
+Standard response shape — always follow this:
+// Success
+{ success: true, data: T }
+
+// Error
+{ success: false, error: string }
+
+Never return raw Prisma errors to the client. Always catch and format.
+
+Client Components
+
+Use 'use client' only when needed:
+- Forms with controlled state
+- Interactive UI (modals, dropdowns, filter bars)
+- Any useState / useEffect usage
+
+Authentication
+
+All /admin/* routes are protected via NextAuth session.
+Check session at the top of every admin server component or in middleware.
+
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+
+const session = await getServerSession(authOptions)
+if (!session) redirect('/admin/login')
+
+---
+DATABASE RULES
+
+Schema conventions
+
+- All models have id, createdAt, updatedAt
+- Use slug for any publicly URL-addressable record (unique, generated from title/name)
+- Boolean flags default to false
+- Optional fields use ?
+
+Migration discipline
+
+# Always name migrations descriptively
+npx prisma migrate dev --name add_membership_tier_to_member
+
+# Never edit existing migrations
+# After every schema change, regenerate the client
+npx prisma generate
+
+Date consistency law
+
+Every query that filters by date must use the same field that the list/display uses.
+Using a different date field in a filter vs. the display will produce wrong results.
+The correct date field per model is documented in system_snapshot.md.
+
+Cross-module integrity law
+
+When a new feature touches multiple modules, all touch points must be wired at the same time.
+Example (future): when a ticket is sold — capacity decrements, attendance is recorded,
+payment is recorded, and dashboard revenue updates. Partial wiring is a bug.
+
+---
+CODE QUALITY RULES
+
+- Strict TypeScript — no any, no implicit any
+- All Prisma query results must be typed (use Prisma.ModelGetPayload or explicit interfaces)
+- No duplicated API calls
+- No inline business logic in page/component files — extract to /lib/ or /lib/queries/
+- All forms use controlled inputs
+- All API routes validate input before touching the DB
+- All API routes return the standard { success, data/error } shape
+- Loading states on all async admin operations
+- Empty states on all list views (never blank space)
+- Error states on all data fetches
+- Confirmation dialog before every delete action
+- Success/error toast after every mutation
+
+---
+UX STANDARDS
+
+Every admin page must have:
+- Clear page title and description
+- Loading skeleton or spinner while data fetches
+- Empty state message when list is empty
+- Confirmation dialog before any delete
+- Success/error notification after mutations
+
+Every public page must have:
+- Proper <title> and <meta description> via Next.js metadata export
+- Graceful fallback if DB returns no data (never crash — show a friendly message)
+
+---
+CRITICAL GOTCHAS
+
+1. NO @import in globals.css
+
+Fonts load via next/font/google in app/layout.tsx. Never add @import url(...) to globals.css.
+
+2. Locale-safe date formatting
+
+Never use toLocaleString() or toLocaleDateString() — causes SSR/CSR hydration mismatches.
+Always use the utils helpers:
+import { formatDate, formatDay, formatMonthShort, formatMonthYear } from "@/lib/utils"
+
+3. i18n type is any
+
+The t object from useLocale() is typed as any. When using .map() on arrays inside t,
+annotate callback params explicitly:
 t.mission.items.map((item: { title: string; desc: string }, i: number) => ...)
-```
 
-### 4. Inline dynamic import types are banned
+4. Inline dynamic import types are banned
 
-Do not use `import("@/data/members").Member` as an inline type in function params. Always import the type at the top:
+Do not use import("@/data/members").Member as an inline type.
+Always import the type at the top of the file.
 
-```ts
-import { type Member } from "@/data/members";
-```
+5. "use client" boundary
 
-### 5. "use client" boundary
+All components using hooks (useState, useEffect, useRef, useInView, useLocale, usePathname)
+need "use client" at line 1.
 
-All components using React hooks (useState, useEffect, useRef, useInView, useLocale, usePathname) need `"use client"` at line 1. Pages that use hooks must also be client components.
+6. next.config must be .mjs
 
-### 6. next.config must be `.mjs`
+Next.js 14 does not support next.config.ts. Use next.config.mjs only.
 
-Next.js 14 does not support `next.config.ts`. Use `next.config.mjs` only.
+7. tsconfig target
 
-### 7. tsconfig target
+"target": "es2017" + "downlevelIteration": true (with "ignoreDeprecations": "5.0")
+required for Set spread syntax in member filtering.
 
-Set `"target": "es2017"` and `"downlevelIteration": true` (with `"ignoreDeprecations": "5.0"`) to support `Set` spread syntax in member filtering.
+---
+ENVIRONMENT VARIABLES
 
-## Deployment
+Required in .env:
+DATABASE_URL=postgresql://...
+NEXTAUTH_SECRET=...
+NEXTAUTH_URL=http://localhost:3000
 
-### Port
+Never commit .env to git. Never hardcode these values anywhere.
 
-Next.js runs on **port 3002** via PM2. Nginx proxies public traffic (80/443) → 3002.
+---
+DEPLOYMENT
 
-### PM2
+PM2
 
-```bash
 pm2 start ecosystem.config.js   # first time
 pm2 restart eva-nepal            # after rebuild
 pm2 logs eva-nepal               # view logs
-pm2 status                       # check running
+pm2 status
 pm2 save && pm2 startup          # persist across reboots
-```
 
-### Nginx
+Nginx
 
-Config file: `nginx.conf` in project root.
-
-```bash
 sudo cp nginx.conf /etc/nginx/sites-available/evanepal.org
 sudo ln -s /etc/nginx/sites-available/evanepal.org /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-```
 
-### Full Deploy Flow
+Full Deploy
 
-```bash
-git pull origin main
-npm ci
-npm run build
-pm2 restart eva-nepal
-```
+git pull origin main && npm ci && npm run build && pm2 restart eva-nepal
+# or: bash deploy.sh
 
-Or just: `bash deploy.sh`
+SSL (after DNS is pointing)
 
-### SSL (after DNS is pointing)
-
-```bash
 sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d evanepal.org -d www.evanepal.org
+
+File locations on server
+
+/var/www/eva-nepal/           app root
+/etc/nginx/sites-available/   nginx config
+/var/log/pm2/                 PM2 logs
+/var/log/nginx/               Nginx logs
+
+---
+NEVER DO
+
+- Do not redesign the public website or rebuild public UI components — they are complete
+- Do not store passwords in plaintext — always bcrypt
+- Do not expose raw Prisma/DB errors to the client
+- Do not hardcode connection strings — use .env
+- Do not drop or truncate tables
+- Do not skip input validation on API routes
+- Do not build the member portal, ticket system, or meetings module without a full design discussion
+- Do not add npm packages without checking if existing packages solve it
+- Do not modify working completed modules unless explicitly asked
+- Do not start the next task without updating progress.md
+
+---
+DEVELOPMENT FLOW
+
+When implementing any feature:
+
+1. Read progress.md and system_snapshot.md
+2. Discuss approach — identify everything the feature touches
+3. Update Prisma schema (if needed) + run migration + prisma generate
+4. Create/update API route with validation and standard response shape
+5. Create/update admin page (list + form + delete confirmation)
+6. Update public page (if applicable) — replace static import with Prisma query
+7. Add loading, empty, and error states
+8. Update progress.md and system_snapshot.md
+
+Correctness > UX polish > Speed.
+A boring working implementation beats a clever broken one.
+
+---
 ```
-
-Then uncomment the HTTPS server block in `nginx.conf`.
-
-### Server Requirements
-
-- Ubuntu 20.04+ / Debian 11+
-- Node.js 18 LTS
-- PM2 (`npm install -g pm2`)
-- Nginx (`sudo apt install nginx`)
-- Minimum: 1 vCPU, 1GB RAM
-
-### File locations on server
-
-```
-/var/www/eva-nepal/         → app root (clone here)
-/etc/nginx/sites-available/ → nginx config
-/var/log/pm2/               → PM2 log files
-/var/log/nginx/             → Nginx access/error logs
-```
-
-## Pages & URLs
-
-| Route             | Type               | Description             |
-| ----------------- | ------------------ | ----------------------- |
-| `/`               | Static             | Homepage (all sections) |
-| `/members`        | Client             | Full member directory   |
-| `/members/[slug]` | Static (155 pages) | Venue profiles          |
-| `/events`         | Client             | Events list             |
-| `/news`           | Client             | News list               |
-| `/news/[slug]`    | Static (6 pages)   | Article detail          |
-| `/sitemap.xml`    | Auto               | Generated sitemap       |
-| `/robots.txt`     | Auto               | Search directives       |
-
-## SEO Keywords Targeted
-
-- event venues in Kathmandu
-- wedding venues Kathmandu
-- party venues Kathmandu
-- banquet halls Kathmandu
-- venue association Nepal
-- event management Nepal
-
-## Completed (do not re-implement)
-
-- [x] Full Next.js 14 App Router project scaffold with TypeScript + Tailwind
-- [x] EN/NE bilingual i18n system via React Context
-- [x] 155-member data layer with slug routing (6 detailed + 149 generated)
-- [x] All homepage sections: Hero, StatsSection, About, Mission, MemberDirectory, WhyJoin, Events, News, Timeline, ExecutiveCommittee, MembershipForm, Contact
-- [x] Full member directory page with search + area + capacity filter + grid/list view
-- [x] Events page with status/type filters
-- [x] News page with category filter + individual article pages
-- [x] V1 base design system (navy/gold, fonts, layout utilities)
-- [x] V2 visual overhaul (slideshow hero, editorial news, calendar events, MemberCard capacity bar)
-- [x] V3 glass morphism, mesh backgrounds, gradient text, animation tokens
-- [x] V4 wow-factor redesign: cinematic Hero parallax, StatsSection count-up, new MemberCard image tiles, Timeline glass morphism, bokeh orbs, film grain
-- [x] PM2 + Nginx deployment config + deploy.sh script
-
-## TODO / Pending
-
-- [ ] Add real EVA Nepal contact: phone, email, Facebook URL, Instagram URL
-- [ ] Replace `metadataBase` URL in `layout.tsx` with actual domain
-- [ ] Add `/public/favicon.ico` and `/public/og-image.jpg` (1200×630px)
-- [ ] Wire membership form to backend (Resend/Nodemailer or a form service)
-- [ ] Add real venue photos to member profile pages (member profile `[slug]/page.tsx`)
-- [ ] Replace committee member initials avatars with real photos
-- [ ] Update `nginx.conf` `server_name` with actual domain
-- [ ] Set up SSL via Certbot (after DNS is pointing)
-
-## Current Work
-
-You are working inside an existing Next.js 14 project.
-
-IMPORTANT:
-Do NOT redesign the website or rebuild UI components.
-
-The public website is already complete.
-Your task is ONLY to add a CMS system to manage its content.
-
-The project currently uses static data files:
-
-/data/members.ts
-/data/events.ts
-/data/news.ts
-/data/committee.ts
-
-These must now be replaced with a database-backed CMS.
-
-Use the following stack:
-
-Next.js 14 (App Router)
-TypeScript
-Prisma ORM
-PostgreSQL
-NextAuth for authentication
-TailwindCSS (already installed)
-
----
-
-DATABASE
-
-Use the existing models defined in database.md:
-
-Member
-Event
-News
-CommitteeMember
-AdminUser
-
-Create a Prisma schema based on these models.
-
----
-
-GOAL
-
-Add a CMS so administrators can manage the website content through an admin dashboard.
-
-Admins must be able to:
-
-• add/edit/delete members
-• add/edit/delete news articles
-• add/edit/delete events
-• add/edit/delete committee members
-
----
-
-ADMIN PANEL
-
-Create an admin dashboard inside:
-
-/app/(admin)/admin
-
-Routes:
-
-/admin/login
-/admin/dashboard
-/admin/members
-/admin/events
-/admin/news
-/admin/committee
-
-Use a sidebar layout with simple tables and forms.
-
-Do not overdesign the UI.
-
----
-
-AUTHENTICATION
-
-Use NextAuth.
-
-Only authenticated admin users can access:
-
-/admin/\*
-
-Public pages remain accessible to everyone.
-
----
-
-API ROUTES
-
-Create API routes for CRUD operations.
-
-Example:
-
-/api/members
-/api/members/[id]
-
-/api/events
-/api/events/[id]
-
-/api/news
-/api/news/[id]
-
-/api/committee
-/api/committee/[id]
-
-Use Prisma for database queries.
-
----
-
-PUBLIC WEBSITE INTEGRATION
-
-Replace static imports like:
-
-import { members } from "@/data/members"
-
-with database queries.
-
-Example:
-
-const members = await prisma.member.findMany()
-
-Keep existing components such as:
-
-MemberCard
-EventCard
-NewsCard
-CommitteeCard
-
-Do not modify their design.
-
----
-
-DATA MIGRATION
-
-Create a seed script that imports existing data from:
-
-/data/members.ts
-/data/events.ts
-/data/news.ts
-/data/committee.ts
-
-into the database.
-
----
-
-IMAGE HANDLING
-
-Allow image uploads for members, events, news, and committee.
-
-Store images in:
-
-/public/uploads
-
-Save image paths in database.
-
----
-
-OUTPUT
-
-Provide:
-
-1. Prisma schema
-2. database connection setup
-3. NextAuth setup
-4. API route examples
-5. admin dashboard layout
-6. seed script
-7. example CRUD form

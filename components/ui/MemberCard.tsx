@@ -12,8 +12,9 @@ interface MemberCardProps {
 }
 
 // Capacity tier configuration
-function getTierConfig(capacity: number) {
-  if (capacity >= 1000) return {
+function getTierConfig(capacity: number | null | undefined) {
+  const cap = capacity ?? 0;
+  if (cap >= 1000) return {
     label: "Grand",
     badge: "bg-gold-500 text-navy-900",
     gradient: "linear-gradient(135deg, #0a1040 0%, #1a237e 40%, #0d1654 100%)",
@@ -21,7 +22,7 @@ function getTierConfig(capacity: number) {
     barColor: "bg-gold-500",
     textColor: "text-gold-300",
   };
-  if (capacity >= 700) return {
+  if (cap >= 700) return {
     label: "Large",
     badge: "bg-blue-600 text-white",
     gradient: "linear-gradient(135deg, #1e3a5f 0%, #1a365d 40%, #0f2744 100%)",
@@ -29,7 +30,7 @@ function getTierConfig(capacity: number) {
     barColor: "bg-blue-500",
     textColor: "text-blue-300",
   };
-  if (capacity >= 400) return {
+  if (cap >= 400) return {
     label: "Medium",
     badge: "bg-emerald-600 text-white",
     gradient: "linear-gradient(135deg, #064e3b 0%, #065f46 40%, #034d3a 100%)",
@@ -66,7 +67,7 @@ const categoryPattern = (category: string) => {
 export default function MemberCard({ member, index = 0 }: MemberCardProps) {
   const { t } = useLocale();
   const tier = getTierConfig(member.capacity);
-  const fillPct = Math.min(100, Math.round((member.capacity / 1200) * 100));
+  const fillPct = Math.min(100, Math.round(((member.capacity ?? 0) / 1200) * 100));
   const pattern = categoryPattern(member.category ?? "");
 
   return (
@@ -146,7 +147,7 @@ export default function MemberCard({ member, index = 0 }: MemberCardProps) {
           <div className="flex items-end justify-between">
             <div>
               <div className={`font-serif font-bold text-2xl leading-none ${tier.textColor}`}>
-                {member.capacity.toLocaleString()}
+                {member.capacity != null ? member.capacity.toLocaleString() : "—"}
               </div>
               <div className="text-white/50 text-[10px] font-medium tracking-wide uppercase mt-0.5">
                 Guest Capacity

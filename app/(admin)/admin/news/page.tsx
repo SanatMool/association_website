@@ -2,11 +2,18 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Plus, Pencil } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
+import { getAdminContext } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewsPage() {
-  const articles = await prisma.news.findMany({ orderBy: { publishedAt: "desc" } });
+  const ctx = await getAdminContext();
+  const associationId = ctx?.associationId ?? null;
+
+  const articles = await prisma.news.findMany({
+    where: { associationId },
+    orderBy: { publishedAt: "desc" },
+  });
 
   return (
     <div>

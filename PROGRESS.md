@@ -1,3 +1,15 @@
+---                                                                                                                                                                                          
+  Add this at the very TOP of your progress.md
+                                                                                                                                                                                               
+  ## HOW TO USE THIS FILE                                                                                                                                                                    
+                                                                                                                                                                                               
+  Read this before every session. Update it after every task.
+  This is the source of truth for what is done and what is next.
+  Do NOT start any task without reading this first.
+  Do NOT finish any task without updating this file.
+
+  ---
+
 # EVA Nepal Website — Build Progress
 
 ## What Is This Project
@@ -504,9 +516,169 @@ npx prisma db seed
 ## Build Status
 
 ```
-✓ npm run build — passes with no TypeScript errors
-✓ 24 static pages generated
-✓ All admin routes compiled
-✓ All API routes registered
-✓ DB seeded: 155 members, 10 events, 6 news, 9 committee, 1 admin user
+✓ npm run build — passes cleanly (46 routes)
+✓ Multi-tenancy: Step 1–5 complete
+✓ DB seeded: 2 associations, 196 members (155 EVA + 41 Bhaktapur), 10 events, 6 news, 9 committee, 9 timeline entries
+✓ All admin routes scoped by associationId from session
+✓ Platform panel live at /platform/* (assoc-platform.nibjar.com)
 ```
+
+## Multi-Tenancy Implementation
+
+### Step 1 — Schema ✓
+- Association, MemberAssociation, TimelineEntry, PlatformUser, ApiLog models added
+- All content models (Event, News, CommitteeMember, AdminUser, SiteSettings, AdminTask) have associationId
+- Members linked via MemberAssociation join table (many-to-many, per-association visible flag)
+- Migration deployed: 20260609000000_add_multi_tenancy_association_platform
+
+### Step 2 — Middleware + Auth ✓
+- middleware.ts: domain-based routing, platform subdomain, admin auth protection
+- lib/auth.ts: associationId + associationSlug in JWT/session
+- lib/getAssociation.ts: React.cache() server-side association resolver
+
+### Step 3 — Public pages scoped ✓
+- app/page.tsx, /members, /events, /news, /members/[slug], /news/[slug] — all filter by associationId
+- Timeline component accepts entries from DB, hides if empty
+- Sitemap scoped per association domain
+- lib/settings.ts accepts associationId param
+
+### Step 4 — Admin panel scoped ✓
+- lib/adminAuth.ts: getAdminContext() helper used in all admin pages + API routes
+- All 6 admin list pages (dashboard, members, events, news, committee, users) scoped
+- All API routes (members, events, news, committee, users, tasks + [id] routes) scoped
+- POST /api/members creates MemberAssociation link in same transaction
+
+### Step 5 — Platform panel ✓
+- Routes: /platform/login, /platform/dashboard, /platform/associations, /platform/associations/[id], /platform/logs
+- lib/platformAuth.ts: reads platform-session-token cookie, decodes JWT
+- app/api/platform-auth/route.ts: POST login (sets JWT cookie), DELETE logout
+- Middleware: assoc-platform.nibjar.com → enforces platform-session-token
+- Platform sidebar uses indigo theme, distinct from association admin panels
+
+Add this at the very BOTTOM of your progress.md
+
+---
+
+## Phase 3 — Membership Management (NOT STARTED — discuss before building)
+
+EVA Nepal members pay annual dues and hold membership tiers.
+This phase adds the ability to track who has paid, who is lapsing, and what tier they hold.
+
+Planned scope:
+
+- [ ] Discuss and finalize data model before any code
+- [ ] MembershipPlan model (name, price, duration in months, benefits)
+- [ ] MembershipRecord model (member FK, plan FK, start date, end date, status: active/lapsed/pending)
+- [ ] DuesPayment model (record FK, amount, paid date, payment method, receipt number)
+- [ ] Migration: add membershipStatus field to Member (active/lapsed/none)
+- [ ] Admin: /admin/membership/plans (list + create + edit)
+- [ ] Admin: /admin/membership/records (list, filter by status, mark as paid)
+- [ ] Admin: /admin/members updated to show membership badge per member
+- [ ] Public: member profile page shows membership status badge
+- [ ] progress.md + system_snapshot.md updated  
+
+
+Cross-module rule: member status must stay in sync with MembershipRecord — no manual overrides.
+
+---
+
+## Phase 4 — Member Portal (NOT STARTED — discuss before building)
+
+Members log in to a private area to view their membership, event history, and payments.  
+ This is a separate authenticated surface from /admin.
+
+Planned scope:
+
+- [ ] Discuss portal scope and UX before any code
+- [ ] MemberAccount model (email, passwordHash, member FK, lastLoginAt)
+- [ ] Portal auth — credentials provider separate from AdminUser/NextAuth admin session
+- [ ] Portal routes: /portal/login, /portal/dashboard, /portal/membership, /portal/events, /portal/payments
+- [ ] Member can see: membership status + renewal date, events they registered for, payment history
+- [ ] Admin can create/reset portal accounts for members
+- [ ] progress.md + system_snapshot.md updated  
+
+
+Design rule: /portal/_ is a completely separate route group from /admin/_.  
+ Members never see admin data. Admins never log in via portal.
+
+---
+
+## Phase 5 — Event Ticket Sales (NOT STARTED — discuss before building)
+
+Events will have ticketed capacity. Public and members can purchase tickets.  
+ Revenue from tickets must flow into a reporting view.
+
+Planned scope:
+
+- [ ] Discuss pricing model and flow before any code
+- [ ] TicketType model (event FK, name, price, totalCapacity, soldCount)
+- [ ] TicketPurchase model (ticketType FK, buyerName, buyerEmail, buyerPhone, amount, status, purchasedAt)
+- [ ] EventAttendance model (ticketPurchase FK, checkedInAt, checkedInBy)
+- [ ] Public: event detail page shows ticket types + purchase flow
+- [ ] Admin: /admin/events/[id]/tickets — ticket type management + attendee list + check-in
+- [ ] Admin: /admin/events/[id]/revenue — income summary for the event
+- [ ] Cross-module wiring (all must happen together):
+    - [ ] Ticket sold → soldCount increments on TicketType
+    - [ ] Ticket sold → TicketPurchase record created
+    - [ ] Check-in → EventAttendance record created
+    - [ ] Event revenue → visible in reporting dashboard
+- [ ] progress.md + system_snapshot.md updated  
+
+
+---
+
+## Phase 6 — Meeting / Agenda Module (NOT STARTED — discuss before building)
+
+AGM, committee meetings, and special meetings with structured agendas and published minutes.
+
+Planned scope:
+
+- [ ] Discuss what meetings need to track before any code
+- [ ] Meeting model (title, type: AGM/committee/special, scheduledAt, venue, status: scheduled/completed/cancelled)
+- [ ] AgendaItem model (meeting FK, order, title, description, outcome)
+- [ ] MeetingMinutes model (meeting FK, content, approvedAt, publishedAt)
+- [ ] Admin: /admin/meetings (list + create + edit + add agenda items + record minutes)
+- [ ] Public: published minutes visible at /meetings or similar
+- [ ] progress.md + system_snapshot.md updated  
+
+
+Date anchor: scheduledAt field for all meeting queries.
+
+---
+
+## Phase 7 — Reporting Dashboard (NOT STARTED — discuss before building)
+
+Summary view for the admin to understand membership health and event performance.
+
+Planned scope:
+
+- [ ] Discuss what metrics matter most before building
+- [ ] Member growth over time (new members per month/year)
+- [ ] Membership dues: total collected, outstanding, lapsing soon
+- [ ] Event attendance: per-event headcount and revenue
+- [ ] Income breakdown: dues vs ticket sales vs other
+- [ ] Admin: /admin/reports with chart views  
+
+
+Rule: every income source must be wired at the time it is built.  
+ No income source may be added later without also wiring it into reports here.  
+ Partial reporting is a bug.
+
+---
+
+## Pending (real-world content, not code)
+
+| Item                                              | Where                                  |
+| ------------------------------------------------- | -------------------------------------- |
+| Real phone/email/social URLs                      | /admin/settings                        |
+| Replace metadataBase URL                          | app/layout.tsx                         |
+| Add favicon.ico + og-image.jpg (1200x630)         | /public/                               |
+| Wire membership form to email (Resend/Nodemailer) | components/sections/MembershipForm.tsx |
+| Real venue photos                                 | Admin panel → Members                  |
+| Real committee photos                             | Admin panel → Committee                |
+| Update nginx.conf server_name                     | nginx.conf                             |
+| Set up SSL via Certbot                            | Server-side after DNS                  |
+| Change default admin password                     | DB direct or new endpoint              |
+| Set NEXTAUTH_SECRET in production                 | .env.local on server                   |
+
+---

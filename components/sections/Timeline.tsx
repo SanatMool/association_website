@@ -3,81 +3,23 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import AnimatedSection from "@/components/ui/AnimatedSection";
+import { TimelineType } from "@/lib/types";
 
-const milestones = [
-  {
-    year: "2011",
-    title: "EVA Nepal Founded",
-    description:
-      "Event and Venue Association Nepal was formally established in Maitidevi, Kathmandu, uniting the valley's banquet hall and event venue owners under one voice.",
-    highlight: true,
-    stat: "Founding Year",
-  },
-  {
-    year: "2012",
-    title: "First Annual General Meeting",
-    description:
-      "EVA Nepal held its inaugural Annual General Meeting, establishing the executive committee structure and drafting the association's foundational bylaws.",
-    stat: "20+ Founding Members",
-  },
-  {
-    year: "2014",
-    title: "Quality Standards Initiative",
-    description:
-      "The association launched its first Quality Standards Framework, setting benchmarks for service quality, hygiene, and safety across member venues.",
-    stat: "First Quality Framework",
-  },
-  {
-    year: "2016",
-    title: "Training Programs Launched",
-    description:
-      "EVA Nepal introduced structured training and workshop programs for venue owners and staff, covering event management, catering standards, and customer service.",
-    stat: "500+ Trained",
-  },
-  {
-    year: "2018",
-    title: "Member Directory Goes Digital",
-    description:
-      "The association launched a comprehensive digital member directory, helping event planners and couples find and connect with certified EVA Nepal member venues.",
-    stat: "80+ Listed Venues",
-  },
-  {
-    year: "2020",
-    title: "Resilience Through Challenge",
-    description:
-      "EVA Nepal supported its members through industry disruptions, organizing relief coordination, guidance on health protocols, and advocating for the event industry.",
-    stat: "Industry Solidarity",
-  },
-  {
-    year: "2022",
-    title: "Kathmandu Venue Expo Launched",
-    description:
-      "The first Kathmandu Venue Expo brought together 40+ member venues at BhrikutiMandap, creating Nepal's largest gathering of event venues in one place.",
-    stat: "40+ Venues Exhibited",
-  },
-  {
-    year: "2024",
-    title: "Nepal Venue Industry Conference",
-    description:
-      "EVA Nepal hosted the Nepal Venue Industry Conference, bringing together government officials, industry leaders, and 100+ venue owners for a two-day policy summit.",
-    stat: "100+ Attendees",
-  },
-  {
-    year: "2025",
-    title: "150+ Member Milestone",
-    description:
-      "EVA Nepal reached a landmark milestone of 150+ registered member venues across the Kathmandu Valley, cementing its position as the definitive industry body.",
-    highlight: true,
-    stat: "150+ Members",
-  },
-];
+interface MilestoneItem {
+  year: string;
+  title: string;
+  description: string;
+  stat?: string | null;
+  highlight?: boolean;
+}
+
 
 function TimelineItem({
   item,
   index,
   isLeft,
 }: {
-  item: (typeof milestones)[0];
+  item: MilestoneItem;
   index: number;
   isLeft: boolean;
 }) {
@@ -165,7 +107,23 @@ function TimelineItem({
   );
 }
 
-export default function Timeline() {
+interface TimelineProps {
+  entries: TimelineType[];
+}
+
+export default function Timeline({ entries }: TimelineProps) {
+  if (!entries || entries.length === 0) return null;
+
+  const milestones: MilestoneItem[] = [...entries]
+    .sort((a, b) => a.order - b.order)
+    .map((e) => ({
+      year: String(e.year),
+      title: e.title,
+      description: e.description,
+      stat: e.stat,
+      highlight: e.highlighted,
+    }));
+
   return (
     <section className="section-padding relative overflow-hidden" style={{
       background: "linear-gradient(180deg, #060b2c 0%, #0a1040 50%, #060b2c 100%)"

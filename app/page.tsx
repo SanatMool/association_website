@@ -13,7 +13,8 @@ import Contact from "@/components/sections/Contact";
 import Timeline from "@/components/sections/Timeline";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
-import { MemberType, EventType, NewsType, CommitteeType } from "@/lib/types";
+import { getAssociationOrThrow } from "@/lib/getAssociation";
+import { MemberType, EventType, NewsType, CommitteeType, TimelineType } from "@/lib/types";
 
 export const metadata: Metadata = {
   title:
@@ -25,16 +26,35 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 export default async function Home() {
-  const [dbMembers, dbEvents, dbNews, dbCommittee, memberCount, siteSettings] = await Promise.all([
-    prisma.member.findMany({ orderBy: [{ featured: "desc" }, { name: "asc" }] }),
-    prisma.event.findMany({ orderBy: { date: "desc" } }),
-    prisma.news.findMany({ orderBy: { publishedAt: "desc" } }),
-    prisma.committeeMember.findMany({ orderBy: { order: "asc" } }),
-    prisma.member.count(),
-    getSettings(),
+  const association = await getAssociationOrThrow();
+  const associationId = association.id;
+
+  const [dbMembers, dbEvents, dbNews, dbCommittee, memberCount, dbTimeline, siteSettings] = await Promise.all([
+    prisma.member.findMany({
+      where: { associations: { some: { associationId, visible: true } } },
+      orderBy: [{ featured: "desc" }, { name: "asc" }],
+    }),
+    prisma.event.findMany({
+      where: { associationId },
+      orderBy: { date: "desc" },
+    }),
+    prisma.news.findMany({
+      where: { associationId },
+      orderBy: { publishedAt: "desc" },
+    }),
+    prisma.committeeMember.findMany({
+      where: { associationId },
+      orderBy: { order: "asc" },
+    }),
+    prisma.memberAssociation.count({ where: { associationId, visible: true } }),
+    prisma.timelineEntry.findMany({
+      where: { associationId },
+      orderBy: { order: "asc" },
+    }),
+    getSettings(associationId),
   ]);
 
-  const yearsActive = new Date().getFullYear() - 2011;
+  const yearsActive = new Date().getFullYear() - (association.foundedYear ?? 2011);
   const eventsHosted = parseInt(siteSettings.stats_events_hosted ?? "20000", 10);
 
   const members: MemberType[] = dbMembers.map((m) => ({
@@ -100,6 +120,18 @@ export default async function Home() {
     };
   });
 
+  const timeline: TimelineType[] = dbTimeline.map((t) => ({
+    id: t.id,
+    year: t.year,
+    title: t.title,
+    titleNe: t.titleNe,
+    description: t.description,
+    descriptionNe: t.descriptionNe,
+    stat: t.stat,
+    highlighted: t.highlighted,
+    order: t.order,
+  }));
+
   return (
     <>
       <Hero />
@@ -108,7 +140,7 @@ export default async function Home() {
       <Mission />
       <MemberDirectory members={members} />
       <WhyJoin />
-      <Timeline />
+      <Timeline entries={timeline} />
       <Events events={events} />
       <News news={news} />
       <ExecutiveCommittee committee={committee} />

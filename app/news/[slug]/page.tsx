@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getAssociationOrThrow } from "@/lib/getAssociation";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 export const revalidate = 3600;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const item = await prisma.news.findUnique({ where: { slug: params.slug } });
+  const item = await prisma.news.findFirst({ where: { slug: params.slug } });
   if (!item) return { title: "Article Not Found" };
 
   return {
@@ -29,11 +30,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function NewsDetailPage({ params }: Props) {
-  const item = await prisma.news.findUnique({ where: { slug: params.slug } });
+  const association = await getAssociationOrThrow();
+
+  const item = await prisma.news.findFirst({
+    where: { slug: params.slug, associationId: association.id },
+  });
   if (!item) notFound();
 
   const related = await prisma.news.findMany({
-    where: { category: item.category, NOT: { id: item.id } },
+    where: { category: item.category, NOT: { id: item.id }, associationId: association.id },
     take: 3,
     orderBy: { publishedAt: "desc" },
   });

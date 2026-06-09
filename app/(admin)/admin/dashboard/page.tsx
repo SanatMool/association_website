@@ -1,20 +1,44 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { getAdminContext } from "@/lib/adminAuth";
 import { Users, Calendar, Newspaper, Award, Plus, Settings, CheckCircle, AlertCircle, UserCog, CheckSquare, Circle, Clock, AlertTriangle } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
+  const ctx = await getAdminContext();
+  const associationId = ctx?.associationId ?? null;
+
   const [memberCount, eventCount, newsCount, committeeCount, recentMembers, recentNews, recentEvents, settings, pendingTasks] =
     await Promise.all([
-      prisma.member.count(),
-      prisma.event.count(),
-      prisma.news.count(),
-      prisma.committeeMember.count(),
-      prisma.member.findMany({ take: 4, orderBy: { createdAt: "desc" }, select: { id: true, name: true, area: true, createdAt: true } }),
-      prisma.news.findMany({ take: 3, orderBy: { publishedAt: "desc" }, select: { id: true, title: true, publishedAt: true } }),
-      prisma.event.findMany({ take: 3, orderBy: { createdAt: "desc" }, select: { id: true, title: true, status: true, date: true } }),
-      prisma.siteSettings.findMany({ select: { key: true, value: true } }),
+      prisma.memberAssociation.count({ where: { associationId, visible: true } }),
+      prisma.event.count({ where: { associationId } }),
+      prisma.news.count({ where: { associationId } }),
+      prisma.committeeMember.count({ where: { associationId } }),
+      prisma.member.findMany({
+        where: { associations: { some: { associationId, visible: true } } },
+        take: 4,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, area: true, createdAt: true },
+      }),
+      prisma.news.findMany({
+        where: { associationId },
+        take: 3,
+        orderBy: { publishedAt: "desc" },
+        select: { id: true, title: true, publishedAt: true },
+      }),
+      prisma.event.findMany({
+        where: { associationId },
+        take: 3,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, title: true, status: true, date: true },
+      }),
+      prisma.siteSettings.findMany({
+        where: { associationId },
+        select: { key: true, value: true },
+      }),
       prisma.adminTask.findMany({
-        where: { status: { not: "done" } },
+        where: { status: { not: "done" }, associationId },
         orderBy: [{ priority: "desc" }, { dueDate: "asc" }, { createdAt: "asc" }],
         take: 6,
       }),
@@ -55,7 +79,7 @@ export default async function DashboardPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-1">Dashboard</h1>
-      <p className="text-gray-500 text-sm mb-8">EVA Nepal content management overview</p>
+      <p className="text-gray-500 text-sm mb-8">Content management overview</p>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

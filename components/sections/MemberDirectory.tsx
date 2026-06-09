@@ -44,7 +44,10 @@ export default function MemberDirectory({ members }: MemberDirectoryProps) {
         m.name.toLowerCase().includes(search.toLowerCase()) ||
         (m.location ?? "").toLowerCase().includes(search.toLowerCase());
       const matchArea = selectedArea === "All" || m.area === selectedArea;
-      const matchCap = m.capacity >= tier.min && m.capacity <= tier.max;
+      // Members with null capacity only match the "All Sizes" tier (index 0)
+      const matchCap = capacityTier === 0
+        ? true
+        : m.capacity != null && m.capacity >= tier.min && m.capacity <= tier.max;
       return matchSearch && matchArea && matchCap;
     });
   }, [search, selectedArea, capacityTier]);
@@ -286,7 +289,7 @@ function ListMemberRow({ member }: { member: MemberType }) {
             <span className="text-xs bg-gold-50 border border-gold-200 text-gold-600 px-2 py-0.5 rounded-full flex-shrink-0">Featured</span>
           )}
         </div>
-        <p className="text-xs text-slate-500">{member.location} · {member.capacity.toLocaleString()} guests</p>
+        <p className="text-xs text-slate-500">{member.location}{member.capacity != null ? ` · ${member.capacity.toLocaleString()} guests` : ""}</p>
       </div>
       <span className="text-gold-600 text-xs font-semibold flex-shrink-0 group-hover:translate-x-1 transition-transform">View →</span>
     </Link>

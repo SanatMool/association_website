@@ -1,6 +1,5 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
@@ -17,6 +16,7 @@ export const authOptions: NextAuthOptions = {
 
         const user = await prisma.adminUser.findUnique({
           where: { email: credentials.email },
+          include: { association: true },
         });
 
         if (!user || !user.password) return null;
@@ -33,30 +33,34 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          associationId: user.associationId ?? null,
+          associationSlug: user.association?.slug ?? null,
         };
       },
     }),
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? [
-          GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          }),
-        ]
-      : []),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as { role?: string }).role;
         token.id = user.id;
+        token.role = (user as { role?: string }).role;
+        token.associationId = (user as { associationId?: string | null }).associationId ?? null;
+        token.associationSlug = (user as { associationSlug?: string | null }).associationSlug ?? null;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as { role?: string; id?: string }).role = token.role as string;
-        (session.user as { role?: string; id?: string }).id = token.id as string;
+        const u = session.user as {
+          id?: string;
+          role?: string;
+          associationId?: string | null;
+          associationSlug?: string | null;
+        };
+        u.id = token.id as string;
+        u.role = token.role as string;
+        u.associationId = token.associationId as string | null;
+        u.associationSlug = token.associationSlug as string | null;
       }
       return session;
     },

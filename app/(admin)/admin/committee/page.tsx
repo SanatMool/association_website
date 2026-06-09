@@ -2,11 +2,18 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Plus, Pencil } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
+import { getAdminContext } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
 export default async function CommitteePage() {
-  const members = await prisma.committeeMember.findMany({ orderBy: { order: "asc" } });
+  const ctx = await getAdminContext();
+  const associationId = ctx?.associationId ?? null;
+
+  const members = await prisma.committeeMember.findMany({
+    where: { associationId },
+    orderBy: { order: "asc" },
+  });
 
   return (
     <div>

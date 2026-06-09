@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Users, Phone, Globe, ArrowLeft, Calendar, CheckCircle, Building2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getAssociationOrThrow } from "@/lib/getAssociation";
 
 interface Props {
   params: { slug: string };
@@ -15,17 +16,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!member) return { title: "Venue Not Found" };
 
   return {
-    title: `${member.name} – EVA Nepal Member Venue | ${member.location}`,
-    description: `${member.name} is an EVA Nepal certified event venue located in ${member.location}. Capacity: ${member.capacity} guests. ${member.description}`,
+    title: `${member.name} – Member Venue | ${member.location}`,
+    description: `${member.name} is a certified event venue located in ${member.location}.${member.capacity != null ? ` Capacity: ${member.capacity} guests.` : ""} ${member.description ?? ""}`,
     keywords: [
       member.name,
       `${member.name} ${member.location}`,
       `event venue ${member.area}`,
       `banquet hall ${member.area}`,
-      "EVA Nepal member",
     ],
     openGraph: {
-      title: `${member.name} | EVA Nepal`,
+      title: member.name,
       description: member.description ?? undefined,
       type: "website",
     },
@@ -33,18 +33,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function MemberProfilePage({ params }: Props) {
-  const [member, relatedMembers] = await Promise.all([
-    prisma.member.findUnique({ where: { slug: params.slug } }),
-    prisma.member.findMany({
-      where: { NOT: { slug: params.slug } },
-      take: 3,
-    }),
-  ]);
+  const association = await getAssociationOrThrow();
+
+  // Verify the member belongs to this association and is visible
+  const member = await prisma.member.findFirst({
+    where: {
+      slug: params.slug,
+      associations: { some: { associationId: association.id, visible: true } },
+    },
+  });
 
   if (!member) notFound();
 
-  // Filter related after fetch to avoid complex query
-  const related = relatedMembers.filter((m) => m.area === member.area).slice(0, 3);
+  const relatedMembers = await prisma.member.findMany({
+    where: {
+      area: member.area,
+      NOT: { slug: params.slug },
+      associations: { some: { associationId: association.id, visible: true } },
+    },
+    take: 3,
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 pt-24">
@@ -94,18 +102,24 @@ export default async function MemberProfilePage({ params }: Props) {
                 )}
 
                 <div className="space-y-3 text-left mt-5">
-                  <div className="flex items-center gap-3 text-sm text-slate-600">
-                    <MapPin size={15} className="text-gold-500 flex-shrink-0" />
-                    {member.location}
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-slate-600">
-                    <Users size={15} className="text-gold-500 flex-shrink-0" />
-                    Up to {member.capacity} guests
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-slate-600">
-                    <Phone size={15} className="text-gold-500 flex-shrink-0" />
-                    <a href={`tel:${member.phone}`} className="hover:text-navy-700">{member.phone}</a>
-                  </div>
+                  {member.location && (
+                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                      <MapPin size={15} className="text-gold-500 flex-shrink-0" />
+                      {member.location}
+                    </div>
+                  )}
+                  {member.capacity != null && (
+                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                      <Users size={15} className="text-gold-500 flex-shrink-0" />
+                      Up to {member.capacity.toLocaleString()} guests
+                    </div>
+                  )}
+                  {member.phone && (
+                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                      <Phone size={15} className="text-gold-500 flex-shrink-0" />
+                      <a href={`tel:${member.phone}`} className="hover:text-navy-700">{member.phone}</a>
+                    </div>
+                  )}
                   {member.website && (
                     <div className="flex items-center gap-3 text-sm text-slate-600">
                       <Globe size={15} className="text-gold-500 flex-shrink-0" />
@@ -114,16 +128,20 @@ export default async function MemberProfilePage({ params }: Props) {
                       </a>
                     </div>
                   )}
-                  <div className="flex items-center gap-3 text-sm text-slate-600">
-                    <Calendar size={15} className="text-gold-500 flex-shrink-0" />
-                    Member since {member.memberSince}
-                  </div>
+                  {member.memberSince && (
+                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                      <Calendar size={15} className="text-gold-500 flex-shrink-0" />
+                      Member since {member.memberSince}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-5 border-t border-slate-100">
-                  <a href={`tel:${member.phone}`} className="block w-full bg-navy-900 hover:bg-navy-800 text-white font-semibold py-3 rounded-xl text-sm text-center transition-colors mb-2">
-                    Call Now
-                  </a>
+                  {member.phone && (
+                    <a href={`tel:${member.phone}`} className="block w-full bg-navy-900 hover:bg-navy-800 text-white font-semibold py-3 rounded-xl text-sm text-center transition-colors mb-2">
+                      Call Now
+                    </a>
+                  )}
                   {member.website && (
                     <a href={`https://${member.website}`} target="_blank" rel="noopener noreferrer" className="block w-full bg-gold-50 hover:bg-gold-100 text-gold-700 font-semibold py-3 rounded-xl text-sm text-center border border-gold-200 transition-colors">
                       Visit Website
@@ -133,7 +151,7 @@ export default async function MemberProfilePage({ params }: Props) {
 
                 <div className="mt-5 flex items-center justify-center gap-2 bg-gold-50 border border-gold-200 rounded-xl px-4 py-2.5">
                   <CheckCircle size={15} className="text-gold-600" />
-                  <span className="text-gold-700 text-xs font-semibold">EVA Nepal Certified Member</span>
+                  <span className="text-gold-700 text-xs font-semibold">{association.name} Certified Member</span>
                 </div>
               </div>
             </div>
@@ -141,13 +159,18 @@ export default async function MemberProfilePage({ params }: Props) {
 
           {/* Right: Details */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
-              <h2 className="font-serif font-bold text-navy-900 text-xl mb-4">About {member.name}</h2>
-              <p className="text-slate-600 leading-relaxed">{member.description}</p>
-              <p className="text-slate-600 leading-relaxed mt-3">
-                Located in {member.location}, this venue has been a proud member of the Event and Venue Association Nepal (EVA Nepal) since {member.memberSince}. With a capacity of up to {member.capacity} guests, it is an excellent choice for weddings, receptions, corporate events, and social gatherings.
-              </p>
-            </div>
+            {member.description && (
+              <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
+                <h2 className="font-serif font-bold text-navy-900 text-xl mb-4">About {member.name}</h2>
+                <p className="text-slate-600 leading-relaxed">{member.description}</p>
+                {member.memberSince && (
+                  <p className="text-slate-600 leading-relaxed mt-3">
+                    Located in {member.location}, this venue has been a proud member of {association.name} since {member.memberSince}.
+                    {member.capacity != null && ` With a capacity of up to ${member.capacity.toLocaleString()} guests, it is an excellent choice for weddings, receptions, corporate events, and social gatherings.`}
+                  </p>
+                )}
+              </div>
+            )}
 
             {member.amenities.length > 0 && (
               <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
@@ -168,29 +191,33 @@ export default async function MemberProfilePage({ params }: Props) {
               <div className="grid sm:grid-cols-2 gap-4">
                 {[
                   { label: "Venue Type", value: member.category ?? member.type },
-                  { label: "Maximum Capacity", value: `${member.capacity} guests` },
+                  member.capacity != null ? { label: "Maximum Capacity", value: `${member.capacity.toLocaleString()} guests` } : null,
                   { label: "Area", value: member.area },
-                  { label: "Full Address", value: member.location },
-                  { label: "EVA Member Since", value: member.memberSince },
-                  { label: "Contact", value: member.phone },
-                ].map(({ label, value }) => (
-                  <div key={label} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <div className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">{label}</div>
-                    <div className="font-semibold text-navy-900 text-sm">{value}</div>
-                  </div>
-                ))}
+                  member.location ? { label: "Full Address", value: member.location } : null,
+                  member.memberSince ? { label: "Member Since", value: member.memberSince } : null,
+                  member.phone ? { label: "Contact", value: member.phone } : null,
+                ]
+                  .filter(Boolean)
+                  .map(({ label, value }) => (
+                    <div key={label} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                      <div className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-1">{label}</div>
+                      <div className="font-semibold text-navy-900 text-sm">{value}</div>
+                    </div>
+                  ))}
               </div>
             </div>
 
-            {related.length > 0 && (
+            {relatedMembers.length > 0 && (
               <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
                 <h2 className="font-serif font-bold text-navy-900 text-xl mb-5">Other Venues in {member.area}</h2>
                 <div className="space-y-3">
-                  {related.map((m) => (
+                  {relatedMembers.map((m) => (
                     <Link key={m.id} href={`/members/${m.slug}`} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-gold-200 hover:bg-gold-50/30 transition-all group">
                       <div>
                         <div className="font-semibold text-navy-900 text-sm group-hover:text-navy-700">{m.name}</div>
-                        <div className="text-xs text-slate-500 mt-0.5">Capacity: {m.capacity} guests</div>
+                        {m.capacity != null && (
+                          <div className="text-xs text-slate-500 mt-0.5">Capacity: {m.capacity.toLocaleString()} guests</div>
+                        )}
                       </div>
                       <span className="text-gold-600 text-xs font-semibold">View →</span>
                     </Link>

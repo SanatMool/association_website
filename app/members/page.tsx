@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { MemberType } from "@/lib/types";
+import { getAssociationOrThrow } from "@/lib/getAssociation";
 import MembersClient from "./MembersClient";
 
 export const revalidate = 3600;
 
 export default async function MembersPage() {
+  const association = await getAssociationOrThrow();
+
   const dbMembers = await prisma.member.findMany({
+    where: { associations: { some: { associationId: association.id, visible: true } } },
     orderBy: [{ featured: "desc" }, { name: "asc" }],
   });
 

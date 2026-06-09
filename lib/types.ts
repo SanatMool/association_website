@@ -1,14 +1,16 @@
-// Serializable types shared between static data and DB-backed pages
-// Dates are always ISO strings for safe server→client serialization
+// Serializable types shared between DB-backed pages and components.
+// Dates are always ISO strings for safe server→client serialization.
+// These are NOT Prisma models — they are lean, serializable interfaces.
 
 export interface MemberType {
   id: string | number;
   slug: string;
   name: string;
+  nameNe?: string | null;
   location?: string | null;
   area: string;
-  capacity: number;
-  phone: string;
+  capacity?: number | null;  // nullable — some associations don't track capacity
+  phone?: string | null;
   website?: string | null;
   category?: string | null;
   type?: string | null;
@@ -17,6 +19,9 @@ export interface MemberType {
   memberSince?: string | null;
   featured?: boolean | null;
   image?: string | null;
+  ownerName?: string | null;
+  ownerNameNe?: string | null;
+  addressNe?: string | null;
 }
 
 export interface EventType {
@@ -40,7 +45,7 @@ export interface NewsType {
   titleNe?: string | null;
   excerpt: string;
   content?: string;
-  date: string; // ISO string
+  date: string; // ISO string — maps to publishedAt
   category: string;
   author: string;
   image?: string | null;
@@ -59,4 +64,30 @@ export interface CommitteeType {
   order: number;
   highlighted?: boolean;
   image?: string | null;
+}
+
+export interface TimelineType {
+  id: string;
+  year: number;
+  title: string;
+  titleNe?: string | null;
+  description: string;
+  descriptionNe?: string | null;
+  stat?: string | null;
+  highlighted: boolean;
+  order: number;
+}
+
+export interface AssociationType {
+  id: string;
+  name: string;
+  nameNe?: string | null;
+  slug: string;
+  domain: string;
+  logo?: string | null;
+  themeColor: string;
+  accentColor: string;
+  foundedYear?: number | null;
+  description?: string | null;
+  descriptionNe?: string | null;
 }

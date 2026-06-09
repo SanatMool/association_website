@@ -1,10 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus, Trash2, Shield } from "lucide-react";
+import { Plus, Shield } from "lucide-react";
 import DeleteUserButton from "./DeleteUserButton";
+import { getAdminContext } from "@/lib/adminAuth";
+
+export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
+  const ctx = await getAdminContext();
+  const associationId = ctx?.associationId ?? null;
+
   const users = await prisma.adminUser.findMany({
+    where: { associationId },
     select: { id: true, name: true, email: true, role: true, createdAt: true },
     orderBy: { createdAt: "asc" },
   });

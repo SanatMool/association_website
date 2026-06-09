@@ -1,17 +1,31 @@
 import { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
+import { getAssociation } from "@/lib/getAssociation";
 
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = "https://evanepal.org";
+  const association = await getAssociation();
 
-  const [members, news] = await Promise.all([
-    prisma.member.findMany({ select: { slug: true, updatedAt: true } }),
-    prisma.news.findMany({ select: { slug: true, publishedAt: true } }),
+  // Fallback base URL if no association resolved
+  const baseUrl = association?.domain
+    ? `https://${association.domain}`
+    : "https://evanepal.org";
+
+  const associationId = association?.id;
+
+  const [memberLinks, news] = await Promise.all([
+    prisma.memberAssociation.findMany({
+      where: associationId ? { associationId, visible: true } : { visible: true },
+      select: { member: { select: { slug: true, updatedAt: true } } },
+    }),
+    prisma.news.findMany({
+      where: associationId ? { associationId } : {},
+      select: { slug: true, publishedAt: true },
+    }),
   ]);
 
-  const memberUrls = members.map((m) => ({
+  const memberUrls = memberLinks.map(({ member: m }) => ({
     url: `${baseUrl}/members/${m.slug}`,
     lastModified: m.updatedAt,
     changeFrequency: "monthly" as const,

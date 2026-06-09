@@ -6,104 +6,233 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MULTI-TENANT CORE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Association {
+  id            String   @id @default(cuid())
+  name          String
+  nameNe        String?
+  slug          String   @unique
+  domain        String   @unique   // "eva.nibjar.com" | "bhaktapur.nibjar.com"
+  logo          String?            // path to /public/ logo file
+  themeColor    String   @default("#0a1040")
+  accentColor   String   @default("#f59e0b")
+  foundedYear   Int?
+  description   String?
+  descriptionNe String?
+  active        Boolean  @default(true)
+  plan          String   @default("basic") // for platform usage tracking
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberLinks MemberAssociation[]
+  events      Event[]
+  news        News[]
+  committee   CommitteeMember[]
+  admins      AdminUser[]
+  settings    SiteSettings[]
+  timeline    TimelineEntry[]
+  apiLogs     ApiLog[]
+}
+
+// Join table — a venue can belong to multiple associations
+// Each association admin controls visibility only for their own listing
+model MemberAssociation {
+  id            String   @id @default(cuid())
+  memberId      String
+  associationId String
+  visible       Boolean  @default(true)  // THIS association's admin controls this flag only
+  primary       Boolean  @default(true)  // which association is the member's "home"
+  joinedAt      DateTime @default(now())
+
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, associationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTENT MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
 model Member {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  location    String?
-  area        String
-  capacity    Int
-  type        String
-  category    String?
-  phone       String
-  email       String?
-  website     String?
-  description String?
-  amenities   String[]
-  memberSince String?
-  established Int?
-  featured    Boolean  @default(false)
-  image       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  nameNe       String?  // Nepali business name
+  slug         String   @unique
+  location     String?
+  area         String
+  capacity     Int?     // nullable — some associations don't track capacity
+  type         String?  // nullable — some associations don't categorise by type
+  category     String?
+  phone        String?
+  email        String?
+  website      String?
+  description  String?
+  amenities    String[]
+  memberSince  String?
+  established  Int?
+  featured     Boolean  @default(false)
+  active       Boolean  @default(true)
+  image        String?
+  ownerName    String?  // venue owner / contact person (English)
+  ownerNameNe  String?  // venue owner (Nepali)
+  addressNe    String?  // bilingual address (Nepali)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  associations MemberAssociation[]
 }
 
 model Event {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  title       String
-  titleNe     String?
-  description String
-  date        DateTime
-  endDate     DateTime?
-  location    String
-  type        String
-  status      String
-  attendees   Int?
-  image       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  title         String
+  titleNe       String?
+  description   String
+  date          DateTime
+  endDate       DateTime?
+  location      String
+  type          String    // networking | training | meeting | exhibition | conference
+  status        String    // upcoming | past
+  attendees     Int?
+  image         String?
+  associationId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id])
 }
 
 model News {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  title       String
-  titleNe     String?
-  excerpt     String
-  content     String
-  author      String
-  category    String
-  image       String?
-  featured    Boolean  @default(false)
-  publishedAt DateTime
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  titleNe       String?
+  excerpt       String
+  content       String
+  author        String
+  category      String   // announcement | training | event | industry | member
+  image         String?
+  featured      Boolean  @default(false)
+  publishedAt   DateTime
+  associationId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id])
 }
 
 model CommitteeMember {
-  id           String   @id @default(cuid())
-  name         String
-  nameNe       String?
-  role         String
-  roleKey      String   @default("member")
-  organization String?
-  venue        String?
-  venueNe      String?
-  bio          String?
-  order        Int      @default(99)
-  highlighted  Boolean  @default(false)
-  image        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  name          String
+  nameNe        String?
+  role          String
+  roleKey       String   @default("member")
+  organization  String?
+  venue         String?
+  venueNe       String?
+  bio           String?
+  order         Int      @default(99)
+  highlighted   Boolean  @default(false)
+  image         String?
+  associationId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id])
 }
 
+// Per-association history milestones — section hidden if empty
+model TimelineEntry {
+  id            String   @id @default(cuid())
+  associationId String
+  year          Int
+  title         String
+  titleNe       String?
+  description   String
+  descriptionNe String?
+  stat          String?  // decorative stat label, e.g. "20+ Founding Members"
+  highlighted   Boolean  @default(false)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN & SETTINGS
+// ─────────────────────────────────────────────────────────────────────────────
+
 model AdminUser {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password      String?
+  role          String   @default("admin")
+  associationId String?  // null only during migration — every admin belongs to one association
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id])
+}
+
+// Key/value store scoped per association — unique per (key, associationId) pair
+model SiteSettings {
+  id            String   @id @default(cuid())
+  key           String
+  value         String
+  label         String
+  group         String   @default("general")
+  associationId String?
+  updatedAt     DateTime @updatedAt
+
+  association Association? @relation(fields: [associationId], references: [id])
+
+  @@unique([key, associationId])
+}
+
+model AdminTask {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  status        String    @default("todo")    // todo | in_progress | done
+  priority      String    @default("medium")  // low | medium | high
+  dueDate       DateTime?
+  assignee      String?
+  associationId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PLATFORM — nibjar.com software provider layer
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PlatformUser {
   id        String   @id @default(cuid())
-  name      String
   email     String   @unique
-  password  String?
-  role      String   @default("admin")
+  password  String   // bcrypt hashed
+  name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-model SiteSettings {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     String
-  label     String
-  group     String   @default("general")
-  updatedAt DateTime @updatedAt
-}
+// API usage + error tracking per association — visible on platform dashboard
+model ApiLog {
+  id             String   @id @default(cuid())
+  associationId  String?
+  path           String
+  method         String
+  statusCode     Int
+  responseTimeMs Int
+  adminUserId    String?
+  ip             String?
+  errorMessage   String?
+  createdAt      DateTime @default(now())
 
-model AdminTask {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  status      String    @default("todo")    // todo | in_progress | done
-  priority    String    @default("medium")  // low | medium | high
-  dueDate     DateTime?
-  assignee    String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  association Association? @relation(fields: [associationId], references: [id])
 }
