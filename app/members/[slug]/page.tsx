@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Users, Phone, Globe, ArrowLeft, Calendar, CheckCircle, Building2 } from "lucide-react";
+import Image from "next/image";
+import { MapPin, Users, Phone, Globe, ArrowLeft, Calendar, CheckCircle, Building2, Facebook, Instagram, Youtube, Navigation } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 
@@ -81,9 +82,14 @@ export default async function MemberProfilePage({ params }: Props) {
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden sticky top-28">
               <div className="h-2 bg-gradient-to-r from-navy-700 via-gold-500 to-navy-700" />
               <div className="p-8 text-center">
-                <div className="w-20 h-20 bg-navy-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
-                  <Building2 size={32} className="text-gold-400" />
-                </div>
+                {member.image ? (
+                  <Image src={member.image} alt={member.name} width={80} height={80}
+                    className="w-20 h-20 rounded-2xl object-cover mx-auto mb-5" />
+                ) : (
+                  <div className="w-20 h-20 bg-navy-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                    <Building2 size={32} className="text-gold-400" />
+                  </div>
+                )}
 
                 <h1 className="font-serif font-bold text-navy-900 text-xl leading-tight mb-2">
                   {member.name}
@@ -114,12 +120,12 @@ export default async function MemberProfilePage({ params }: Props) {
                       Up to {member.capacity.toLocaleString()} guests
                     </div>
                   )}
-                  {member.phone && (
-                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                  {member.phone && member.phone.split(",").map((p) => p.trim()).filter(Boolean).map((p, i) => (
+                    <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
                       <Phone size={15} className="text-gold-500 flex-shrink-0" />
-                      <a href={`tel:${member.phone}`} className="hover:text-navy-700">{member.phone}</a>
+                      <a href={`tel:${p}`} className="hover:text-navy-700">{p}</a>
                     </div>
-                  )}
+                  ))}
                   {member.website && (
                     <div className="flex items-center gap-3 text-sm text-slate-600">
                       <Globe size={15} className="text-gold-500 flex-shrink-0" />
@@ -134,17 +140,54 @@ export default async function MemberProfilePage({ params }: Props) {
                       Member since {member.memberSince}
                     </div>
                   )}
+                  {/* Social media */}
+                  {(member.facebook || member.instagram || member.youtube) && (
+                    <div className="flex items-center gap-2 pt-1">
+                      {member.facebook && (
+                        <a href={member.facebook.startsWith("http") ? member.facebook : `https://facebook.com/${member.facebook}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                          <Facebook size={14} />
+                        </a>
+                      )}
+                      {member.instagram && (
+                        <a href={member.instagram.startsWith("http") ? member.instagram : `https://instagram.com/${member.instagram}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg bg-pink-50 text-pink-500 hover:bg-pink-100 transition-colors">
+                          <Instagram size={14} />
+                        </a>
+                      )}
+                      {member.youtube && (
+                        <a href={member.youtube.startsWith("http") ? member.youtube : `https://youtube.com/${member.youtube}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors">
+                          <Youtube size={14} />
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-6 pt-5 border-t border-slate-100">
                   {member.phone && (
-                    <a href={`tel:${member.phone}`} className="block w-full bg-navy-900 hover:bg-navy-800 text-white font-semibold py-3 rounded-xl text-sm text-center transition-colors mb-2">
+                    <a href={`tel:${member.phone.split(",")[0].trim()}`} className="block w-full bg-navy-900 hover:bg-navy-800 text-white font-semibold py-3 rounded-xl text-sm text-center transition-colors mb-2">
                       Call Now
                     </a>
                   )}
                   {member.website && (
-                    <a href={`https://${member.website}`} target="_blank" rel="noopener noreferrer" className="block w-full bg-gold-50 hover:bg-gold-100 text-gold-700 font-semibold py-3 rounded-xl text-sm text-center border border-gold-200 transition-colors">
+                    <a href={`https://${member.website}`} target="_blank" rel="noopener noreferrer" className="block w-full bg-gold-50 hover:bg-gold-100 text-gold-700 font-semibold py-3 rounded-xl text-sm text-center border border-gold-200 transition-colors mb-2">
                       Visit Website
+                    </a>
+                  )}
+                  {member.latitude != null && member.longitude != null && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${member.latitude},${member.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold py-3 rounded-xl text-sm text-center border border-emerald-200 transition-colors"
+                    >
+                      <Navigation size={14} />
+                      Get Directions
                     </a>
                   )}
                 </div>
@@ -206,6 +249,33 @@ export default async function MemberProfilePage({ params }: Props) {
                   ))}
               </div>
             </div>
+
+            {member.latitude != null && member.longitude != null && (
+              <div className="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
+                <div className="px-8 pt-6 pb-4">
+                  <h2 className="font-serif font-bold text-navy-900 text-xl">Location</h2>
+                </div>
+                <iframe
+                  title={`Map for ${member.name}`}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${member.longitude - 0.005},${member.latitude - 0.005},${member.longitude + 0.005},${member.latitude + 0.005}&layer=mapnik&marker=${member.latitude},${member.longitude}`}
+                  width="100%"
+                  height="280"
+                  className="border-0"
+                  loading="lazy"
+                />
+                <div className="px-8 py-4">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${member.latitude},${member.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+                  >
+                    <Navigation size={14} />
+                    Open in Google Maps for directions
+                  </a>
+                </div>
+              </div>
+            )}
 
             {relatedMembers.length > 0 && (
               <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">

@@ -67,7 +67,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers } });
   }
 
-  // ── 3. Protect /admin/* routes (association admin) ────────────────────────
+  // ── 3. Protect /portal/* routes (member portal) ──────────────────────────
+  if (pathname.startsWith("/portal") && pathname !== "/portal/login" && !pathname.startsWith("/api/portal-auth")) {
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+      cookieName: "member-portal-token",
+    });
+    if (!token) {
+      return NextResponse.redirect(new URL("/portal/login", request.url));
+    }
+    const headers = new Headers(request.headers);
+    headers.set("x-hostname", hostname);
+    return NextResponse.next({ request: { headers } });
+  }
+
+  // ── 4. Protect /admin/* routes (association admin) ────────────────────────
   if (
     pathname.startsWith("/admin") &&
     pathname !== "/admin/login" &&
@@ -85,7 +100,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── 4. All other routes — inject hostname and pass through ─────────────────
+  // ── 5. All other routes — inject hostname and pass through ─────────────────
   const headers = new Headers(request.headers);
   headers.set("x-hostname", hostname);
   return NextResponse.next({ request: { headers } });

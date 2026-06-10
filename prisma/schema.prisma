@@ -27,29 +27,38 @@ model Association {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  memberLinks          MemberAssociation[]
-  events               Event[]
-  news                 News[]
-  committee            CommitteeMember[]
-  admins               AdminUser[]
-  settings             SiteSettings[]
-  timeline             TimelineEntry[]
-  apiLogs              ApiLog[]
+  memberLinks            MemberAssociation[]
+  events                 Event[]
+  news                   News[]
+  committee              CommitteeMember[]
+  admins                 AdminUser[]
+  settings               SiteSettings[]
+  timeline               TimelineEntry[]
+  apiLogs                ApiLog[]
   membershipApplications MembershipApplication[]
+  membershipCategories   MembershipCategory[]
+  duesPayments           DuesPayment[]
+  meetings               Meeting[]
+  expenseVendors         ExpenseVendor[]
+  expenses               Expense[]
+  memberContributions    MemberContribution[]
+  memberAccounts         MemberAccount[]
 }
 
 // Join table — a venue can belong to multiple associations
 // Each association admin controls visibility only for their own listing
 model MemberAssociation {
   id            String   @id @default(cuid())
-  memberId      String
-  associationId String
-  visible       Boolean  @default(true)  // THIS association's admin controls this flag only
-  primary       Boolean  @default(true)  // which association is the member's "home"
-  joinedAt      DateTime @default(now())
+  memberId         String
+  associationId    String
+  memberCategoryId String?
+  visible          Boolean  @default(true)
+  primary          Boolean  @default(true)
+  joinedAt         DateTime @default(now())
 
-  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member         Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  association    Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  memberCategory MembershipCategory? @relation(fields: [memberCategoryId], references: [id])
 
   @@unique([memberId, associationId])
 }
@@ -81,10 +90,18 @@ model Member {
   ownerName    String?  // venue owner / contact person (English)
   ownerNameNe  String?  // venue owner (Nepali)
   addressNe    String?  // bilingual address (Nepali)
+  facebook     String?  // Facebook page URL or handle
+  instagram    String?  // Instagram handle
+  youtube      String?  // YouTube channel URL or handle
+  latitude     Float?   // GPS latitude (decimal degrees) — from Nominatim geocoding
+  longitude    Float?   // GPS longitude (decimal degrees) — from Nominatim geocoding
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  associations MemberAssociation[]
+  associations        MemberAssociation[]
+  duesPayments        DuesPayment[]
+  contributions       MemberContribution[]
+  portalAccounts      MemberAccount[]
 }
 
 model Event {
@@ -104,7 +121,10 @@ model Event {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  association Association? @relation(fields: [associationId], references: [id])
+  association  Association? @relation(fields: [associationId], references: [id])
+  rsvps        EventRsvp[]
+  expenses     Expense[]
+  contributions MemberContribution[]
 }
 
 model News {
@@ -253,4 +273,205 @@ model ApiLog {
   createdAt      DateTime @default(now())
 
   association Association? @relation(fields: [associationId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 3 — MEMBERSHIP & DUES
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Admin-configurable fee schedule per member category per association
+model MembershipCategory {
+  id               String   @id @default(cuid())
+  associationId    String
+  name             String   // "Catering", "Venue", "Decorator", etc.
+  monthlyFee       Decimal  @default(0) @db.Decimal(10, 2)
+  annualRenewalFee Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  association  Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  memberLinks  MemberAssociation[]
+  duesPayments DuesPayment[]
+}
+
+// Each payment record — one row per payment (monthly, annual, or lump sum)
+model DuesPayment {
+  id                String    @id @default(cuid())
+  associationId     String
+  memberId          String
+  memberCategoryId  String?   // category at time of payment (snapshot)
+  type              String    // monthly | annual_renewal
+  amount            Decimal   @db.Decimal(10, 2)
+  periodStart       DateTime  // start of period covered
+  periodEnd         DateTime  // end of period covered
+  method            String    @default("pending") // cash | transfer | pending
+  status            String    @default("pending") // paid | pending
+  receiptNumber     String?
+  notes             String?
+  recordedByAdminId String?
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  association    Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member         Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberCategory MembershipCategory? @relation(fields: [memberCategoryId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 6 — MEETINGS & EXPENSES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Meeting {
+  id            String   @id @default(cuid())
+  associationId String
+  title         String
+  type          String   // agm | picnic | program | committee | special
+  scheduledAt   DateTime
+  venue         String?
+  description   String?
+  status        String   @default("scheduled") // scheduled | completed | cancelled
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association   Association          @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  agendaItems   AgendaItem[]
+  minutes       MeetingMinutes?
+  expenses      Expense[]
+  contributions MemberContribution[]
+  rsvps         MeetingRsvp[]
+}
+
+model AgendaItem {
+  id          String   @id @default(cuid())
+  meetingId   String
+  order       Int      @default(0)
+  title       String
+  description String?
+  outcome     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model MeetingMinutes {
+  id          String    @id @default(cuid())
+  meetingId   String    @unique
+  content     String
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+// Reusable vendor list per association
+model ExpenseVendor {
+  id            String   @id @default(cuid())
+  associationId String
+  name          String
+  category      String?  // food | transport | venue | printing | other
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  expenses    Expense[]
+}
+
+// Expense line item — attaches to a Meeting OR an Event
+model Expense {
+  id            String   @id @default(cuid())
+  associationId String
+  meetingId     String?
+  eventId       String?
+  vendorId      String?  // FK to ExpenseVendor (optional)
+  vendorName    String?  // free-text fallback if no vendorId
+  description   String
+  amount        Decimal  @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  meeting     Meeting?       @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  event       Event?         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  vendor      ExpenseVendor? @relation(fields: [vendorId], references: [id])
+}
+
+// Per-member contribution to a meeting or event
+model MemberContribution {
+  id                String    @id @default(cuid())
+  associationId     String
+  memberId          String
+  meetingId         String?
+  eventId           String?
+  amount            Decimal   @db.Decimal(10, 2)
+  method            String    @default("pending") // cash | transfer | pending
+  status            String    @default("pending") // paid | pending
+  notes             String?
+  recordedByAdminId String?
+  paidAt            DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  meeting     Meeting?    @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  event       Event?      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 4 — MEMBER PORTAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+// One portal account per member per association — created by admin
+model MemberAccount {
+  id            String    @id @default(cuid())
+  memberId      String
+  associationId String
+  email         String
+  passwordHash  String
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  association  Association   @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  member       Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  meetingRsvps MeetingRsvp[]
+  eventRsvps   EventRsvp[]
+
+  @@unique([email, associationId])
+  @@unique([memberId, associationId])
+}
+
+model MeetingRsvp {
+  id              String   @id @default(cuid())
+  meetingId       String
+  memberAccountId String
+  status          String   @default("attending") // attending | not_attending | maybe
+  guestCount      Int      @default(1)
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  meeting       Meeting       @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  memberAccount MemberAccount @relation(fields: [memberAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, memberAccountId])
+}
+
+model EventRsvp {
+  id              String   @id @default(cuid())
+  eventId         String
+  memberAccountId String
+  status          String   @default("attending") // attending | not_attending | maybe
+  guestCount      Int      @default(1)
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  memberAccount MemberAccount @relation(fields: [memberAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, memberAccountId])
 }

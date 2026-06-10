@@ -591,7 +591,16 @@ Add this at the very BOTTOM of your progress.md
 
 ---
 
-## Phase 3 — Membership Management (NOT STARTED — discuss before building)
+## Phase 3 — Membership Management ✓ COMPLETE
+
+Built: MembershipCategory admin, DuesPayment admin (record/mark-paid), fee schedule per category.
+
+API routes: /api/membership/categories, /api/membership/categories/[id], /api/membership/dues, /api/membership/dues/[id], /api/membership/member-category/[id]
+Admin pages: /admin/membership/categories, /admin/membership/dues
+
+---
+
+## Phase 3 — Membership Management (ORIGINAL NOTES — NOT STARTED — discuss before building)
 
 EVA Nepal members pay annual dues and hold membership tiers.
 This phase adds the ability to track who has paid, who is lapsing, and what tier they hold.
@@ -614,7 +623,18 @@ Cross-module rule: member status must stay in sync with MembershipRecord — no 
 
 ---
 
-## Phase 4 — Member Portal (NOT STARTED — discuss before building)
+## Phase 4 — Member Portal ✓ COMPLETE
+
+Built: Cookie-based portal auth (member-portal-token JWT), portal login page, portal layout with sidebar, dashboard, events+RSVP, meetings+RSVP+minutes, dues history. Admin portal-accounts page (create/reset/delete).
+
+Auth: lib/portalAuth.ts → getPortalUser(). Middleware protects /portal/* (except /portal/login).
+Portal routes: /portal/login, /portal (dashboard), /portal/events, /portal/meetings, /portal/dues
+Admin: /admin/portal-accounts
+API: /api/portal-auth, /api/portal/me, /api/portal/events, /api/portal/meetings, /api/portal/dues, /api/portal/rsvp/events/[id], /api/portal/rsvp/meetings/[id], /api/admin/portal-accounts, /api/admin/portal-accounts/[id]
+
+---
+
+## Phase 4 — Member Portal (ORIGINAL NOTES — NOT STARTED — discuss before building)
 
 Members log in to a private area to view their membership, event history, and payments.  
  This is a separate authenticated surface from /admin.
@@ -659,7 +679,16 @@ Planned scope:
 
 ---
 
-## Phase 6 — Meeting / Agenda Module (NOT STARTED — discuss before building)
+## Phase 6 — Meeting / Agenda Module ✓ COMPLETE
+
+Built: Meeting CRUD, AgendaItem management (tabbed), Expenses (vendor list + free text), MemberContributions, MeetingMinutes (upsert + publish).
+
+API routes: /api/meetings, /api/meetings/[id], /api/meetings/[id]/agenda, /api/meetings/[id]/agenda/[itemId], /api/meetings/[id]/minutes, /api/meetings/[id]/expenses, /api/meetings/[id]/expenses/[expenseId], /api/meetings/[id]/contributions, /api/meetings/[id]/contributions/[contribId], /api/expense-vendors
+Admin pages: /admin/meetings, /admin/meetings/new, /admin/meetings/[id] (4-tab detail)
+
+---
+
+## Phase 6 — Meeting / Agenda Module (ORIGINAL NOTES — NOT STARTED — discuss before building)
 
 AGM, committee meetings, and special meetings with structured agendas and published minutes.
 
@@ -678,7 +707,16 @@ Date anchor: scheduledAt field for all meeting queries.
 
 ---
 
-## Phase 7 — Reporting Dashboard (NOT STARTED — discuss before building)
+## Phase 7 — Reporting Dashboard ✓ COMPLETE
+
+Built: /admin/reports page + /api/admin/reports GET endpoint.
+
+Metrics: dues collected/pending (by month + by category), expenses by meeting, member contributions (top 10), member growth by month, event attendance (RSVPs), meeting attendance (RSVPs), net balance summary, portal account adoption rate.
+No new npm deps — CSS bar charts only.
+
+---
+
+## Phase 7 — Reporting Dashboard (ORIGINAL NOTES — NOT STARTED — discuss before building)
 
 Summary view for the admin to understand membership health and event performance.
 
@@ -695,6 +733,44 @@ Planned scope:
 Rule: every income source must be wired at the time it is built.  
  No income source may be added later without also wiring it into reports here.  
  Partial reporting is a bug.
+
+---
+
+## Member Form + Members Admin Overhaul ✓ COMPLETE
+
+### Schema additions (migrations applied + prisma generate run)
+- `Member.facebook String?` — migration 20260610070809_add_social_media_to_member
+- `Member.instagram String?`
+- `Member.youtube String?`
+- `Member.latitude Float?` — migration 20260610072559_add_lat_lng_to_member
+- `Member.longitude Float?`
+- `lib/types.ts` MemberType updated with all 5 new fields
+
+### MemberForm.tsx — full 5-step guided rewrite (components/admin/MemberForm.tsx)
+- Step 1: Name, slug (auto-fill + prefix display), Member Since with BS↔AD converter, Featured
+- Step 2: Area, Address, Capacity (tier label), Nominatim geocoding → OSM map preview, manual lat/lng override
+- Step 3: Category multi-select (CheckCards), Type multi-select, Description + Auto-Generate button (4 random templates)
+- Step 4: Multiple phones (Nepali validation regex), Email, Website, Facebook/Instagram/YouTube
+- Step 5: 26 amenities checkbox grid, Image upload, Review summary, Save
+- On submit: lowercases area/location/category/type/amenities, capacity→number, phones joined comma-separated
+
+### API fix (app/api/members/route.ts)
+- POST handler wrapped prisma.$transaction in try/catch — returns JSON error instead of empty 500
+
+### Members admin page (app/(admin)/admin/members/)
+- MembersClient.tsx: search, area/category/visibility filters, sortable columns, pagination (25/page), stats bar
+- Server page passes all MemberRow[] to client
+
+### Public member profile page (app/members/[slug]/page.tsx)
+- Profile image: conditional <Image> when member.image set, fallback Building2 icon
+- Multiple phones: split by comma, each as separate link
+- Social media icons: Facebook/Instagram/YouTube with smart URL handling
+- "Get Directions" button (emerald) when lat/lng set → Google Maps directions URL
+- OpenStreetMap embed iframe when lat/lng set
+- "Open in Google Maps for directions" text link below map
+
+### Admin layout (app/(admin)/admin/layout.tsx)
+- Added: Portal Accounts (KeyRound icon), Reports (BarChart2 icon) nav links
 
 ---
 

@@ -39,15 +39,19 @@ export async function POST(req: NextRequest) {
     data.slug = slugify(data.name);
   }
 
-  const member = await prisma.$transaction(async (tx) => {
-    const m = await tx.member.create({ data });
-    if (associationId) {
-      await tx.memberAssociation.create({
-        data: { memberId: m.id, associationId },
-      });
-    }
-    return m;
-  });
+  let member;
+  try {
+    member = await prisma.$transaction(async (tx) => {
+      const m = await tx.member.create({ data });
+      if (associationId) {
+        await tx.memberAssociation.create({ data: { memberId: m.id, associationId } });
+      }
+      return m;
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Database error";
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+  }
 
   logApiCall({
     associationId,

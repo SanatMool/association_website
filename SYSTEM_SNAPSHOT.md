@@ -3,7 +3,7 @@
 Read this before any schema change, API change, or structural decision.
 Update this after every migration or architectural change.
 
-Last updated: 2026-06-09 (Steps 1–6 of multi-tenancy complete)
+Last updated: 2026-06-10 (Phases 3, 4, 6, 7 complete)
 
 ---
 
@@ -252,6 +252,7 @@ Admin route: `/admin/applications` — list + status filter + detail panel + sta
 | 20260508120000_add_committee_nepali_fields             | nameNe, venueNe on CommitteeMember                                  |
 | 20260609000000_add_multi_tenancy_association_platform  | Full multi-tenancy: 5 new models, associationId on all content rows |
 | 20260609091232_add_membership_application              | MembershipApplication model                                         |
+| 20260609120537_add_phases_3_4_6_7                      | MembershipCategory, DuesPayment, Meeting, AgendaItem, MeetingMinutes, ExpenseVendor, Expense, MemberContribution, MemberAccount, MeetingRsvp, EventRsvp — memberCategoryId on MemberAssociation |
 
 ---
 
@@ -421,16 +422,46 @@ DEV_ASSOCIATION_SLUG=eva-nepal        # optional — controls which association 
 
 ## Build Health
 
-Last verified: 2026-06-09
+Last verified: 2026-06-10
 
 ```
-✓ npm run build — 46 routes, 0 errors
-✓ Migration 20260609000000 — APPLIED
-✓ Seed — 2 associations, 196 members verified
-✓ Public pages — association-scoped (Steps 3)
-✓ Admin panel — association-scoped (Step 4)
-✓ Platform panel — fully built (Step 5)
+✓ npx tsc --noEmit — 0 errors
+✓ Migration 20260609120537_add_phases_3_4_6_7 — APPLIED
+✓ Phase 3 — MembershipCategory + DuesPayment admin ✓
+✓ Phase 4 — Member Portal (auth + pages + admin portal-accounts) ✓
+✓ Phase 6 — Meetings, Agenda, Expenses, Contributions, Minutes ✓
+✓ Phase 7 — Reporting dashboard (/admin/reports) ✓
 ```
+
+## New API Routes (Phases 3, 4, 6, 7)
+
+| Route | Methods | Auth | Notes |
+|---|---|---|---|
+| /api/membership/categories | GET, POST | Admin | Fee categories per association |
+| /api/membership/categories/[id] | PUT, DELETE | Admin | |
+| /api/membership/dues | GET, POST | Admin | Filter by memberId/status/type |
+| /api/membership/dues/[id] | PATCH, DELETE | Admin | Auto-sets paidAt on status→paid |
+| /api/membership/member-category/[id] | PATCH | Admin | Assign category to MemberAssociation |
+| /api/meetings | GET, POST | Admin | |
+| /api/meetings/[id] | GET, PUT, DELETE | Admin | Full includes: agenda, minutes, expenses, contributions |
+| /api/meetings/[id]/agenda | POST | Admin | Auto-increments order |
+| /api/meetings/[id]/agenda/[itemId] | PUT, DELETE | Admin | |
+| /api/meetings/[id]/minutes | PUT | Admin | Upsert, optional publish |
+| /api/meetings/[id]/expenses | POST | Admin | vendorId OR free-text + saveVendor flag |
+| /api/meetings/[id]/expenses/[expenseId] | DELETE | Admin | |
+| /api/meetings/[id]/contributions | POST | Admin | |
+| /api/meetings/[id]/contributions/[contribId] | PATCH, DELETE | Admin | |
+| /api/expense-vendors | GET | Admin | Saved vendor list for dropdown |
+| /api/portal-auth | POST, DELETE | — | Sets/clears member-portal-token cookie |
+| /api/portal/me | GET | Portal | Returns member + association info |
+| /api/portal/events | GET | Portal | Events with current member's RSVPs |
+| /api/portal/meetings | GET | Portal | Meetings with agenda, minutes, RSVPs |
+| /api/portal/dues | GET | Portal | DuesPayments for current member |
+| /api/portal/rsvp/events/[id] | POST, DELETE | Portal | Upsert/remove EventRsvp |
+| /api/portal/rsvp/meetings/[id] | POST, DELETE | Portal | Upsert/remove MeetingRsvp |
+| /api/admin/portal-accounts | GET, POST | Admin | List members with portal status; create account |
+| /api/admin/portal-accounts/[id] | PATCH, DELETE | Admin | Reset password / delete account |
+| /api/admin/reports | GET | Admin | All reporting metrics in one call |
 
 ## Known Issues / Watch Points
 

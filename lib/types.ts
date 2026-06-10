@@ -22,6 +22,11 @@ export interface MemberType {
   ownerName?: string | null;
   ownerNameNe?: string | null;
   addressNe?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  youtube?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface EventType {

@@ -10,10 +10,11 @@ interface PublicChromeProps {
 
 export default function PublicChrome({ children, navbar, footer }: PublicChromeProps) {
   const pathname = usePathname();
-  const isAdmin = pathname?.startsWith("/admin");
+  const isAdmin    = pathname?.startsWith("/admin");
   const isPlatform = pathname?.startsWith("/platform");
+  const isPortal   = pathname?.startsWith("/portal");
 
-  if (isAdmin || isPlatform) return <>{children}</>;
+  if (isAdmin || isPlatform || isPortal) return <>{children}</>;
 
   return (
     <>
