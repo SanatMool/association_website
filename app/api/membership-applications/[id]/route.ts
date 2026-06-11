@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { slugify } from "@/lib/utils";
 
-const TERMINAL_STATUSES = ["accepted", "rejected"];
-
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,9 +18,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   });
   if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Once accepted or rejected, status is locked
-  if (TERMINAL_STATUSES.includes(app.status)) {
-    return NextResponse.json({ error: `Application is already ${app.status} and cannot be changed.` }, { status: 400 });
+  // Accepted is permanently locked — a member record was already created
+  if (app.status === "accepted") {
+    return NextResponse.json({ error: "Accepted applications cannot be changed." }, { status: 400 });
   }
 
   // ── ACCEPT: create Member + MemberAssociation in a transaction ──────────

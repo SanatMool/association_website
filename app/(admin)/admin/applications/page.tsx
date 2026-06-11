@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertTriangle,
-  ArrowRight, UserPlus, Lock, ExternalLink, Search,
+  ArrowRight, UserPlus, Lock, ExternalLink, Search, X, RotateCcw,
   ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
@@ -36,7 +36,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   rejected: { label: "Rejected", color: "bg-red-50 text-red-700 border-red-200" },
 };
 
-const TERMINAL = ["accepted", "rejected"];
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -47,6 +46,7 @@ export default function ApplicationsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmAccept, setConfirmAccept] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const [working, setWorking] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [sortKey, setSortKey] = useState<"venueName" | "ownerName" | "createdAt" | "status">("createdAt");
@@ -62,6 +62,7 @@ export default function ApplicationsPage() {
   function clearConfirms() {
     setConfirmAccept(false);
     setConfirmReject(false);
+    setConfirmReopen(false);
     setConfirmDeleteId(null);
   }
 
@@ -71,8 +72,13 @@ export default function ApplicationsPage() {
       .then((data: Application[]) => { setApplications(data); setLoading(false); });
   }, []);
 
-  // Select an application and clear any open confirmations
+  // Select an application (or deselect if already selected)
   function selectApp(app: Application) {
+    if (selected?.id === app.id) {
+      clearConfirms();
+      setSelected(null);
+      return;
+    }
     clearConfirms();
     setSelected(app);
   }
@@ -125,6 +131,23 @@ export default function ApplicationsPage() {
     setApplications((prev) => prev.map((a) => a.id === selected.id ? updated : a));
     setSelected(updated);
     showToast("Application rejected.", false);
+  }
+
+  async function reopenApplication() {
+    if (!selected || working) return;
+    setWorking(true);
+    setConfirmReopen(false);
+    const res  = await fetch(`/api/membership-applications/${selected.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "pending" }),
+    });
+    const json = await res.json() as { success: boolean; error?: string };
+    setWorking(false);
+    if (!json.success) { showToast(json.error ?? "Failed to reopen", false); return; }
+    const updated = { ...selected, status: "pending" };
+    setApplications((prev) => prev.map((a) => a.id === selected.id ? updated : a));
+    setSelected(updated);
+    showToast("Application reopened.", true);
   }
 
   async function deleteApplication(id: string) {
@@ -183,7 +206,7 @@ export default function ApplicationsPage() {
   // Reset to page 1 when search or status filter changes
   useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);
 
-  const isTerminal = selected ? TERMINAL.includes(selected.status) : false;
+  const isTerminal = selected ? selected.status === "accepted" : false;
 
   return (
     <div>
@@ -371,9 +394,18 @@ export default function ApplicationsPage() {
                     <h3 className="font-semibold text-gray-900">{selected.venueName}</h3>
                     <p className="text-xs text-gray-400 mt-0.5">Applied {safeDate(selected.createdAt)}</p>
                   </div>
-                  <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${STATUS_CONFIG[selected.status]?.color}`}>
-                    {STATUS_CONFIG[selected.status]?.label}
-                  </span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${STATUS_CONFIG[selected.status]?.color}`}>
+                      {STATUS_CONFIG[selected.status]?.label}
+                    </span>
+                    <button
+                      onClick={() => { clearConfirms(); setSelected(null); }}
+                      className="text-gray-300 hover:text-gray-500 transition-colors p-0.5 rounded"
+                      title="Close"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Application details */}
@@ -401,17 +433,16 @@ export default function ApplicationsPage() {
                       <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm mb-1">
                         <CheckCircle size={15} /> Application Accepted
                       </div>
-                      <p className="text-xs text-emerald-600 mb-3">
-                        A member profile was automatically created from this application.
+                      <p className="text-xs text-emerald-600">
+                        A member profile was automatically created from this application. You can manage it from the{" "}
+                        {selected.memberId ? (
+                          <Link href={`/admin/members/${selected.memberId}`} className="underline font-semibold hover:text-emerald-700">
+                            Members section
+                          </Link>
+                        ) : (
+                          <span className="font-semibold">Members section</span>
+                        )}.
                       </p>
-                      {selected.memberId && (
-                        <Link
-                          href={`/admin/members/${selected.memberId}`}
-                          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-300 px-3 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors"
-                        >
-                          <ExternalLink size={11} /> View &amp; Complete Member Profile
-                        </Link>
-                      )}
                     </div>
                   )}
 
@@ -421,14 +452,40 @@ export default function ApplicationsPage() {
                       <div className="flex items-center gap-2 text-red-700 font-semibold text-sm mb-1">
                         <XCircle size={15} /> Application Rejected
                       </div>
-                      <p className="text-xs text-red-500">
-                        This application has been rejected. No further actions are available.
+                      <p className="text-xs text-red-500 mb-3">
+                        This application was rejected. If this was a mistake, you can reopen it for review.
                       </p>
+                      {confirmReopen ? (
+                        <div className="bg-white border border-red-200 rounded-lg p-3">
+                          <p className="text-xs text-gray-700 font-medium mb-2">
+                            Reopen this application and set it back to pending?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={reopenApplication}
+                              disabled={working}
+                              className="flex-1 py-1.5 text-xs font-semibold bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
+                            >
+                              {working ? "Reopening…" : "Yes, Reopen"}
+                            </button>
+                            <button onClick={() => setConfirmReopen(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { clearConfirms(); setConfirmReopen(true); }}
+                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                        >
+                          <RotateCcw size={11} /> Reopen Application
+                        </button>
+                      )}
                     </div>
                   )}
 
                   {/* ── ACTIVE ACTIONS (non-terminal) ────────────────────── */}
-                  {!isTerminal && (
+                  {selected.status !== "accepted" && selected.status !== "rejected" && (
                     <>
                       {/* Lock notice */}
                       <div className="flex items-start gap-2 text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
@@ -511,7 +568,8 @@ export default function ApplicationsPage() {
                     </>
                   )}
 
-                  {/* Delete — always available */}
+                  {/* Delete — hidden for accepted applications */}
+                  {selected.status !== "accepted" && (
                   <div className="pt-1 border-t border-gray-100">
                     {confirmDeleteId === selected.id ? (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -536,6 +594,7 @@ export default function ApplicationsPage() {
                       </button>
                     )}
                   </div>
+                  )}
                 </div>
               </>
             ) : (
