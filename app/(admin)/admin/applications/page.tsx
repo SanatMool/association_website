@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Clock, CheckCircle, XCircle, Eye, Trash2, AlertTriangle,
-  ArrowRight, UserPlus, Lock, ExternalLink, Search, X, RotateCcw,
+  ArrowRight, UserPlus, Lock, Search, X, RotateCcw,
   ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight,
+  ClipboardList, User, Phone, Mail, MapPin, Users, Globe, Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,22 +37,28 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   rejected: { label: "Rejected", color: "bg-red-50 text-red-700 border-red-200" },
 };
 
+const STATUS_ICON: Record<string, React.ElementType> = {
+  pending:  Clock,
+  reviewed: Eye,
+  accepted: CheckCircle,
+  rejected: XCircle,
+};
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selected, setSelected] = useState<Application | null>(null);
+  const [selected, setSelected]         = useState<Application | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [confirmAccept, setConfirmAccept] = useState(false);
-  const [confirmReject, setConfirmReject] = useState(false);
-  const [confirmReopen, setConfirmReopen] = useState(false);
-  const [working, setWorking] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [sortKey, setSortKey] = useState<"venueName" | "ownerName" | "createdAt" | "status">("createdAt");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [confirmAccept, setConfirmAccept]     = useState(false);
+  const [confirmReject, setConfirmReject]     = useState(false);
+  const [confirmReopen, setConfirmReopen]     = useState(false);
+  const [working, setWorking]           = useState(false);
+  const [toast, setToast]               = useState<{ msg: string; ok: boolean } | null>(null);
+  const [sortKey, setSortKey]           = useState<"venueName" | "ownerName" | "createdAt" | "status">("createdAt");
+  const [sortDir, setSortDir]           = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage]   = useState(1);
   const PAGE_SIZE = 20;
 
   function showToast(msg: string, ok: boolean) {
@@ -72,13 +79,10 @@ export default function ApplicationsPage() {
       .then((data: Application[]) => { setApplications(data); setLoading(false); });
   }, []);
 
-  // Select an application (or deselect if already selected)
+  useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);
+
   function selectApp(app: Application) {
-    if (selected?.id === app.id) {
-      clearConfirms();
-      setSelected(null);
-      return;
-    }
+    if (selected?.id === app.id) { clearConfirms(); setSelected(null); return; }
     clearConfirms();
     setSelected(app);
   }
@@ -101,8 +105,7 @@ export default function ApplicationsPage() {
 
   async function acceptApplication() {
     if (!selected || working) return;
-    setWorking(true);
-    setConfirmAccept(false);
+    setWorking(true); setConfirmAccept(false);
     const res  = await fetch(`/api/membership-applications/${selected.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "accepted" }),
@@ -118,8 +121,7 @@ export default function ApplicationsPage() {
 
   async function rejectApplication() {
     if (!selected || working) return;
-    setWorking(true);
-    setConfirmReject(false);
+    setWorking(true); setConfirmReject(false);
     const res  = await fetch(`/api/membership-applications/${selected.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "rejected" }),
@@ -135,8 +137,7 @@ export default function ApplicationsPage() {
 
   async function reopenApplication() {
     if (!selected || working) return;
-    setWorking(true);
-    setConfirmReopen(false);
+    setWorking(true); setConfirmReopen(false);
     const res  = await fetch(`/api/membership-applications/${selected.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "pending" }),
@@ -178,10 +179,10 @@ export default function ApplicationsPage() {
       })
       .sort((a, b) => {
         let cmp = 0;
-        if (sortKey === "venueName") cmp = a.venueName.localeCompare(b.venueName);
+        if (sortKey === "venueName")      cmp = a.venueName.localeCompare(b.venueName);
         else if (sortKey === "ownerName") cmp = a.ownerName.localeCompare(b.ownerName);
-        else if (sortKey === "status") cmp = a.status.localeCompare(b.status);
-        else cmp = (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
+        else if (sortKey === "status")    cmp = a.status.localeCompare(b.status);
+        else                              cmp = (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
         return sortDir === "asc" ? cmp : -cmp;
       });
   }, [applications, search, statusFilter, sortKey, sortDir]);
@@ -197,16 +198,261 @@ export default function ApplicationsPage() {
   }
 
   function SortIcon({ col }: { col: typeof sortKey }) {
-    if (sortKey !== col) return <ChevronsUpDown size={11} className="text-gray-300 ml-1 inline" />;
+    if (sortKey !== col) return <ChevronsUpDown size={11} className="text-gray-300 ml-0.5 inline" />;
     return sortDir === "asc"
-      ? <ChevronUp size={11} className="text-amber-500 ml-1 inline" />
-      : <ChevronDown size={11} className="text-amber-500 ml-1 inline" />;
+      ? <ChevronUp   size={11} className="text-amber-500 ml-0.5 inline" />
+      : <ChevronDown size={11} className="text-amber-500 ml-0.5 inline" />;
   }
 
-  // Reset to page 1 when search or status filter changes
-  useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);
+  // ── Reusable pagination ────────────────────────────────────────────────────
+  function renderPagination() {
+    if (totalPages <= 1) return null;
+    return (
+      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+        <p className="text-xs text-gray-400">
+          {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+        </p>
+        <div className="flex items-center gap-1">
+          <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40">
+            <ChevronLeft size={13} />
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+            .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+              if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push("…");
+              acc.push(p); return acc;
+            }, [])
+            .map((p, i) =>
+              p === "…" ? (
+                <span key={`e${i}`} className="px-1 text-xs text-gray-400">…</span>
+              ) : (
+                <button key={p} onClick={() => setCurrentPage(p as number)}
+                  className={`w-7 h-7 text-xs rounded-lg border transition-colors ${safePage === p ? "bg-[#0a1040] text-white border-[#0a1040]" : "border-gray-200 text-gray-600 hover:bg-white"}`}>
+                  {p}
+                </button>
+              )
+            )}
+          <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40">
+            <ChevronRight size={13} />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const isTerminal = selected ? selected.status === "accepted" : false;
+  // ── Shared detail panel content ───────────────────────────────────────────
+  function renderDetail() {
+    if (!selected) return null;
+    const StatusIcon = STATUS_ICON[selected.status] ?? Clock;
+    const cfg = STATUS_CONFIG[selected.status] ?? STATUS_CONFIG.pending;
+
+    const fields: { icon: React.ElementType; label: string; value: string }[] = [
+      { icon: User,   label: "Owner",    value: selected.ownerName },
+      { icon: Phone,  label: "Phone",    value: selected.phone },
+      { icon: Mail,   label: "Email",    value: selected.email },
+      { icon: MapPin, label: "Location", value: selected.location },
+      { icon: Users,  label: "Capacity", value: selected.capacity ?? "—" },
+      { icon: Globe,  label: "Website",  value: selected.website ?? "—" },
+    ];
+
+    return (
+      <>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-gray-900 text-base leading-tight">{selected.venueName}</h3>
+            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+              <Clock size={10} /> Applied {safeDate(selected.createdAt)}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${cfg.color}`}>
+              <StatusIcon size={10} /> {cfg.label}
+            </span>
+            <button
+              onClick={() => { clearConfirms(); setSelected(null); }}
+              className="text-gray-300 hover:text-gray-500 transition-colors p-1 rounded-lg hover:bg-gray-100"
+              aria-label="Close"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Fields */}
+        <div className="space-y-3 mb-5">
+          {fields.map(({ icon: Icon, label, value }) => (
+            <div key={label} className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
+                <Icon size={13} className="text-gray-400" />
+              </div>
+              <div className="min-w-0 pt-0.5">
+                <div className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">{label}</div>
+                <div className="text-sm text-gray-700 font-medium break-all">{value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-gray-100 pt-4 space-y-2.5">
+
+          {/* ── ACCEPTED ─── */}
+          {selected.status === "accepted" && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm mb-1">
+                <CheckCircle size={15} /> Application Accepted
+              </div>
+              <p className="text-xs text-emerald-600">
+                A member profile was created from this application.{" "}
+                {selected.memberId ? (
+                  <Link href={`/admin/members/${selected.memberId}`} className="underline font-semibold hover:text-emerald-700">
+                    View in Members section
+                  </Link>
+                ) : (
+                  <span className="font-semibold">Check the Members section.</span>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* ── REJECTED ─── */}
+          {selected.status === "rejected" && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 text-red-700 font-semibold text-sm mb-1">
+                <XCircle size={15} /> Application Rejected
+              </div>
+              <p className="text-xs text-red-500 mb-3">
+                If this was a mistake, you can reopen it for review.
+              </p>
+              {confirmReopen ? (
+                <div className="bg-white border border-red-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-700 font-medium mb-2">
+                    Reopen and set back to pending?
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={reopenApplication} disabled={working}
+                      className="flex-1 py-2.5 text-xs font-semibold bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50">
+                      {working ? "Reopening…" : "Yes, Reopen"}
+                    </button>
+                    <button onClick={() => setConfirmReopen(false)}
+                      className="px-3 py-2.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { clearConfirms(); setConfirmReopen(true); }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+                  <RotateCcw size={12} /> Reopen Application
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── ACTIVE ACTIONS ─── */}
+          {selected.status !== "accepted" && selected.status !== "rejected" && (
+            <>
+              <div className="flex items-start gap-2 text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                <Lock size={11} className="mt-0.5 flex-shrink-0" />
+                Accepting or rejecting is permanent and cannot be undone.
+              </div>
+
+              {selected.status === "pending" && (
+                <button onClick={markReviewed} disabled={working}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50">
+                  <Eye size={12} /> Mark as Reviewed
+                </button>
+              )}
+
+              {confirmAccept ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <div className="flex items-center gap-1.5 text-emerald-800 font-semibold text-xs mb-2">
+                    <UserPlus size={12} /> Accept this application?
+                  </div>
+                  <ul className="text-xs text-emerald-700 space-y-1 mb-3 list-disc list-inside">
+                    <li>Member profile created for <strong>{selected.venueName}</strong></li>
+                    <li>Added to the member directory</li>
+                    <li>You can complete their profile afterwards</li>
+                  </ul>
+                  <div className="flex gap-2">
+                    <button onClick={acceptApplication} disabled={working}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+                      {working ? "Creating…" : <><CheckCircle size={11} /> Yes, Accept &amp; Create Member</>}
+                    </button>
+                    <button onClick={() => setConfirmAccept(false)}
+                      className="px-3 py-2.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { clearConfirms(); setConfirmAccept(true); }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors">
+                  <UserPlus size={12} /> Accept &amp; Create Member Profile
+                  <ArrowRight size={12} />
+                </button>
+              )}
+
+              {confirmReject ? (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                  <p className="text-xs text-red-700 font-medium mb-2">
+                    Reject this application? This cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={rejectApplication} disabled={working}
+                      className="flex-1 py-2.5 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50">
+                      {working ? "Rejecting…" : "Yes, Reject"}
+                    </button>
+                    <button onClick={() => setConfirmReject(false)}
+                      className="px-3 py-2.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { clearConfirms(); setConfirmReject(true); }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                  <XCircle size={12} /> Reject Application
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Delete */}
+          {selected.status !== "accepted" && (
+            <div className="pt-1 border-t border-gray-100">
+              {confirmDeleteId === selected.id ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-xs text-red-700 font-medium mb-2 flex items-center gap-1.5">
+                    <AlertTriangle size={11} /> Permanently delete this record?
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => deleteApplication(selected.id)}
+                      className="flex-1 py-2.5 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600">
+                      Yes, delete
+                    </button>
+                    <button onClick={() => setConfirmDeleteId(null)}
+                      className="flex-1 py-2.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => { clearConfirms(); setConfirmDeleteId(selected.id); }}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium text-gray-400 hover:text-red-500 border border-gray-100 rounded-lg hover:border-red-200 transition-colors">
+                  <Trash2 size={12} /> Delete Application Record
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   return (
     <div>
@@ -227,47 +473,57 @@ export default function ApplicationsPage() {
         )}
       </AnimatePresence>
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Membership Applications</h1>
+      {/* Page header */}
+      <div className="mb-5">
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <ClipboardList size={22} className="text-indigo-500" />
+          Membership Applications
+        </h1>
         <p className="text-sm text-gray-500 mt-0.5">
           {applications.length} total · {counts.pending} pending review
         </p>
       </div>
 
-      {/* Search + filter row */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="relative flex-1 min-w-48">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by venue, owner, or location…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setStatusFilter("all")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${statusFilter === "all" ? "bg-[#0a1040] text-white border-[#0a1040]" : "border-gray-200 text-gray-500 hover:border-gray-400"}`}
-          >
-            All ({applications.length})
+      {/* Stats — tappable filter cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {(["pending", "reviewed", "accepted", "rejected"] as const).map((s) => {
+          const cfg  = STATUS_CONFIG[s];
+          const Icon = STATUS_ICON[s];
+          const active = statusFilter === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(active ? "all" : s)}
+              className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 text-center transition-all select-none active:scale-95 ${
+                active
+                  ? cfg.color + " border-current shadow-sm"
+                  : "bg-white border-gray-100 hover:border-gray-200 " + cfg.color.split(" ")[1]
+              }`}
+            >
+              <Icon size={18} />
+              <span className="text-2xl font-bold leading-none">{counts[s]}</span>
+              <span className="text-[11px] font-medium">{cfg.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search venue, owner, location…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        {search && (
+          <button onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <X size={13} />
           </button>
-          {(["pending", "reviewed", "accepted", "rejected"] as const).map((s) => {
-            const cfg = STATUS_CONFIG[s];
-            return (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
-                  statusFilter === s ? cfg.color + " ring-2 ring-offset-1 ring-amber-400" : cfg.color + " opacity-70 hover:opacity-100"
-                }`}
-              >
-                {counts[s]} {cfg.label}
-              </button>
-            );
-          })}
-        </div>
+        )}
       </div>
 
       {loading ? (
@@ -279,332 +535,163 @@ export default function ApplicationsPage() {
           <p className="text-gray-400 text-sm mt-1">Applications from the membership form will appear here</p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-3 gap-5">
-          {/* List */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort("venueName")}>
-                    Venue <SortIcon col="venueName" />
-                  </th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort("ownerName")}>
-                    Owner <SortIcon col="ownerName" />
-                  </th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort("createdAt")}>
-                    Applied <SortIcon col="createdAt" />
-                  </th>
-                  <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700" onClick={() => toggleSort("status")}>
-                    Status <SortIcon col="status" />
-                  </th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {paginated.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">No applications match your search.</td></tr>
-                )}
-                {paginated.map((app) => {
-                  const cfg = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.pending;
-                  return (
-                    <tr
-                      key={app.id}
-                      className={`hover:bg-gray-50/50 cursor-pointer ${selected?.id === app.id ? "bg-amber-50/40" : ""}`}
-                      onClick={() => selectApp(app)}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{app.venueName}</div>
-                        {app.memberId && (
-                          <div className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5">
-                            <CheckCircle size={10} /> Member created
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{app.ownerName}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{safeDate(app.createdAt)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${cfg.color}`}>
-                          {cfg.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button onClick={(e) => { e.stopPropagation(); selectApp(app); }} className="text-gray-400 hover:text-gray-600 p-1">
-                          <Eye size={14} />
-                        </button>
-                      </td>
+        <>
+          {/* ── Desktop: table + sidebar ────────────────────────────────── */}
+          <div className="hidden lg:grid lg:grid-cols-3 gap-5">
+            {/* Table */}
+            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 overflow-hidden">
+              {paginated.length === 0 ? (
+                <div className="py-12 text-center text-sm text-gray-400">No applications match your search.</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700"
+                        onClick={() => toggleSort("venueName")}>
+                        <span className="flex items-center gap-1"><Building2 size={12} /> Venue <SortIcon col="venueName" /></span>
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700"
+                        onClick={() => toggleSort("ownerName")}>
+                        <span className="flex items-center gap-1"><User size={12} /> Owner <SortIcon col="ownerName" /></span>
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700"
+                        onClick={() => toggleSort("createdAt")}>
+                        <span className="flex items-center gap-1"><Clock size={12} /> Applied <SortIcon col="createdAt" /></span>
+                      </th>
+                      <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700"
+                        onClick={() => toggleSort("status")}>
+                        Status <SortIcon col="status" />
+                      </th>
                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {paginated.map((app) => {
+                      const cfg  = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.pending;
+                      const Icon = STATUS_ICON[app.status] ?? Clock;
+                      return (
+                        <tr key={app.id}
+                          className={`hover:bg-gray-50/50 cursor-pointer transition-colors ${selected?.id === app.id ? "bg-amber-50/40" : ""}`}
+                          onClick={() => selectApp(app)}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{app.venueName}</div>
+                            {app.memberId && (
+                              <div className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5">
+                                <CheckCircle size={10} /> Member created
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-500">{app.ownerName}</td>
+                          <td className="px-4 py-3 text-gray-400 text-xs">{safeDate(app.createdAt)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${cfg.color}`}>
+                              <Icon size={10} /> {cfg.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+              {renderPagination()}
+            </div>
+
+            {/* Sidebar */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5 h-fit sticky top-6">
+              {selected ? renderDetail() : (
+                <div className="text-center py-10">
+                  <ClipboardList size={28} className="text-gray-200 mx-auto mb-2" />
+                  <p className="text-gray-400 text-sm">Select an application to review</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Mobile: card list ────────────────────────────────────────── */}
+          <div className="lg:hidden bg-white rounded-xl border border-gray-100 overflow-hidden">
+            {paginated.length === 0 ? (
+              <div className="py-12 text-center text-sm text-gray-400">No applications match your search.</div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {paginated.map((app) => {
+                  const cfg  = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.pending;
+                  const Icon = STATUS_ICON[app.status] ?? Clock;
+                  return (
+                    <button
+                      key={app.id}
+                      onClick={() => selectApp(app)}
+                      className={`w-full text-left px-4 py-4 hover:bg-gray-50/60 active:bg-gray-100 transition-colors ${selected?.id === app.id ? "bg-amber-50/60" : ""}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Building2 size={12} className="text-gray-400 flex-shrink-0" />
+                            <span className="font-semibold text-gray-900 text-sm truncate">{app.venueName}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-400">
+                            <span className="flex items-center gap-1"><User size={10} />{app.ownerName}</span>
+                            <span className="flex items-center gap-1"><MapPin size={10} /><span className="truncate max-w-[130px]">{app.location}</span></span>
+                          </div>
+                          <div className="text-[11px] text-gray-300 mt-1.5 flex items-center gap-1">
+                            <Clock size={10} /> {safeDate(app.createdAt)}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-full border ${cfg.color}`}>
+                            <Icon size={10} /> {cfg.label}
+                          </span>
+                          {app.memberId && (
+                            <span className="text-[10px] text-emerald-600 flex items-center gap-0.5">
+                              <CheckCircle size={9} /> Member
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
                   );
                 })}
-              </tbody>
-            </table>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-                <p className="text-xs text-gray-400">
-                  Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={safePage === 1}
-                    className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft size={13} />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
-                    .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-                      if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push("…");
-                      acc.push(p);
-                      return acc;
-                    }, [])
-                    .map((p, i) =>
-                      p === "…" ? (
-                        <span key={`ellipsis-${i}`} className="px-1 text-xs text-gray-400">…</span>
-                      ) : (
-                        <button
-                          key={p}
-                          onClick={() => setCurrentPage(p as number)}
-                          className={`w-7 h-7 text-xs rounded-lg border transition-colors ${safePage === p ? "bg-[#0a1040] text-white border-[#0a1040]" : "border-gray-200 text-gray-600 hover:bg-white"}`}
-                        >
-                          {p}
-                        </button>
-                      )
-                    )}
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={safePage === totalPages}
-                    className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight size={13} />
-                  </button>
-                </div>
               </div>
             )}
+            {renderPagination()}
           </div>
 
-          {/* Detail panel */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5 h-fit sticky top-6">
-            {selected ? (
+          {/* ── Mobile bottom sheet ──────────────────────────────────────── */}
+          <AnimatePresence>
+            {selected && (
               <>
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{selected.venueName}</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Applied {safeDate(selected.createdAt)}</p>
+                {/* Backdrop */}
+                <motion.div
+                  key="backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => { clearConfirms(); setSelected(null); }}
+                  className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+                />
+                {/* Sheet */}
+                <motion.div
+                  key="sheet"
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", stiffness: 350, damping: 32 }}
+                  className="fixed inset-x-0 bottom-0 z-50 lg:hidden bg-white rounded-t-3xl shadow-2xl flex flex-col"
+                  style={{ maxHeight: "82vh" }}
+                >
+                  {/* Drag handle */}
+                  <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                    <div className="w-10 h-1 bg-gray-200 rounded-full" />
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full border ${STATUS_CONFIG[selected.status]?.color}`}>
-                      {STATUS_CONFIG[selected.status]?.label}
-                    </span>
-                    <button
-                      onClick={() => { clearConfirms(); setSelected(null); }}
-                      className="text-gray-300 hover:text-gray-500 transition-colors p-0.5 rounded"
-                      title="Close"
-                    >
-                      <X size={14} />
-                    </button>
+                  {/* Scrollable content */}
+                  <div className="overflow-y-auto flex-1 px-5 pb-10">
+                    {renderDetail()}
                   </div>
-                </div>
-
-                {/* Application details */}
-                <div className="space-y-2 mb-5 text-sm">
-                  {[
-                    { label: "Owner",    value: selected.ownerName },
-                    { label: "Phone",    value: selected.phone },
-                    { label: "Email",    value: selected.email },
-                    { label: "Location", value: selected.location },
-                    { label: "Capacity", value: selected.capacity ?? "—" },
-                    { label: "Website",  value: selected.website ?? "—" },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="flex gap-2">
-                      <span className="text-gray-400 w-20 flex-shrink-0 text-xs">{label}</span>
-                      <span className="text-gray-700 font-medium text-xs">{value}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="border-t border-gray-100 pt-4 space-y-3">
-
-                  {/* ── TERMINAL STATE: accepted ─────────────────────────── */}
-                  {selected.status === "accepted" && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                      <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm mb-1">
-                        <CheckCircle size={15} /> Application Accepted
-                      </div>
-                      <p className="text-xs text-emerald-600">
-                        A member profile was automatically created from this application. You can manage it from the{" "}
-                        {selected.memberId ? (
-                          <Link href={`/admin/members/${selected.memberId}`} className="underline font-semibold hover:text-emerald-700">
-                            Members section
-                          </Link>
-                        ) : (
-                          <span className="font-semibold">Members section</span>
-                        )}.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* ── TERMINAL STATE: rejected ─────────────────────────── */}
-                  {selected.status === "rejected" && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                      <div className="flex items-center gap-2 text-red-700 font-semibold text-sm mb-1">
-                        <XCircle size={15} /> Application Rejected
-                      </div>
-                      <p className="text-xs text-red-500 mb-3">
-                        This application was rejected. If this was a mistake, you can reopen it for review.
-                      </p>
-                      {confirmReopen ? (
-                        <div className="bg-white border border-red-200 rounded-lg p-3">
-                          <p className="text-xs text-gray-700 font-medium mb-2">
-                            Reopen this application and set it back to pending?
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={reopenApplication}
-                              disabled={working}
-                              className="flex-1 py-1.5 text-xs font-semibold bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
-                            >
-                              {working ? "Reopening…" : "Yes, Reopen"}
-                            </button>
-                            <button onClick={() => setConfirmReopen(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { clearConfirms(); setConfirmReopen(true); }}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
-                        >
-                          <RotateCcw size={11} /> Reopen Application
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ── ACTIVE ACTIONS (non-terminal) ────────────────────── */}
-                  {selected.status !== "accepted" && selected.status !== "rejected" && (
-                    <>
-                      {/* Lock notice */}
-                      <div className="flex items-start gap-2 text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-                        <Lock size={11} className="mt-0.5 flex-shrink-0" />
-                        Accepting or rejecting is permanent and cannot be undone.
-                      </div>
-
-                      {/* Mark reviewed (only from pending) */}
-                      {selected.status === "pending" && (
-                        <button
-                          onClick={markReviewed}
-                          disabled={working}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
-                        >
-                          <Eye size={11} /> Mark as Reviewed
-                        </button>
-                      )}
-
-                      {/* Accept — shows confirmation first */}
-                      {confirmAccept ? (
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                          <div className="flex items-center gap-1.5 text-emerald-800 font-semibold text-xs mb-2">
-                            <UserPlus size={12} /> Accept this application?
-                          </div>
-                          <ul className="text-xs text-emerald-700 space-y-1 mb-3 list-disc list-inside">
-                            <li>A member profile will be created for <strong>{selected.venueName}</strong></li>
-                            <li>They will be added to the member directory</li>
-                            <li>You can complete their profile afterwards</li>
-                          </ul>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={acceptApplication}
-                              disabled={working}
-                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                            >
-                              {working ? "Creating…" : <><CheckCircle size={11} /> Yes, Accept &amp; Create Member</>}
-                            </button>
-                            <button onClick={() => setConfirmAccept(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { clearConfirms(); setConfirmAccept(true); }}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors"
-                        >
-                          <UserPlus size={11} /> Accept &amp; Create Member Profile
-                          <ArrowRight size={11} />
-                        </button>
-                      )}
-
-                      {/* Reject — shows confirmation first */}
-                      {confirmReject ? (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                          <p className="text-xs text-red-700 font-medium mb-2">
-                            Reject this application? This cannot be undone.
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={rejectApplication}
-                              disabled={working}
-                              className="flex-1 py-1.5 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
-                            >
-                              {working ? "Rejecting…" : "Yes, Reject"}
-                            </button>
-                            <button onClick={() => setConfirmReject(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { clearConfirms(); setConfirmReject(true); }}
-                          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                        >
-                          <XCircle size={11} /> Reject Application
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {/* Delete — hidden for accepted applications */}
-                  {selected.status !== "accepted" && (
-                  <div className="pt-1 border-t border-gray-100">
-                    {confirmDeleteId === selected.id ? (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-xs text-red-700 font-medium mb-2 flex items-center gap-1.5">
-                          <AlertTriangle size={11} /> Permanently delete this record?
-                        </p>
-                        <div className="flex gap-2">
-                          <button onClick={() => deleteApplication(selected.id)} className="flex-1 py-1.5 text-xs font-semibold bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">
-                            Yes, delete
-                          </button>
-                          <button onClick={() => setConfirmDeleteId(null)} className="flex-1 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { clearConfirms(); setConfirmDeleteId(selected.id); }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-gray-400 hover:text-red-500 border border-gray-100 rounded-lg hover:border-red-200 transition-colors"
-                      >
-                        <Trash2 size={11} /> Delete Application Record
-                      </button>
-                    )}
-                  </div>
-                  )}
-                </div>
+                </motion.div>
               </>
-            ) : (
-              <div className="text-center py-8">
-                <Eye size={28} className="text-gray-200 mx-auto mb-2" />
-                <p className="text-gray-400 text-sm">Select an application to review</p>
-              </div>
             )}
-          </div>
-        </div>
+          </AnimatePresence>
+        </>
       )}
     </div>
   );
