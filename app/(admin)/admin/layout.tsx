@@ -92,15 +92,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className={`border-b border-white/10 flex items-center justify-between ${collapsed ? "px-3 py-4" : "px-5 pt-5 pb-4"}`}>
+      <div className={`border-b border-white/10 ${collapsed ? "flex flex-col items-center gap-1 px-2 py-3" : "flex items-center justify-between px-5 pt-5 pb-4"}`}>
         {!collapsed && (
-          <Link href="/admin/dashboard" className="block flex-1 min-w-0">
+          <Link href="/admin/dashboard" className="flex flex-col items-center flex-1 min-w-0">
             <Image
-              src="/eva/evanepal.png"
+              src="/eva/evanepal2_transparent.png"
               alt="EVA Nepal"
-              width={120}
-              height={77}
-              className="h-7 w-auto brightness-0 invert"
+              width={160}
+              height={102}
+              className="h-12 w-auto"
               priority
             />
             <div className="text-[9px] text-white/25 mt-1.5 tracking-[0.2em] uppercase font-medium">
@@ -109,16 +109,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
         )}
         {collapsed && (
-          <Link href="/admin/dashboard" className="mx-auto">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center">
-              <span className="text-amber-400 font-bold text-xs">E</span>
-            </div>
+          <Link href="/admin/dashboard" className="flex justify-center w-full">
+            <Image
+              src="/eva/evanepal2_transparent.png"
+              alt="EVA Nepal"
+              width={44}
+              height={44}
+              className="h-9 w-auto"
+              priority
+            />
           </Link>
         )}
         {/* Collapse toggle — desktop only */}
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className={`hidden lg:flex w-6 h-6 items-center justify-center text-white/30 hover:text-white/70 transition-colors rounded ${collapsed ? "mx-auto mt-1" : "flex-shrink-0"}`}
+          className={`hidden lg:flex w-6 h-6 items-center justify-center text-white/30 hover:text-white/70 transition-colors rounded flex-shrink-0 ${collapsed ? "mt-1" : ""}`}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
@@ -233,7 +238,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu size={18} />
           </button>
           <Image
-            src="/eva/evanepal.png"
+            src="/eva/evanepal2_transparent.png"
             alt="EVA Nepal"
             width={80}
             height={51}
