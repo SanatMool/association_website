@@ -140,11 +140,14 @@ model News {
   title         String
   titleNe       String?
   excerpt       String
+  excerptNe     String?
   content       String
+  contentNe     String?
   author        String
   category      String   // announcement | training | event | industry | member
   image         String?
   featured      Boolean  @default(false)
+  status        String   @default("published") // published | scheduled | draft
   publishedAt   DateTime
   associationId String?
   createdAt     DateTime @default(now())
@@ -158,11 +161,14 @@ model CommitteeMember {
   name          String
   nameNe        String?
   role          String
+  roleNe        String?
   roleKey       String   @default("member")
   organization  String?
+  organizationNe String?
   venue         String?
   venueNe       String?
   bio           String?
+  bioNe         String?
   order         Int      @default(99)
   highlighted   Boolean  @default(false)
   image         String?
@@ -248,18 +254,54 @@ model MembershipApplication {
 }
 
 model AdminTask {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   title         String
   description   String?
-  status        String    @default("todo")    // todo | in_progress | done
-  priority      String    @default("medium")  // low | medium | high
+  status        String         @default("todo")    // todo | in_progress | done
+  priority      String         @default("medium")  // low | medium | high
   dueDate       DateTime?
   assignee      String?
-  notes         String?   // progress / follow-up notes
-  completedAt   DateTime? // set when status first becomes "done"
+  notes         String?        // progress / follow-up notes
+  completedAt   DateTime?      // set when status first becomes "done"
   associationId String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subtasks      Subtask[]
+  activities    TaskActivity[]
+}
+
+model Subtask {
+  id          String           @id @default(cuid())
+  taskId      String
+  task        AdminTask        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title       String
+  assignee    String?
+  status      String           @default("todo")   // todo | done
+  completedAt DateTime?
+  order       Int              @default(0)
+  comments    SubtaskComment[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model SubtaskComment {
+  id         String   @id @default(cuid())
+  subtaskId  String
+  subtask    Subtask  @relation(fields: [subtaskId], references: [id], onDelete: Cascade)
+  text       String
+  authorName String   @default("Admin")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model TaskActivity {
+  id         String    @id @default(cuid())
+  taskId     String
+  task       AdminTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  action     String
+  detail     String?
+  actorName  String    @default("Admin")
+  createdAt  DateTime  @default(now())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -343,10 +385,12 @@ model Meeting {
   id            String   @id @default(cuid())
   associationId String
   title         String
+  titleNe       String?
   type          String   // agm | picnic | program | committee | special
   scheduledAt   DateTime
   venue         String?
   description   String?
+  descriptionNe String?
   status        String   @default("scheduled") // scheduled | completed | cancelled
   latitude      Float?
   longitude     Float?

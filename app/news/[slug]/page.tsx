@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 import { formatDate } from "@/lib/utils";
+import ArticleContent from "./ArticleContent";
 
 interface Props {
   params: { slug: string };
@@ -33,12 +34,17 @@ export default async function NewsDetailPage({ params }: Props) {
   const association = await getAssociationOrThrow();
 
   const item = await prisma.news.findFirst({
-    where: { slug: params.slug, associationId: association.id },
+    where: {
+      slug: params.slug,
+      associationId: association.id,
+      status: { not: "draft" },
+      publishedAt: { lte: new Date() },
+    },
   });
   if (!item) notFound();
 
   const related = await prisma.news.findMany({
-    where: { category: item.category, NOT: { id: item.id }, associationId: association.id },
+    where: { category: item.category, NOT: { id: item.id }, associationId: association.id, status: { not: "draft" }, publishedAt: { lte: new Date() } },
     take: 3,
     orderBy: { publishedAt: "desc" },
   });
@@ -92,23 +98,12 @@ export default async function NewsDetailPage({ params }: Props) {
               {item.title}
             </h1>
 
-            <p className="text-lg text-slate-600 leading-relaxed font-medium mb-8 border-l-4 border-gold-400 pl-5">
-              {item.excerpt}
-            </p>
-
-            <div className="prose prose-slate max-w-none">
-              <p className="text-slate-600 leading-relaxed mb-4">{item.content}</p>
-              <p className="text-slate-600 leading-relaxed mb-4">
-                EVA Nepal continues to work diligently to represent the interests of event venues across Kathmandu Valley. The association invites all venue owners and event industry professionals to join and be part of this growing community.
-              </p>
-              <p className="text-slate-600 leading-relaxed">
-                For more information, please contact EVA Nepal at{" "}
-                <a href="mailto:info@evanepal.org" className="text-gold-600 hover:text-gold-700 font-medium">
-                  info@evanepal.org
-                </a>{" "}
-                or visit the association office at Maitidevi, Kathmandu.
-              </p>
-            </div>
+            <ArticleContent
+              excerpt={item.excerpt}
+              excerptNe={item.excerptNe ?? null}
+              content={item.content}
+              contentNe={item.contentNe ?? null}
+            />
           </div>
         </article>
 

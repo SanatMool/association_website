@@ -9,8 +9,23 @@ export async function GET() {
   const tasks = await prisma.adminTask.findMany({
     where: { associationId: ctx.associationId },
     orderBy: [{ status: "asc" }, { priority: "desc" }, { createdAt: "desc" }],
+    include: {
+      _count: { select: { subtasks: true } },
+      subtasks: {
+        select: { id: true, status: true },
+      },
+    },
   });
-  return NextResponse.json(tasks);
+
+  const result = tasks.map((t) => ({
+    ...t,
+    subtaskTotal: t._count.subtasks,
+    subtaskDone: t.subtasks.filter((s) => s.status === "done").length,
+    subtasks: undefined,
+    _count: undefined,
+  }));
+
+  return NextResponse.json(result);
 }
 
 export async function POST(req: Request) {
@@ -35,5 +50,15 @@ export async function POST(req: Request) {
       associationId: ctx.associationId,
     },
   });
+
+  await prisma.taskActivity.create({
+    data: {
+      taskId: task.id,
+      action: "created",
+      detail: `Task "${task.title}" created`,
+      actorName: ctx.session?.user?.name ?? "Admin",
+    },
+  });
+
   return NextResponse.json(task, { status: 201 });
 }

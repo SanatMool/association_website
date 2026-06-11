@@ -1,6 +1,6 @@
 import NewsForm from "@/components/admin/NewsForm";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, FilePlus } from "lucide-react";
 
 export default function NewArticlePage() {
   return (
@@ -10,7 +10,9 @@ export default function NewArticlePage() {
         Back to news
       </Link>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Add Article</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <FilePlus size={22} className="text-indigo-500" /> Add Article
+        </h1>
         <p className="text-sm text-gray-500 mt-0.5">Follow the steps to publish a new news article.</p>
       </div>
       <NewsForm />

@@ -145,13 +145,15 @@ export default function CategoriesPage() {
   return (
     <div className="max-w-2xl">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fee Categories</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Tag size={20} className="text-amber-500" /> Fee Categories
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">Define member tiers and their fee schedules.</p>
         </div>
         <button onClick={openAdd}
-          className="flex items-center gap-2 px-4 py-2 bg-[#0a1040] text-white text-sm font-medium rounded-xl hover:bg-[#0d1550] shadow-sm transition-colors">
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm font-medium rounded-xl hover:bg-[#0d1550] shadow-sm transition-colors w-full sm:w-auto min-h-[44px]">
           <Plus size={14} /> Add Category
         </button>
       </div>
@@ -318,7 +320,7 @@ export default function CategoriesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search categories…"
-              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400"
             />
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
@@ -424,13 +426,13 @@ export default function CategoriesPage() {
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button onClick={() => { openEdit(cat); }}
-                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    className="p-2.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                     title="Edit">
                     <Pencil size={13} />
                   </button>
                   <button
                     onClick={() => setDeleteId(deleteId === cat.id ? null : cat.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
                     title="Delete">
                     <Trash2 size={13} />
                   </button>
@@ -478,27 +480,38 @@ export default function CategoriesPage() {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.15 }}
                     className="overflow-hidden">
-                    <div className="px-5 py-3 bg-red-50 border-t border-red-100 flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-semibold text-red-700">Delete &quot;{cat.name}&quot;?</p>
-                        <p className="text-[11px] text-red-500 mt-0.5">
-                          {cat._count.memberLinks > 0
-                            ? `${cat._count.memberLinks} member${cat._count.memberLinks !== 1 ? "s" : ""} will lose this category assignment.`
-                            : "This cannot be undone."}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
+                    {cat._count.memberLinks > 0 ? (
+                      <div className="px-5 py-3 bg-amber-50 border-t border-amber-100 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold text-amber-700">Cannot delete &quot;{cat.name}&quot;</p>
+                          <p className="text-[11px] text-amber-600 mt-0.5">
+                            {cat._count.memberLinks} member{cat._count.memberLinks !== 1 ? "s are" : " is"} enrolled in this category. Reassign them first before deleting.
+                          </p>
+                        </div>
                         <button onClick={() => setDeleteId(null)}
-                          className="px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          Cancel
-                        </button>
-                        <button onClick={() => handleDelete(cat.id)} disabled={deleting}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors">
-                          {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
-                          {deleting ? "Deleting…" : "Yes, delete"}
+                          className="flex-shrink-0 px-3 py-1.5 text-xs text-amber-700 bg-white border border-amber-200 rounded-xl hover:bg-amber-50 transition-colors min-h-[36px]">
+                          Got it
                         </button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="px-5 py-3 bg-red-50 border-t border-red-100 flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold text-red-700">Delete &quot;{cat.name}&quot;?</p>
+                          <p className="text-[11px] text-red-500 mt-0.5">This cannot be undone.</p>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button onClick={() => setDeleteId(null)}
+                            className="px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors min-h-[36px]">
+                            Cancel
+                          </button>
+                          <button onClick={() => handleDelete(cat.id)} disabled={deleting}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors min-h-[36px]">
+                            {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                            {deleting ? "Deleting…" : "Yes, delete"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -256,14 +256,22 @@ export default function PortalAccountsPage() {
       </AnimatePresence>
 
       {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Portal Accounts</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <KeyRound size={22} className="text-amber-500" /> Portal Accounts
+          </h1>
           <p className="text-sm text-gray-400 mt-0.5">Create and manage member login accounts for the Member Portal.</p>
         </div>
-        <div className="flex-shrink-0 text-xs text-gray-400 mt-1 text-right">
-          <span className="font-semibold text-gray-600">{rows.filter((r) => r.account).length}</span> of{" "}
-          <span className="font-semibold text-gray-600">{rows.length}</span> members have portal access
+        <div className="flex gap-3">
+          <div className="flex-1 sm:flex-none bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+            <div className="text-lg font-bold text-emerald-600">{rows.filter((r) => r.account).length}</div>
+            <div className="text-xs text-gray-400 mt-0.5">With access</div>
+          </div>
+          <div className="flex-1 sm:flex-none bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+            <div className="text-lg font-bold text-gray-500">{rows.filter((r) => !r.account).length}</div>
+            <div className="text-xs text-gray-400 mt-0.5">No access</div>
+          </div>
         </div>
       </div>
 
@@ -587,138 +595,155 @@ export default function PortalAccountsPage() {
       </div>
       )}
 
-      {/* ── Members table ───────────────────────────────────────────────────── */}
+      {/* ── Members list ────────────────────────────────────────────────────── */}
       {activeTab === "list" && (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <span className="text-sm font-semibold text-gray-700">All Members</span>
-            <span className="ml-2 text-xs text-gray-400">
-              {rows.filter((r) => r.account).length} of {rows.length} have portal access
-            </span>
-          </div>
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              value={tableSearch}
-              onChange={(e) => { setTableSearch(e.target.value); setTablePage(1); }}
-              placeholder="Search name, area, email…"
-              autoComplete="off"
-              className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 w-52"
-            />
-          </div>
+      <div>
+        {/* Search bar */}
+        <div className="relative mb-4">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={tableSearch}
+            onChange={(e) => { setTableSearch(e.target.value); setTablePage(1); }}
+            placeholder="Search name, area or email…"
+            autoComplete="off"
+            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
         </div>
 
         {filteredRows.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">
+          <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400 text-sm">
             <KeyRound size={24} className="mx-auto mb-2 opacity-30" />
             <p>{tableSearch ? "No members match your search." : "No members found."}</p>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Member</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Area</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Login Email</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Created</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {paginatedRows.map((r) => (
-                <tr key={r.memberId} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900">{r.memberName}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{r.area}</td>
-                  <td className="px-4 py-3">
-                    {r.account
-                      ? <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-medium"><Check size={10} /> Active</span>
-                      : <span className="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full"><X size={10} /> No access</span>
-                    }
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{r.account?.email ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400">
-                    {r.account ? formatDate(r.account.createdAt.split("T")[0]) : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {r.account && (
-                      <div className="flex items-center gap-2 justify-end flex-wrap">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {paginatedRows.map((r) => {
+              const initials = r.memberName.split(" ").map((w: string) => w[0] ?? "").join("").slice(0, 2).toUpperCase();
+              const hasAccount = !!r.account;
+              return (
+                <motion.div key={r.memberId} layout
+                  className={`bg-white rounded-xl border overflow-hidden transition-colors ${
+                    hasAccount ? "border-gray-100" : "border-gray-100 opacity-70"
+                  }`}>
+                  <div className="p-4">
+                    {/* Avatar + name + status */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                        hasAccount ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
+                      }`}>
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 leading-snug truncate">{r.memberName}</p>
+                        <p className="text-xs text-gray-400 truncate">{r.area}</p>
+                      </div>
+                      {hasAccount
+                        ? <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-medium flex-shrink-0"><Check size={9} /> Active</span>
+                        : <span className="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0"><X size={9} /> No access</span>
+                      }
+                    </div>
 
-                        {/* Reset password inline */}
-                        {resetId === r.account.id ? (
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-1.5">
-                              <div className="relative">
-                                <input
-                                  type={showReset ? "text" : "password"}
-                                  value={resetPwd}
-                                  onChange={(e) => { setResetPwd(e.target.value); setResetErr(""); }}
-                                  placeholder="New password (min 8)"
-                                  autoComplete="new-password"
-                                  autoFocus
-                                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs w-36 focus:outline-none focus:ring-1 focus:ring-amber-400 pr-7"
-                                />
-                                <button type="button" onClick={() => setShowReset(!showReset)}
-                                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400">
-                                  {showReset ? <EyeOff size={11} /> : <Eye size={11} />}
-                                </button>
-                              </div>
-                              <button onClick={() => handleReset(r.account!.id)} disabled={resetting || !resetPwd}
-                                className="text-xs text-white bg-[#0a1040] px-2.5 py-1.5 rounded-lg hover:bg-[#0d1550] disabled:opacity-50 transition-colors">
-                                {resetting ? "…" : "Save"}
-                              </button>
-                              <button onClick={() => { setResetId(null); setResetPwd(""); setResetErr(""); setShowReset(false); }}
-                                className="text-xs text-gray-400 hover:text-gray-600 px-1">Cancel</button>
-                            </div>
-                            {resetErr && <p className="text-[11px] text-red-500">{resetErr}</p>}
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => { setResetId(r.account!.id); setResetPwd(""); setResetErr(""); }}
-                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#0a1040] px-2.5 py-1.5 border border-gray-200 rounded-lg hover:border-[#0a1040]/30 transition-colors">
-                            <RefreshCw size={11} /> Reset Password
-                          </button>
-                        )}
-
-                        {/* Delete inline */}
-                        {deleteId === r.account.id ? (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-red-600 font-medium">Remove access?</span>
-                            <button onClick={() => handleDelete(r.account!.id)} disabled={deleting}
-                              className="text-xs text-white bg-red-500 px-2.5 py-1.5 rounded-lg hover:bg-red-600 disabled:opacity-50 transition-colors">
-                              {deleting ? "…" : "Yes, remove"}
-                            </button>
-                            <button onClick={() => setDeleteId(null)}
-                              className="text-xs text-gray-400 hover:text-gray-600 px-1">Cancel</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => setDeleteId(r.account!.id)}
-                            className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 px-2.5 py-1.5 border border-gray-100 rounded-lg hover:border-red-200 transition-colors">
-                            <Trash2 size={11} /> Remove
-                          </button>
-                        )}
-
+                    {hasAccount && (
+                      <div className="space-y-1 mb-3">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <Mail size={10} className="flex-shrink-0 text-gray-300" />
+                          <span className="truncate">{r.account!.email}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                          <UserCheck size={10} className="flex-shrink-0 text-gray-300" />
+                          <span>Access since {formatDate(r.account!.createdAt.split("T")[0])}</span>
+                        </div>
                       </div>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+
+                    {/* Actions */}
+                    {hasAccount ? (
+                      <div className="space-y-2">
+                        {/* Reset password */}
+                        {resetId === r.account!.id ? (
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <input
+                                type={showReset ? "text" : "password"}
+                                value={resetPwd}
+                                onChange={(e) => { setResetPwd(e.target.value); setResetErr(""); }}
+                                placeholder="New password (min 8 chars)"
+                                autoComplete="new-password"
+                                autoFocus
+                                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-amber-400 pr-8"
+                              />
+                              <button type="button" onClick={() => setShowReset(!showReset)}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                {showReset ? <EyeOff size={12} /> : <Eye size={12} />}
+                              </button>
+                            </div>
+                            {resetErr && <p className="text-[11px] text-red-500">{resetErr}</p>}
+                            <div className="flex gap-2">
+                              <button onClick={() => handleReset(r.account!.id)} disabled={resetting || !resetPwd}
+                                className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium text-white bg-[#0a1040] rounded-xl hover:bg-[#0d1550] disabled:opacity-50 transition-colors min-h-[36px]">
+                                {resetting ? <Loader2 size={11} className="animate-spin" /> : <Lock size={11} />}
+                                {resetting ? "Saving…" : "Save Password"}
+                              </button>
+                              <button onClick={() => { setResetId(null); setResetPwd(""); setResetErr(""); setShowReset(false); }}
+                                className="px-3 py-2 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-xl transition-colors min-h-[36px]">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : deleteId === r.account!.id ? (
+                          <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+                            <p className="text-xs font-semibold text-red-700 mb-2">Remove portal access?</p>
+                            <p className="text-[11px] text-red-500 mb-2">{r.memberName} will no longer be able to log in to the portal.</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleDelete(r.account!.id)} disabled={deleting}
+                                className="flex-1 py-2 text-xs font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]">
+                                {deleting ? "Removing…" : "Yes, remove"}
+                              </button>
+                              <button onClick={() => setDeleteId(null)}
+                                className="px-3 py-2 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-xl transition-colors min-h-[36px]">
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => { setResetId(r.account!.id); setResetPwd(""); setResetErr(""); }}
+                              className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-xl hover:border-[#0a1040]/30 hover:text-[#0a1040] transition-colors min-h-[36px]">
+                              <RefreshCw size={11} /> Reset Password
+                            </button>
+                            <button onClick={() => setDeleteId(r.account!.id)}
+                              className="px-3 py-2 text-xs text-gray-400 hover:text-red-600 border border-gray-100 rounded-xl hover:border-red-200 hover:bg-red-50 transition-colors min-h-[36px]">
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setActiveTab("create"); setCreateId(r.memberId); setStep(2); setDir(1); }}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors min-h-[36px]">
+                        <Plus size={11} /> Create Account
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         )}
 
         {/* Pagination */}
         {filteredRows.length > PAGE_SIZE && (
-          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between">
             <span className="text-xs text-gray-400">
-              {(tablePage - 1) * PAGE_SIZE + 1}–{Math.min(tablePage * PAGE_SIZE, filteredRows.length)} of {filteredRows.length}
+              {(tablePage - 1) * PAGE_SIZE + 1}–{Math.min(tablePage * PAGE_SIZE, filteredRows.length)} of {filteredRows.length} members
             </span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setTablePage((p) => Math.max(1, p - 1))}
                 disabled={tablePage === 1}
-                className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-700 disabled:opacity-30 transition-colors"
+                className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-700 disabled:opacity-30 transition-colors min-h-[36px]"
               >
                 <ChevronLeft size={14} />
               </button>
@@ -726,7 +751,7 @@ export default function PortalAccountsPage() {
               <button
                 onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
                 disabled={tablePage === totalPages}
-                className="p-1.5 rounded-lg border border-gray-200 text-gray-400 hover:text-gray-700 disabled:opacity-30 transition-colors"
+                className="p-2 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-700 disabled:opacity-30 transition-colors min-h-[36px]"
               >
                 <ChevronRight size={14} />
               </button>

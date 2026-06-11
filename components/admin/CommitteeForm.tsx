@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { CommitteeMember } from "@prisma/client";
@@ -8,7 +8,7 @@ import ImageUpload from "./ImageUpload";
 import {
   User, Briefcase, Camera,
   ChevronRight, ChevronLeft, Check, Info, Star, Loader2,
-  Search, Building2, X, Sparkles,
+  Search, Building2, X, Sparkles, Languages, Hash,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -34,6 +34,29 @@ const AD_MONTHS = [
   "July",    "August",   "September", "October", "November", "December",
 ];
 
+// ─── BS/AD Conversion (approximate) ──────────────────────────────────────────
+// BS new year (Baisakh 1) falls ~Apr 13-14. Approximation is accurate to ±1 month.
+function adToBS(adYear: number, adMonth: number) {
+  if (adMonth <= 4) return { year: adYear + 56, month: adMonth + 8 };
+  return { year: adYear + 57, month: adMonth - 4 };
+}
+function bsToAD(bsYear: number, bsMonth: number) {
+  if (bsMonth <= 8) return { year: bsYear - 57, month: bsMonth + 4 };
+  return { year: bsYear - 56, month: bsMonth - 8 };
+}
+
+// ─── MyMemory translate helper ────────────────────────────────────────────────
+async function myMemoryTranslate(text: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|ne`
+    );
+    const data = await res.json() as { responseData?: { translatedText?: string }; responseStatus?: number };
+    const t = data?.responseData?.translatedText;
+    return t && data.responseStatus === 200 ? t : null;
+  } catch { return null; }
+}
+
 const STEPS = [
   { id: 1, label: "Identity",    icon: User,     hint: "Name and role within the committee" },
   { id: 2, label: "Affiliation", icon: Briefcase, hint: "Venue, organization, and display order" },
@@ -53,6 +76,19 @@ export default function CommitteeForm({ member, members = [] }: Props) {
   const [error,        setError]        = useState("");
   const [bioLoading,   setBioLoading]   = useState(false);
   const [bioAiError,   setBioAiError]   = useState("");
+  const [aiKeywords,   setAiKeywords]   = useState("");
+  const [translatingName, setTranslatingName] = useState(false);
+  const [translatingRole, setTranslatingRole] = useState(false);
+  const [translatingVenue, setTranslatingVenue] = useState(false);
+  const [translatingOrg, setTranslatingOrg] = useState(false);
+  const [translatingBio, setTranslatingBio] = useState(false);
+
+  // Manual edit refs — prevent auto-overwrite if user typed Nepali themselves
+  const nameNeManualRef  = useRef(!!(member?.nameNe));
+  const roleNeManualRef  = useRef(!!(member?.roleNe));
+  const venueNeManualRef = useRef(!!(member?.venueNe));
+  const orgNeManualRef   = useRef(!!(member?.organizationNe));
+  const bioNeManualRef   = useRef(!!(member?.bioNe));
 
   // Member picker state
   const [memberSearch,   setMemberSearch]   = useState("");
@@ -60,21 +96,24 @@ export default function CommitteeForm({ member, members = [] }: Props) {
   const pickedMember = members.find((m) => m.id === pickedMemberId) ?? null;
 
   const [form, setForm] = useState({
-    name:         member?.name                      ?? "",
-    nameNe:       (member as any)?.nameNe           ?? "",
-    role:         member?.role                      ?? "",
-    roleKey:      member?.roleKey                   ?? "member",
-    organization: member?.organization              ?? "",
-    venue:        member?.venue                     ?? "",
-    venueNe:      (member as any)?.venueNe          ?? "",
-    bio:          member?.bio                       ?? "",
-    order:        String(member?.order              ?? "99"),
-    highlighted:  member?.highlighted               ?? false,
-    image:        member?.image                     ?? "",
-    termYearBS:   String(member?.termYearBS         ?? ""),
-    termMonthBS:  String(member?.termMonthBS        ?? ""),
-    termYearAD:   String(member?.termYearAD         ?? ""),
-    termMonthAD:  String(member?.termMonthAD        ?? ""),
+    name:           member?.name           ?? "",
+    nameNe:         member?.nameNe         ?? "",
+    role:           member?.role           ?? "",
+    roleNe:         member?.roleNe         ?? "",
+    roleKey:        member?.roleKey        ?? "member",
+    organization:   member?.organization   ?? "",
+    organizationNe: member?.organizationNe ?? "",
+    venue:          member?.venue          ?? "",
+    venueNe:        member?.venueNe        ?? "",
+    bio:            member?.bio            ?? "",
+    bioNe:          member?.bioNe          ?? "",
+    order:          String(member?.order   ?? "99"),
+    highlighted:    member?.highlighted    ?? false,
+    image:          member?.image          ?? "",
+    termYearBS:     String(member?.termYearBS  ?? ""),
+    termMonthBS:    String(member?.termMonthBS ?? ""),
+    termYearAD:     String(member?.termYearAD  ?? ""),
+    termMonthAD:    String(member?.termMonthAD ?? ""),
   });
 
   // Known auto-filled labels — used to decide if role text was user-edited
@@ -88,20 +127,110 @@ export default function CommitteeForm({ member, members = [] }: Props) {
         const label = ROLE_KEYS.find((r) => r.key === v)?.label ?? "";
         if (!p.role.trim() || knownLabels.includes(p.role)) {
           next.role = label;
+          roleNeManualRef.current = false; // allow auto-translate of new role
+        }
+      }
+      // BS/AD auto-conversion
+      if (k === "termYearAD" || k === "termMonthAD") {
+        const yr = Number(k === "termYearAD" ? v : p.termYearAD);
+        const mo = Number(k === "termMonthAD" ? v : p.termMonthAD);
+        if (yr > 1900 && mo >= 1 && mo <= 12) {
+          const bs = adToBS(yr, mo);
+          next.termYearBS  = String(bs.year);
+          next.termMonthBS = String(bs.month);
+        }
+      }
+      if (k === "termYearBS" || k === "termMonthBS") {
+        const yr = Number(k === "termYearBS" ? v : p.termYearBS);
+        const mo = Number(k === "termMonthBS" ? v : p.termMonthBS);
+        if (yr > 2000 && mo >= 1 && mo <= 12) {
+          const ad = bsToAD(yr, mo);
+          next.termYearAD  = String(ad.year);
+          next.termMonthAD = String(ad.month);
         }
       }
       return next;
     });
   }
 
+  // ── Auto-translate effects ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (nameNeManualRef.current || !form.name.trim()) return;
+    const t = setTimeout(async () => {
+      setTranslatingName(true);
+      const r = await myMemoryTranslate(form.name);
+      if (r) setForm((p) => ({ ...p, nameNe: r }));
+      setTranslatingName(false);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.name]);
+
+  useEffect(() => {
+    if (roleNeManualRef.current || !form.role.trim()) return;
+    const t = setTimeout(async () => {
+      setTranslatingRole(true);
+      const r = await myMemoryTranslate(form.role);
+      if (r) setForm((p) => ({ ...p, roleNe: r }));
+      setTranslatingRole(false);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.role]);
+
+  useEffect(() => {
+    if (venueNeManualRef.current || !form.venue.trim()) return;
+    const t = setTimeout(async () => {
+      setTranslatingVenue(true);
+      const r = await myMemoryTranslate(form.venue);
+      if (r) setForm((p) => ({ ...p, venueNe: r }));
+      setTranslatingVenue(false);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.venue]);
+
+  useEffect(() => {
+    if (orgNeManualRef.current || !form.organization.trim()) return;
+    const t = setTimeout(async () => {
+      setTranslatingOrg(true);
+      const r = await myMemoryTranslate(form.organization);
+      if (r) setForm((p) => ({ ...p, organizationNe: r }));
+      setTranslatingOrg(false);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.organization]);
+
+  useEffect(() => {
+    if (bioNeManualRef.current || !form.bio.trim()) return;
+    const t = setTimeout(async () => {
+      setTranslatingBio(true);
+      try {
+        const res = await fetch("/api/ai/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "translate", text: form.bio, targetLang: "ne" }),
+        });
+        const json = await res.json() as { success: boolean; data?: { text: string }; error?: string };
+        if (json.success && json.data?.text) setForm((p) => ({ ...p, bioNe: json.data!.text }));
+      } catch { /* silently fail */ }
+      setTranslatingBio(false);
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.bio]);
+
   function pickMember(m: MemberOption) {
     setPickedMemberId(m.id);
     setMemberSearch("");
+    venueNeManualRef.current = true; // venue came from member picker, don't auto-overwrite
     setForm((p) => ({ ...p, venue: m.name, venueNe: m.nameNe ?? "" }));
   }
 
   function clearMember() {
     setPickedMemberId(null);
+    venueNeManualRef.current = false;
     setForm((p) => ({ ...p, venue: "", venueNe: "" }));
   }
 
@@ -112,11 +241,30 @@ export default function CommitteeForm({ member, members = [] }: Props) {
       const res = await fetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "bio", name: form.name, role: form.role, venue: form.venue, organization: form.organization }),
+        body: JSON.stringify({
+          type: "bio",
+          name: form.name, role: form.role, venue: form.venue,
+          organization: form.organization, keywords: aiKeywords,
+        }),
       });
       const json = await res.json() as { success: boolean; data?: { text: string }; error?: string };
       if (!json.success || !json.data) throw new Error(json.error ?? "Generation failed");
-      setForm((p) => ({ ...p, bio: json.data!.text }));
+      const bio = json.data.text;
+      bioNeManualRef.current = false; // allow auto-translate
+      setForm((p) => ({ ...p, bio }));
+
+      // Auto-translate bio to Nepali
+      setTranslatingBio(true);
+      try {
+        const tRes = await fetch("/api/ai/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "translate", text: bio, targetLang: "ne" }),
+        });
+        const tJson = await tRes.json() as { success: boolean; data?: { text: string } };
+        if (tJson.success && tJson.data?.text) setForm((p) => ({ ...p, bioNe: tJson.data!.text }));
+      } catch { /* silently fail */ }
+      setTranslatingBio(false);
     } catch (err) {
       setBioAiError(err instanceof Error ? err.message : "AI generation failed");
     } finally {
@@ -267,7 +415,9 @@ export default function CommitteeForm({ member, members = [] }: Props) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name (English) *</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <User size={13} className="text-gray-400" /> Full Name (English) *
+                  </label>
                   <input
                     value={form.name}
                     onChange={(e) => set("name", e.target.value)}
@@ -278,29 +428,51 @@ export default function CommitteeForm({ member, members = [] }: Props) {
                   <p className="text-[11px] text-gray-400 mt-1">Use the full official name.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name (Nepali)</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <Languages size={13} className="text-indigo-400" /> नाम (Nepali Name)
+                    {translatingName && <Loader2 size={10} className="animate-spin text-indigo-400" />}
+                  </label>
                   <input
                     value={form.nameNe}
-                    onChange={(e) => set("nameNe", e.target.value)}
-                    placeholder="e.g. राम प्रसाद श्रेष्ठ"
+                    onChange={(e) => { nameNeManualRef.current = true; set("nameNe", e.target.value); }}
+                    placeholder="auto-fills from English name"
                     className={inputCls}
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">Shown alongside the English name.</p>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {translatingName ? "Auto-translating…" : "Auto-filled when you type the English name."}
+                  </p>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Role Title (English) *</label>
-                <input
-                  value={form.role}
-                  onChange={(e) => set("role", e.target.value)}
-                  placeholder="e.g. President, Vice President"
-                  required
-                  className={inputCls}
-                />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  The official title that appears below the name on the public committee page.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <Briefcase size={13} className="text-gray-400" /> Role Title (English) *
+                  </label>
+                  <input
+                    value={form.role}
+                    onChange={(e) => set("role", e.target.value)}
+                    placeholder="e.g. President, Vice President"
+                    required
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Auto-filled when you pick a Role Category below.</p>
+                </div>
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <Languages size={13} className="text-indigo-400" /> भूमिका (Nepali Role)
+                    {translatingRole && <Loader2 size={10} className="animate-spin text-indigo-400" />}
+                  </label>
+                  <input
+                    value={form.roleNe}
+                    onChange={(e) => { roleNeManualRef.current = true; set("roleNe", e.target.value); }}
+                    placeholder="auto-fills from English role"
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {translatingRole ? "Auto-translating…" : "Auto-filled when role title is set."}
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -407,37 +579,56 @@ export default function CommitteeForm({ member, members = [] }: Props) {
               {/* Venue name fields (editable, pre-filled from picker) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Venue Name (English)</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <Building2 size={13} className="text-gray-400" /> Venue Name (English)
+                  </label>
                   <input
                     value={form.venue}
-                    onChange={(e) => set("venue", e.target.value)}
+                    onChange={(e) => { venueNeManualRef.current = false; set("venue", e.target.value); }}
                     placeholder="e.g. Hotel Annapurna Banquet"
                     className={inputCls}
                   />
                   <p className="text-[11px] text-gray-400 mt-1">The venue this person represents in EVA Nepal.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Venue Name (Nepali)</label>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <Languages size={13} className="text-indigo-400" /> भेन्यू (Nepali Venue)
+                    {translatingVenue && <Loader2 size={10} className="animate-spin text-indigo-400" />}
+                  </label>
                   <input
                     value={form.venueNe}
-                    onChange={(e) => set("venueNe", e.target.value)}
-                    placeholder="e.g. मानसरोवर पार्टी प्यालेस"
+                    onChange={(e) => { venueNeManualRef.current = true; set("venueNe", e.target.value); }}
+                    placeholder="auto-fills from English venue name"
                     className={inputCls}
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Organization</label>
-                <input
-                  value={form.organization}
-                  onChange={(e) => set("organization", e.target.value)}
-                  placeholder="e.g. Hotel Annapurna Pvt. Ltd."
-                  className={inputCls}
-                />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  The registered company or legal entity name. Leave blank if the same as the venue.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <Building2 size={13} className="text-gray-400" /> Organization
+                  </label>
+                  <input
+                    value={form.organization}
+                    onChange={(e) => set("organization", e.target.value)}
+                    placeholder="e.g. Hotel Annapurna Pvt. Ltd."
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Legal entity name. Leave blank if same as venue.</p>
+                </div>
+                <div>
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                    <Languages size={13} className="text-indigo-400" /> संस्था (Nepali Org)
+                    {translatingOrg && <Loader2 size={10} className="animate-spin text-indigo-400" />}
+                  </label>
+                  <input
+                    value={form.organizationNe}
+                    onChange={(e) => { orgNeManualRef.current = true; set("organizationNe", e.target.value); }}
+                    placeholder="auto-fills from organization name"
+                    className={inputCls}
+                  />
+                </div>
               </div>
 
               <div>
@@ -477,57 +668,74 @@ export default function CommitteeForm({ member, members = [] }: Props) {
                 <div>
                   <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-0.5">Election / Term Year</p>
                   <p className="text-[11px] text-gray-400">
-                    Set when this person was elected. Used in the committee history page. Leave blank for the current active committee — these are filled automatically when you archive the committee.
+                    Set either BS or AD — the other is auto-calculated. Leave blank for the active committee.
                   </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">BS Year</label>
-                    <input
-                      type="number"
-                      value={form.termYearBS}
-                      onChange={(e) => set("termYearBS", e.target.value)}
-                      placeholder="e.g. 2082"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">BS Month</label>
-                    <select
-                      value={form.termMonthBS}
-                      onChange={(e) => set("termMonthBS", e.target.value)}
-                      className={inputCls}
-                    >
-                      <option value="">— month —</option>
-                      {BS_MONTHS.map((m, i) => (
-                        <option key={m} value={String(i + 1)}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">AD Year</label>
-                    <input
-                      type="number"
-                      value={form.termYearAD}
-                      onChange={(e) => set("termYearAD", e.target.value)}
-                      placeholder="e.g. 2025"
-                      className={inputCls}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">AD Month</label>
-                    <select
-                      value={form.termMonthAD}
-                      onChange={(e) => set("termMonthAD", e.target.value)}
-                      className={inputCls}
-                    >
-                      <option value="">— month —</option>
-                      {AD_MONTHS.map((m, i) => (
-                        <option key={m} value={String(i + 1)}>{m}</option>
-                      ))}
-                    </select>
+
+                {/* AD row */}
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">AD (English Calendar)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">AD Year</label>
+                      <input
+                        type="number"
+                        value={form.termYearAD}
+                        onChange={(e) => set("termYearAD", e.target.value)}
+                        placeholder="e.g. 2025"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">AD Month</label>
+                      <select value={form.termMonthAD} onChange={(e) => set("termMonthAD", e.target.value)} className={inputCls}>
+                        <option value="">— month —</option>
+                        {AD_MONTHS.map((m, i) => (
+                          <option key={m} value={String(i + 1)}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
+
+                {/* BS row */}
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">BS (Nepali Calendar)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">BS Year</label>
+                      <input
+                        type="number"
+                        value={form.termYearBS}
+                        onChange={(e) => set("termYearBS", e.target.value)}
+                        placeholder="e.g. 2082"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">BS Month</label>
+                      <select value={form.termMonthBS} onChange={(e) => set("termMonthBS", e.target.value)} className={inputCls}>
+                        <option value="">— month —</option>
+                        {BS_MONTHS.map((m, i) => (
+                          <option key={m} value={String(i + 1)}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Conversion preview */}
+                {(form.termYearAD || form.termYearBS) && (
+                  <div className="flex items-center gap-2 text-[11px] text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                    <Info size={11} className="flex-shrink-0" />
+                    {form.termYearAD && form.termMonthAD
+                      ? `AD: ${AD_MONTHS[Number(form.termMonthAD) - 1]} ${form.termYearAD}  →  BS: ${BS_MONTHS[Number(form.termMonthBS) - 1] ?? "—"} ${form.termYearBS || "—"}`
+                      : form.termYearBS && form.termMonthBS
+                      ? `BS: ${BS_MONTHS[Number(form.termMonthBS) - 1]} ${form.termYearBS}  →  AD: ${AD_MONTHS[Number(form.termMonthAD) - 1] ?? "—"} ${form.termYearAD || "—"}`
+                      : "Enter year and month in either calendar to auto-convert"
+                    }
+                  </div>
+                )}
               </div>
             </>)}
 
@@ -540,36 +748,74 @@ export default function CommitteeForm({ member, members = [] }: Props) {
                 </p>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-semibold text-gray-700">Biography</label>
+              {/* AI bio keywords + generate */}
+              <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700">
+                  <Sparkles size={12} /> AI Biography Generation
+                </div>
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-violet-700 mb-1">
+                    <Hash size={11} /> Keywords / hints
+                    <span className="text-violet-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    value={aiKeywords}
+                    onChange={(e) => setAiKeywords(e.target.value)}
+                    placeholder="e.g. 15 years experience, luxury weddings, community leader, award winner"
+                    className="w-full px-3 py-2 border border-violet-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  />
+                  <p className="text-[11px] text-violet-500 mt-1">The AI will weave these into the biography naturally — not just list them.</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-violet-600 font-medium truncate max-w-[55%]">
+                    {form.name || <span className="text-violet-400">Enter a name in Step 1 first</span>}
+                    {form.role && <span className="text-violet-400"> — {form.role}</span>}
+                  </p>
                   <button
                     type="button"
                     onClick={generateBio}
                     disabled={!form.name || bioLoading}
-                    title={form.name ? "Generate a biography using AI" : "Enter a name in Step 1 first"}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700 rounded-lg hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
-                    {bioLoading
-                      ? <><Loader2 size={11} className="animate-spin" /> Generating…</>
-                      : <><Sparkles size={11} /> Generate Bio</>}
+                    {bioLoading ? <><Loader2 size={11} className="animate-spin" /> Generating…</> : <><Sparkles size={11} /> Generate Bio</>}
                   </button>
                 </div>
-                {bioAiError && (
-                  <div className="mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
-                    {bioAiError}
-                  </div>
-                )}
+              </div>
+
+              {bioAiError && (
+                <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">{bioAiError}</div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Biography (English)</label>
                 <textarea
                   value={form.bio}
-                  onChange={(e) => set("bio", e.target.value)}
-                  rows={4}
+                  onChange={(e) => { bioNeManualRef.current = false; set("bio", e.target.value); }}
+                  rows={5}
                   placeholder="A brief introduction — background, experience, and their role at the venue…"
                   className={`${inputCls} resize-none`}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">
                   Shown on the committee member&apos;s public card. Aim for 2–4 sentences.
                 </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+                    <Languages size={13} className="text-indigo-400" /> जीवनी (Nepali Biography)
+                    {translatingBio && <Loader2 size={10} className="animate-spin text-indigo-400" />}
+                  </label>
+                  {translatingBio && <span className="text-[11px] text-indigo-500">Auto-translating…</span>}
+                </div>
+                <textarea
+                  value={form.bioNe}
+                  onChange={(e) => { bioNeManualRef.current = true; set("bioNe", e.target.value); }}
+                  rows={5}
+                  placeholder="नेपालीमा जीवनी — auto-fills from English biography above"
+                  className={`${inputCls} resize-none`}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Auto-translated when you type or generate the English bio. Edit freely to correct.</p>
               </div>
 
               <div>

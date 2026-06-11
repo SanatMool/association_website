@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Users2 } from "lucide-react";
 import { getAdminContext } from "@/lib/adminAuth";
 import CommitteeArchiveButton from "./CommitteeClient";
 import CommitteeListClient from "./CommitteeListClient";
@@ -33,19 +33,20 @@ export default async function CommitteePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Current Committee</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Users2 size={22} className="text-amber-500" /> Current Committee
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">{members.length} active member{members.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="flex items-center gap-2">
           <CommitteeArchiveButton memberCount={members.length} />
           <Link
             href="/admin/committee/new"
-            className="flex items-center gap-2 px-4 py-2 bg-[#0a1040] text-white text-sm rounded-lg hover:bg-[#0d1550] transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm rounded-xl hover:bg-[#0d1550] transition-colors"
           >
-            <Plus size={14} />
-            Add member
+            <Plus size={14} /> Add member
           </Link>
         </div>
       </div>

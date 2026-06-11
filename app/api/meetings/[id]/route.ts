@@ -37,6 +37,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     title?: string; type?: string; scheduledAt?: string;
     venue?: string; description?: string; status?: string;
     latitude?: number | null; longitude?: number | null;
+    titleNe?: string; descriptionNe?: string;
   };
 
   const meeting = await prisma.meeting.update({
@@ -50,6 +51,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       description: body.description?.trim() ?? undefined,
       ...(body.latitude  !== undefined ? { latitude:  body.latitude  } : {}),
       ...(body.longitude !== undefined ? { longitude: body.longitude } : {}),
+      ...(body.titleNe       !== undefined ? { titleNe:       body.titleNe?.trim()       || null } : {}),
+      ...(body.descriptionNe !== undefined ? { descriptionNe: body.descriptionNe?.trim() || null } : {}),
     },
   });
 

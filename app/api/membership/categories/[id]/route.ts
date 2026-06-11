@@ -43,6 +43,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
 
   if (!await getOwned(params.id, ctx.associationId)) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const memberCount = await prisma.memberAssociation.count({
+    where: { memberCategoryId: params.id, associationId: ctx.associationId },
+  });
+  if (memberCount > 0) {
+    return NextResponse.json(
+      { success: false, error: `Cannot delete — ${memberCount} member${memberCount !== 1 ? "s" : ""} are enrolled in this category. Reassign them first.` },
+      { status: 400 },
+    );
+  }
+
   await prisma.membershipCategory.delete({ where: { id: params.id } });
   return NextResponse.json({ success: true });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -9,7 +9,7 @@ import {
   ArrowLeft, ArrowRight, Check, Calendar, MapPin,
   FileText, Users, Presentation, PartyPopper,
   ClipboardList, Star, AlertCircle, Navigation,
-  Loader2, Sparkles,
+  Loader2, Sparkles, Languages, Hash, ExternalLink,
 } from "lucide-react";
 
 // MapPicker loaded client-side only (Leaflet needs browser)
@@ -83,6 +83,26 @@ function formatPreviewDate(val: string) {
   });
 }
 
+async function myMemoryTranslate(text: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|ne`);
+    const data = await res.json() as { responseData?: { translatedText?: string }; responseStatus?: number };
+    const t = data?.responseData?.translatedText;
+    return t && data.responseStatus === 200 ? t : null;
+  } catch { return null; }
+}
+
+async function aiTranslate(text: string): Promise<string | null> {
+  try {
+    const res = await fetch("/api/ai/generate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "translate", text, targetLang: "ne" }),
+    });
+    const json = await res.json() as { success: boolean; data?: { text: string } };
+    return json.success && json.data?.text ? json.data.text : null;
+  } catch { return null; }
+}
+
 function slideVariants(dir: number) {
   return {
     initial:  { opacity: 0, x: dir > 0 ? 40 : -40 },
@@ -97,18 +117,26 @@ export default function NewMeetingPage() {
   const router = useRouter();
   const [step,   setStep]   = useState(1);
   const [dir,    setDir]    = useState(1);
-  const [saving,     setSaving]     = useState(false);
-  const [error,      setError]      = useState("");
-  const [descLoading, setDescLoading] = useState(false);
+  const [saving,          setSaving]          = useState(false);
+  const [error,           setError]           = useState("");
+  const [descLoading,     setDescLoading]     = useState(false);
+  const [translatingTitle, setTranslatingTitle] = useState(false);
+  const [translatingDesc,  setTranslatingDesc]  = useState(false);
+  const [aiKeywords,      setAiKeywords]      = useState("");
+
+  const titleNeManualRef = useRef(false);
+  const descNeManualRef  = useRef(false);
 
   const [form, setForm] = useState({
-    title:       "",
-    type:        "agm",
-    scheduledAt: "",
-    venue:       "",
-    description: "",
-    latitude:    "",
-    longitude:   "",
+    title:         "",
+    titleNe:       "",
+    type:          "agm",
+    scheduledAt:   "",
+    venue:         "",
+    description:   "",
+    descriptionNe: "",
+    latitude:      "",
+    longitude:     "",
   });
 
   // Geocoding state
@@ -121,6 +149,32 @@ export default function NewMeetingPage() {
     setForm((p) => ({ ...p, [k]: v }));
     if (k !== "latitude" && k !== "longitude") setError("");
   }
+
+  // ── Auto-translate title → Nepali ────────────────────────────────────────────
+  useEffect(() => {
+    if (titleNeManualRef.current || !form.title.trim()) return;
+    const t = setTimeout(async () => {
+      setTranslatingTitle(true);
+      const r = await myMemoryTranslate(form.title);
+      if (r) setForm((p) => ({ ...p, titleNe: r }));
+      setTranslatingTitle(false);
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.title]);
+
+  // ── Auto-translate description → Nepali ──────────────────────────────────────
+  useEffect(() => {
+    if (descNeManualRef.current || !form.description.trim()) return;
+    const t = setTimeout(async () => {
+      setTranslatingDesc(true);
+      const r = await aiTranslate(form.description);
+      if (r) setForm((p) => ({ ...p, descriptionNe: r }));
+      setTranslatingDesc(false);
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.description]);
 
   // ── Geocode handler ──────────────────────────────────────────────────────────
   async function handleGeocode() {
@@ -160,13 +214,20 @@ export default function NewMeetingPage() {
       const res  = await fetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "meeting", title: form.title, meetingType: form.type, venue: form.venue }),
+        body: JSON.stringify({ type: "meeting", title: form.title, meetingType: form.type, venue: form.venue, keywords: aiKeywords }),
       });
       const json = await res.json() as { success: boolean; data?: { text: string }; error?: string };
       if (json.success && json.data?.text) {
-        setForm((p) => ({ ...p, description: json.data!.text }));
+        const desc = json.data.text;
+        descNeManualRef.current = false;
+        setForm((p) => ({ ...p, description: desc }));
+        // Auto-translate after generation
+        setTranslatingDesc(true);
+        const ne = await aiTranslate(desc);
+        if (ne) setForm((p) => ({ ...p, descriptionNe: ne }));
+        setTranslatingDesc(false);
       }
-    } catch { /* silent — user can type manually */ }
+    } catch { /* silent */ }
     setDescLoading(false);
   }
 
@@ -205,6 +266,7 @@ export default function NewMeetingPage() {
       });
       const json = await res.json() as { success: boolean; data?: { id: string }; error?: string };
       if (!json.success) throw new Error(json.error ?? "Failed to create meeting");
+      router.refresh();
       router.push(`/admin/meetings/${json.data!.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -282,21 +344,36 @@ export default function NewMeetingPage() {
                 </div>
 
                 {/* Title */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    Meeting Title <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(e) => set("title", e.target.value)}
-                    placeholder="e.g. AGM 2082, Annual Picnic 2025, Q2 Committee Meeting"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/30 focus:border-[#0a1040] transition-all"
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5 flex items-start gap-1">
-                    <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
-                    Give it a clear, descriptive name. Include the year so it&apos;s easy to find later.
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                      Meeting Title <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.title}
+                      onChange={(e) => set("title", e.target.value)}
+                      placeholder="e.g. AGM 2082, Annual Picnic 2025"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/30 focus:border-[#0a1040] transition-all"
+                    />
+                    <p className="text-xs text-gray-400 mt-1.5">Include the year so it&apos;s easy to find later.</p>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                      <Languages size={11} className="text-indigo-400" /> शीर्षक (Nepali Title)
+                      {translatingTitle && <Loader2 size={10} className="animate-spin text-indigo-400" />}
+                    </label>
+                    <input
+                      type="text"
+                      value={form.titleNe}
+                      onChange={(e) => { titleNeManualRef.current = true; set("titleNe", e.target.value); }}
+                      placeholder="auto-fills from English title"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all"
+                    />
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      {translatingTitle ? "Auto-translating…" : "Auto-filled when you type the English title."}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Type — visual cards */}
@@ -470,8 +547,19 @@ export default function NewMeetingPage() {
                   {/* Manual coordinate override */}
                   <details className="text-xs">
                     <summary className="cursor-pointer text-gray-400 hover:text-gray-600 select-none py-1">
-                      Enter coordinates manually
+                      Enter coordinates manually / Get from Google Maps
                     </summary>
+                    <div className="mt-2 mb-3 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5 space-y-1">
+                      <p className="text-xs font-medium text-blue-700 flex items-center gap-1">
+                        <ExternalLink size={11} /> How to get coordinates from Google Maps:
+                      </p>
+                      <ol className="text-[11px] text-blue-600 space-y-0.5 pl-3 list-decimal">
+                        <li>Open <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="underline">Google Maps</a> and find your venue</li>
+                        <li>Right-click on the exact location</li>
+                        <li>Click the coordinates shown at the top of the menu (e.g. 27.7172, 85.3240)</li>
+                        <li>They are copied — paste below</li>
+                      </ol>
+                    </div>
                     <div className="grid grid-cols-2 gap-3 mt-2">
                       <div>
                         <label className="block text-xs text-gray-500 mb-1">Latitude</label>
@@ -508,37 +596,68 @@ export default function NewMeetingPage() {
                 </div>
 
                 {/* Description */}
-                <div className="border-t border-gray-100 pt-5">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    <span className="flex items-center gap-1.5">
-                      <FileText size={12} className="text-gray-400" />
-                      Description / Notes
-                    </span>
-                  </label>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-gray-400">Optional but helps members understand the purpose.</span>
-                    <button
-                      type="button"
-                      onClick={generateDescription}
-                      disabled={!form.title.trim() || descLoading}
-                      title={form.title.trim() ? "Generate a description using AI" : "Enter a meeting title in Step 1 first"}
-                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700 rounded-lg hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {descLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                      {descLoading ? "Generating…" : "AI Generate"}
-                    </button>
+                <div className="border-t border-gray-100 pt-5 space-y-4">
+                  {/* AI keywords */}
+                  <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700">
+                      <Sparkles size={12} /> AI Description Generation
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-violet-700 mb-1">
+                        <Hash size={11} /> Keywords / hints <span className="text-violet-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        value={aiKeywords}
+                        onChange={(e) => setAiKeywords(e.target.value)}
+                        placeholder="e.g. budget review, new committee, 150 members, annual report"
+                        className="w-full px-3 py-2 border border-violet-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      />
+                      <p className="text-[11px] text-violet-500 mt-1">AI will weave these into the description naturally.</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-violet-600 font-medium truncate max-w-[55%]">
+                        {form.title || <span className="text-violet-400">Enter title in Step 1 first</span>}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={generateDescription}
+                        disabled={!form.title.trim() || descLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {descLoading ? <><Loader2 size={11} className="animate-spin" /> Generating…</> : <><Sparkles size={11} /> Generate</>}
+                      </button>
+                    </div>
                   </div>
-                  <textarea
-                    value={form.description}
-                    onChange={(e) => set("description", e.target.value)}
-                    rows={4}
-                    placeholder="Briefly describe the purpose of this meeting, key topics to cover, or any pre-meeting instructions for members..."
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/30 focus:border-[#0a1040] transition-all resize-none"
-                  />
-                  <p className="text-xs text-gray-400 mt-1.5 flex items-start gap-1">
-                    <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
-                    Optional. Visible to admins and portal members. You can add formal agenda items after creating.
-                  </p>
+
+                  {/* Description EN */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                      <FileText size={12} className="text-gray-400" /> Description / Notes
+                    </label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => { descNeManualRef.current = false; set("description", e.target.value); }}
+                      rows={4}
+                      placeholder="Briefly describe the purpose of this meeting, key topics, or pre-meeting instructions…"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/30 focus:border-[#0a1040] transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Description NE */}
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                      <Languages size={12} className="text-indigo-400" /> विवरण (Nepali Description)
+                      {translatingDesc && <Loader2 size={10} className="animate-spin text-indigo-400 ml-1" />}
+                    </label>
+                    <textarea
+                      value={form.descriptionNe}
+                      onChange={(e) => { descNeManualRef.current = true; set("descriptionNe", e.target.value); }}
+                      rows={4}
+                      placeholder="नेपालीमा विवरण — auto-fills from English description above"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition-all resize-none"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Auto-translated when you type or generate. Edit freely to correct.</p>
+                  </div>
                 </div>
               </div>
             )}

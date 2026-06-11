@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, CheckCircle, Clock, ChevronDown, Save, Check, X, Sparkles, Loader2 } from "lucide-react";
+import {
+  ArrowLeft, Plus, Trash2, CheckCircle, Clock, ChevronDown, Save, Check, X,
+  Sparkles, Loader2, Calendar, MapPin, Languages, ListChecks, Receipt,
+  Users, FileText, Pencil, Building2,
+} from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface AgendaItem  { id: string; order: number; title: string; description: string | null; outcome: string | null }
@@ -15,14 +19,18 @@ interface Minutes     { id: string; content: string; publishedAt: string | null 
 interface Vendor      { id: string; name: string }
 interface Member      { id: string; name: string; area: string }
 interface Meeting {
-  id: string; title: string; type: string; scheduledAt: string;
-  venue: string | null; description: string | null; status: string;
+  id: string; title: string; titleNe: string | null; type: string; scheduledAt: string;
+  venue: string | null; description: string | null; descriptionNe: string | null; status: string;
   agendaItems: AgendaItem[]; minutes: Minutes | null;
   expenses: Expense[]; contributions: Contribution[];
   _count: { rsvps: number };
 }
 
 const TYPE_LABELS: Record<string, string> = { agm: "AGM", picnic: "Picnic", program: "Program", committee: "Committee", special: "Special" };
+const TYPE_COLORS: Record<string, string> = {
+  agm: "bg-purple-50 text-purple-700", picnic: "bg-green-50 text-green-700",
+  program: "bg-blue-50 text-blue-700", committee: "bg-amber-50 text-amber-700", special: "bg-rose-50 text-rose-700",
+};
 const STATUS_OPTIONS = ["scheduled", "completed", "cancelled"];
 
 const PAYMENT_METHODS = [
@@ -90,6 +98,16 @@ export default function MeetingDetailPage() {
   // Status update
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
+  // Nepali fields inline edit
+  const [showEditNepali,    setShowEditNepali]    = useState(false);
+  const [editTitleNe,       setEditTitleNe]       = useState("");
+  const [editDescNe,        setEditDescNe]        = useState("");
+  const [savingNepali,      setSavingNepali]      = useState(false);
+  const [translatingTitleNe, setTranslatingTitleNe] = useState(false);
+  const [translatingDescNe,  setTranslatingDescNe]  = useState(false);
+  const titleNeManualRef = useRef(false);
+  const descNeManualRef  = useRef(false);
+
   // Inline delete confirmations
   const [confirmDeleteAgendaId,  setConfirmDeleteAgendaId]  = useState<string | null>(null);
   const [confirmDeleteExpenseId, setConfirmDeleteExpenseId] = useState<string | null>(null);
@@ -123,6 +141,61 @@ export default function MeetingDetailPage() {
   }, [id]);
 
   useEffect(() => { void load(); }, [load]);
+
+  function openEditNepali() {
+    if (!meeting) return;
+    titleNeManualRef.current = false;
+    descNeManualRef.current  = false;
+    setEditTitleNe(meeting.titleNe ?? "");
+    setEditDescNe(meeting.descriptionNe ?? "");
+    setShowEditNepali(true);
+  }
+
+  async function translateTitleNe() {
+    if (!meeting) return;
+    setTranslatingTitleNe(true);
+    try {
+      const r = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(meeting.title)}&langpair=en|ne`);
+      const j = await r.json() as { responseData?: { translatedText?: string } };
+      const t = j.responseData?.translatedText ?? "";
+      if (t && !t.toLowerCase().includes("mymemory")) {
+        titleNeManualRef.current = false;
+        setEditTitleNe(t);
+      }
+    } catch { /* ignore */ }
+    setTranslatingTitleNe(false);
+  }
+
+  async function translateDescNe() {
+    if (!meeting?.description) return;
+    setTranslatingDescNe(true);
+    try {
+      const r = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "translate", text: meeting.description, targetLang: "ne" }),
+      });
+      const j = await r.json() as { success: boolean; data?: { text: string } };
+      if (j.success && j.data?.text) {
+        descNeManualRef.current = false;
+        setEditDescNe(j.data.text);
+      }
+    } catch { /* ignore */ }
+    setTranslatingDescNe(false);
+  }
+
+  async function saveNepaliFields() {
+    setSavingNepali(true);
+    await fetch(`/api/meetings/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titleNe: editTitleNe, descriptionNe: editDescNe }),
+    });
+    await load();
+    setSavingNepali(false);
+    setShowEditNepali(false);
+    showMsg("Nepali fields saved.");
+  }
 
   async function updateStatus(status: string) {
     setUpdatingStatus(true);
@@ -273,7 +346,11 @@ export default function MeetingDetailPage() {
     router.push("/admin/meetings");
   }
 
-  if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Loading…</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center py-20 text-gray-400 text-sm gap-2">
+      <Loader2 size={16} className="animate-spin" /> Loading…
+    </div>
+  );
   if (!meeting) return <div className="text-center py-20 text-gray-400 text-sm">Meeting not found.</div>;
 
   const totalExpenses      = meeting.expenses.reduce((s, e) => s + Number(e.amount), 0);
@@ -282,10 +359,10 @@ export default function MeetingDetailPage() {
   const pendingContribs    = meeting.contributions.filter((c) => c.status === "pending").length;
 
   const TABS = [
-    { key: "agenda",        label: `Agenda (${meeting.agendaItems.length})` },
-    { key: "expenses",      label: `Expenses (${meeting.expenses.length})` },
-    { key: "contributions", label: `Contributions (${meeting.contributions.length})` },
-    { key: "minutes",       label: "Minutes" },
+    { key: "agenda",        label: `Agenda`, count: meeting.agendaItems.length,     icon: <ListChecks size={13} /> },
+    { key: "expenses",      label: `Expenses`, count: meeting.expenses.length,      icon: <Receipt size={13} /> },
+    { key: "contributions", label: `Contributions`, count: meeting.contributions.length, icon: <Users size={13} /> },
+    { key: "minutes",       label: "Minutes", count: null,                          icon: <FileText size={13} /> },
   ] as const;
 
   return (
@@ -309,52 +386,146 @@ export default function MeetingDetailPage() {
       </Link>
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-bold text-gray-900">{meeting.title}</h1>
-              <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600">{TYPE_LABELS[meeting.type] ?? meeting.type}</span>
+      <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TYPE_COLORS[meeting.type] ?? "bg-gray-100 text-gray-600"}`}>
+                {TYPE_LABELS[meeting.type] ?? meeting.type}
+              </span>
             </div>
-            <p className="text-sm text-gray-500">{formatDate(meeting.scheduledAt)}{meeting.venue ? ` · ${meeting.venue}` : ""}</p>
-            {meeting.description && <p className="text-sm text-gray-400 mt-1">{meeting.description}</p>}
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-snug">{meeting.title}</h1>
+            {meeting.titleNe && (
+              <p className="text-sm text-gray-500 mt-0.5 font-medium">{meeting.titleNe}</p>
+            )}
+            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-400">
+              <span className="flex items-center gap-1"><Calendar size={11} />{formatDate(meeting.scheduledAt)}</span>
+              {meeting.venue && <span className="flex items-center gap-1"><Building2 size={11} />{meeting.venue}</span>}
+            </div>
+            {meeting.description && (
+              <p className="text-sm text-gray-500 mt-2">{meeting.description}</p>
+            )}
+            {meeting.descriptionNe && (
+              <p className="text-sm text-gray-400 mt-1">{meeting.descriptionNe}</p>
+            )}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+
+          {/* Actions */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 flex-shrink-0">
+            <button
+              onClick={openEditNepali}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors min-h-[36px]"
+            >
+              <Languages size={12} /> Nepali
+            </button>
             <div className="relative">
               <select value={meeting.status} onChange={(e) => updateStatus(e.target.value)} disabled={updatingStatus}
-                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none appearance-none pr-7 cursor-pointer">
+                className="px-3 py-2 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none appearance-none pr-7 cursor-pointer min-h-[36px]">
                 {STATUS_OPTIONS.map((s) => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
               </select>
               <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
             {showDeleteConfirm ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-red-600 font-medium">Delete this meeting?</span>
-                <button onClick={deleteMeeting} className="text-xs font-semibold text-white bg-red-500 px-2 py-1 rounded-lg hover:bg-red-600 transition-colors">Yes, delete</button>
-                <button onClick={() => setShowDeleteConfirm(false)} className="text-xs text-gray-500 px-2 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                <span className="text-xs text-red-600 font-medium whitespace-nowrap">Delete this meeting?</span>
+                <button onClick={deleteMeeting} className="text-xs font-semibold text-white bg-red-500 px-2 py-1.5 rounded-lg hover:bg-red-600 transition-colors">Yes, delete</button>
+                <button onClick={() => setShowDeleteConfirm(false)} className="text-xs text-gray-500 px-2 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
               </div>
             ) : (
-              <button onClick={() => setShowDeleteConfirm(true)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1.5 border border-red-100 rounded-lg transition-colors">Delete</button>
+              <button onClick={() => setShowDeleteConfirm(true)} className="text-xs text-red-400 hover:text-red-600 px-2 py-2 border border-red-100 rounded-xl transition-colors min-h-[36px]">Delete</button>
             )}
           </div>
         </div>
 
+        {/* Nepali fields inline edit */}
+        <AnimatePresence>
+          {showEditNepali && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Languages size={13} className="text-indigo-500" />
+                  <span className="text-xs font-semibold text-gray-600">Edit Nepali Fields</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-gray-500">Title (Nepali)</label>
+                      <button type="button" onClick={translateTitleNe} disabled={translatingTitleNe}
+                        className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 disabled:opacity-50 transition-colors">
+                        {translatingTitleNe ? <Loader2 size={10} className="animate-spin" /> : <Languages size={10} />}
+                        Translate
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={editTitleNe}
+                      onChange={(e) => { titleNeManualRef.current = true; setEditTitleNe(e.target.value); }}
+                      placeholder="शीर्षक नेपालीमा…"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-gray-500">Description (Nepali)</label>
+                      <button type="button" onClick={translateDescNe} disabled={translatingDescNe || !meeting.description}
+                        className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 disabled:opacity-50 transition-colors">
+                        {translatingDescNe ? <Loader2 size={10} className="animate-spin" /> : <Languages size={10} />}
+                        Translate
+                      </button>
+                    </div>
+                    <textarea
+                      value={editDescNe}
+                      onChange={(e) => { descNeManualRef.current = true; setEditDescNe(e.target.value); }}
+                      rows={3}
+                      placeholder="विवरण नेपालीमा…"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={saveNepaliFields} disabled={savingNepali}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-[#0a1040] text-white text-xs font-medium rounded-xl hover:bg-[#0d1550] disabled:opacity-50 transition-colors min-h-[36px]">
+                    {savingNepali ? <><Loader2 size={11} className="animate-spin" /> Saving…</> : <><Save size={11} /> Save Nepali Fields</>}
+                  </button>
+                  <button onClick={() => setShowEditNepali(false)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors min-h-[36px]">
+                    <X size={11} /> Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Summary row */}
-        <div className="grid grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-gray-100">
           <div>
-            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Agenda Items</div>
+            <div className="flex items-center gap-1 text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">
+              <ListChecks size={10} /> Agenda Items
+            </div>
             <div className="text-sm font-semibold text-gray-700">{meeting.agendaItems.length}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Total Expenses</div>
+            <div className="flex items-center gap-1 text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">
+              <Receipt size={10} /> Total Expenses
+            </div>
             <div className="text-sm font-semibold text-red-600">Rs {totalExpenses.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Contributions</div>
+            <div className="flex items-center gap-1 text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">
+              <Users size={10} /> Contributions
+            </div>
             <div className="text-sm font-semibold text-green-600">Rs {totalContributions.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">Net Cost</div>
+            <div className="flex items-center gap-1 text-xs text-gray-400 font-medium uppercase tracking-wide mb-0.5">
+              <MapPin size={10} /> Net Cost
+            </div>
             <div className={`text-sm font-semibold ${netCost > 0 ? "text-red-600" : netCost < 0 ? "text-green-600" : "text-gray-500"}`}>
               {netCost < 0 ? `Rs ${Math.abs(netCost).toLocaleString()} surplus` : `Rs ${netCost.toLocaleString()}`}
             </div>
@@ -362,16 +533,24 @@ export default function MeetingDetailPage() {
         </div>
       </div>
 
-      {error && <p className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">{error}</p>}
+      {error && <p className="text-red-600 text-xs bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4">{error}</p>}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-gray-100">
-        {TABS.map((tab) => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${activeTab === tab.key ? "border-[#0a1040] text-[#0a1040]" : "border-transparent text-gray-400 hover:text-gray-700"}`}>
-            {tab.label}
-          </button>
-        ))}
+      <div className="overflow-x-auto -mx-1 px-1 mb-4">
+        <div className="flex gap-1 border-b border-gray-100 min-w-max">
+          {TABS.map((tab) => (
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${activeTab === tab.key ? "border-[#0a1040] text-[#0a1040]" : "border-transparent text-gray-400 hover:text-gray-700"}`}>
+              {tab.icon}
+              {tab.label}
+              {tab.count !== null && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${activeTab === tab.key ? "bg-[#0a1040] text-white" : "bg-gray-100 text-gray-500"}`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── AGENDA ── */}
@@ -381,7 +560,7 @@ export default function MeetingDetailPage() {
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
               <ol className="divide-y divide-gray-50">
                 {meeting.agendaItems.map((item, i) => (
-                  <li key={item.id} className="flex items-start gap-3 px-5 py-4">
+                  <li key={item.id} className="flex items-start gap-3 px-4 sm:px-5 py-4">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#0a1040] text-white text-xs flex items-center justify-center font-bold mt-0.5">{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-gray-900 text-sm">{item.title}</div>
@@ -394,7 +573,7 @@ export default function MeetingDetailPage() {
                         <button onClick={() => setConfirmDeleteAgendaId(null)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={12} /></button>
                       </span>
                     ) : (
-                      <button onClick={() => setConfirmDeleteAgendaId(item.id)} className="text-gray-300 hover:text-red-500 flex-shrink-0 mt-0.5 transition-colors"><Trash2 size={13} /></button>
+                      <button onClick={() => setConfirmDeleteAgendaId(item.id)} className="text-gray-300 hover:text-red-500 flex-shrink-0 mt-0.5 transition-colors min-h-[44px] flex items-center"><Trash2 size={13} /></button>
                     )}
                   </li>
                 ))}
@@ -426,7 +605,7 @@ export default function MeetingDetailPage() {
                         {item.description && <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>}
                       </div>
                       <button type="button" onClick={() => addSuggestedItem(item)}
-                        className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-600 text-white flex items-center justify-center hover:bg-violet-700 transition-colors mt-0.5"
+                        className="flex-shrink-0 w-7 h-7 rounded-full bg-violet-600 text-white flex items-center justify-center hover:bg-violet-700 transition-colors mt-0.5"
                         title="Add this item">
                         <Plus size={12} />
                       </button>
@@ -437,11 +616,11 @@ export default function MeetingDetailPage() {
             </div>
           )}
 
-          <form onSubmit={addAgenda} className="bg-white rounded-xl border border-gray-100 p-5">
+          <form onSubmit={addAgenda} className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">Add Agenda Item</h3>
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><ListChecks size={14} className="text-indigo-400" /> Add Agenda Item</h3>
               <button type="button" onClick={generateAgendaSuggestions} disabled={aiAgendaLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700 rounded-lg hover:bg-violet-100 disabled:opacity-50 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700 rounded-xl hover:bg-violet-100 disabled:opacity-50 transition-colors">
                 {aiAgendaLoading
                   ? <><Loader2 size={11} className="animate-spin" /> Generating…</>
                   : <><Sparkles size={11} /> Suggest with AI</>}
@@ -449,11 +628,11 @@ export default function MeetingDetailPage() {
             </div>
             <div className="space-y-3">
               <input type="text" value={agendaTitle} onChange={(e) => setAgendaTitle(e.target.value)} required placeholder="Agenda item title"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <input type="text" value={agendaDesc} onChange={(e) => setAgendaDesc(e.target.value)} placeholder="Description (optional)"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <button type="submit" disabled={savingAgenda}
-                className="flex items-center gap-2 px-4 py-2 bg-[#0a1040] text-white text-sm rounded-lg hover:bg-[#0d1550] disabled:opacity-50 transition-colors">
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm rounded-xl hover:bg-[#0d1550] disabled:opacity-50 transition-colors min-h-[44px]">
                 <Plus size={13} />{savingAgenda ? "Adding…" : "Add Item"}
               </button>
             </div>
@@ -466,7 +645,34 @@ export default function MeetingDetailPage() {
         <div className="space-y-4">
           {meeting.expenses.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <table className="w-full text-sm">
+              {/* Mobile cards */}
+              <div className="md:hidden divide-y divide-gray-50">
+                {meeting.expenses.map((exp) => (
+                  <div key={exp.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{exp.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                        <Building2 size={10} />{exp.vendor?.name ?? exp.vendorName ?? "No vendor"}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900 mt-1">Rs {Number(exp.amount).toLocaleString()}</p>
+                    </div>
+                    {confirmDeleteExpenseId === exp.id ? (
+                      <span className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => { void deleteExpense(exp.id); setConfirmDeleteExpenseId(null); }} className="text-xs font-semibold text-white bg-red-500 px-2 py-0.5 rounded hover:bg-red-600 transition-colors">Delete</button>
+                        <button onClick={() => setConfirmDeleteExpenseId(null)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={12} /></button>
+                      </span>
+                    ) : (
+                      <button onClick={() => setConfirmDeleteExpenseId(exp.id)} className="text-gray-300 hover:text-red-500 transition-colors min-h-[44px] flex items-center"><Trash2 size={13} /></button>
+                    )}
+                  </div>
+                ))}
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-between">
+                  <span className="text-xs font-semibold text-gray-500 uppercase">Total</span>
+                  <span className="text-sm font-bold text-gray-900">Rs {totalExpenses.toLocaleString()}</span>
+                </div>
+              </div>
+              {/* Desktop table */}
+              <table className="hidden md:table w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Vendor / Supplier</th>
@@ -505,14 +711,14 @@ export default function MeetingDetailPage() {
             </div>
           )}
 
-          <form onSubmit={addExpense} className="bg-white rounded-xl border border-gray-100 p-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Add Expense</h3>
+          <form onSubmit={addExpense} className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5"><Receipt size={14} className="text-amber-400" /> Add Expense</h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Vendor / Supplier</label>
                 <div className="relative">
                   <select value={eVendorId} onChange={(e) => { setEVendorId(e.target.value); if (e.target.value) setEVendorName(""); }}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 appearance-none">
+                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 appearance-none">
                     <option value="">Type a vendor name below…</option>
                     {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
                   </select>
@@ -521,7 +727,7 @@ export default function MeetingDetailPage() {
                 {!eVendorId && (
                   <div className="mt-2 space-y-1">
                     <input type="text" value={eVendorName} onChange={(e) => setEVendorName(e.target.value)} placeholder="Vendor name (free text)"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
                     {eVendorName && (
                       <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
                         <input type="checkbox" checked={eSaveVendor} onChange={(e) => setESaveVendor(e.target.checked)} className="rounded" />
@@ -532,11 +738,11 @@ export default function MeetingDetailPage() {
                 )}
               </div>
               <input type="text" value={eDesc} onChange={(e) => setEDesc(e.target.value)} required placeholder="Description (what was purchased)"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <input type="number" min="0" step="0.01" value={eAmount} onChange={(e) => setEAmount(e.target.value)} required placeholder="Amount (Rs)"
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
               <button type="submit" disabled={savingExp}
-                className="flex items-center gap-2 px-4 py-2 bg-[#0a1040] text-white text-sm rounded-lg hover:bg-[#0d1550] disabled:opacity-50 transition-colors">
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm rounded-xl hover:bg-[#0d1550] disabled:opacity-50 transition-colors min-h-[44px]">
                 <Plus size={13} />{savingExp ? "Adding…" : "Add Expense"}
               </button>
             </div>
@@ -549,7 +755,59 @@ export default function MeetingDetailPage() {
         <div className="space-y-4">
           {meeting.contributions.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <table className="w-full text-sm">
+              {/* Mobile cards */}
+              <div className="md:hidden divide-y divide-gray-50">
+                {meeting.contributions.map((c) => {
+                  const lines: PaymentLine[] = Array.isArray(c.paymentBreakdown) ? c.paymentBreakdown : [];
+                  return (
+                    <div key={c.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">{c.member.name}</p>
+                          <p className="text-xs text-gray-400">{c.member.area}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-semibold text-gray-900">Rs {Number(c.amount).toLocaleString()}</p>
+                          <span className={`text-xs ${c.status === "paid" ? "text-green-600" : "text-amber-600"}`}>
+                            {c.status === "paid" ? "Paid" : "Pending"}
+                          </span>
+                        </div>
+                      </div>
+                      {lines.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {lines.map((l, i) => (
+                            <span key={i} className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${METHOD_COLORS[l.method] ?? "bg-gray-100 text-gray-600"}`}>
+                              Rs {Number(l.amount).toLocaleString()} {PAYMENT_METHODS.find((m) => m.value === l.method)?.label ?? l.method}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        {c.status === "pending" && (
+                          <button onClick={() => markContribPaid(c.id)}
+                            className="flex items-center gap-1 text-xs text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-lg hover:bg-green-100 transition-colors">
+                            <CheckCircle size={11} /> Mark Paid
+                          </button>
+                        )}
+                        {confirmDeleteContribId === c.id ? (
+                          <span className="flex items-center gap-1">
+                            <button onClick={() => { void deleteContrib(c.id); setConfirmDeleteContribId(null); }} className="text-xs font-semibold text-white bg-red-500 px-2 py-0.5 rounded hover:bg-red-600 transition-colors">Delete</button>
+                            <button onClick={() => setConfirmDeleteContribId(null)} className="text-gray-400 hover:text-gray-600 transition-colors"><X size={12} /></button>
+                          </span>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteContribId(c.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={13} /></button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex justify-between">
+                  <span className="text-xs font-semibold text-gray-500 uppercase">Total{pendingContribs > 0 ? ` (${pendingContribs} pending)` : ""}</span>
+                  <span className="text-sm font-bold text-gray-900">Rs {totalContributions.toLocaleString()}</span>
+                </div>
+              </div>
+              {/* Desktop table */}
+              <table className="hidden md:table w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Member</th>
@@ -623,15 +881,15 @@ export default function MeetingDetailPage() {
             </div>
           )}
 
-          <form onSubmit={addContribution} className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700">Add Member Contribution</h3>
+          <form onSubmit={addContribution} className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><Users size={14} className="text-green-500" /> Add Member Contribution</h3>
 
             {/* Member */}
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Member <span className="text-red-400">*</span></label>
               <div className="relative">
                 <select value={cMemberId} onChange={(e) => setCMemberId(e.target.value)} required
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 appearance-none">
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 appearance-none">
                   <option value="">Select member…</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.name} — {m.area}</option>)}
                 </select>
@@ -655,12 +913,11 @@ export default function MeetingDetailPage() {
               <div className="space-y-2">
                 {cBreakdown.map((line, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    {/* Method pill selector */}
                     <div className="relative flex-shrink-0 w-40">
                       <select
                         value={line.method}
                         onChange={(e) => setCBreakdown((prev) => prev.map((l, idx) => idx === i ? { ...l, method: e.target.value } : l))}
-                        className="w-full pl-3 pr-7 py-2 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400 appearance-none bg-white"
+                        className="w-full pl-3 pr-7 py-2 border border-gray-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-400 appearance-none bg-white"
                       >
                         {PAYMENT_METHODS.map((m) => (
                           <option key={m.value} value={m.value}>{m.label}</option>
@@ -668,8 +925,6 @@ export default function MeetingDetailPage() {
                       </select>
                       <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
-
-                    {/* Amount */}
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">Rs</span>
                       <input
@@ -679,11 +934,9 @@ export default function MeetingDetailPage() {
                         value={line.amount}
                         onChange={(e) => setCBreakdown((prev) => prev.map((l, idx) => idx === i ? { ...l, amount: e.target.value } : l))}
                         placeholder="0"
-                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                       />
                     </div>
-
-                    {/* Remove row */}
                     {cBreakdown.length > 1 && (
                       <button
                         type="button"
@@ -697,7 +950,6 @@ export default function MeetingDetailPage() {
                 ))}
               </div>
 
-              {/* Add another method */}
               <button
                 type="button"
                 onClick={() => setCBreakdown((prev) => [...prev, { method: "cash", amount: "" }])}
@@ -713,7 +965,7 @@ export default function MeetingDetailPage() {
               <div className="flex gap-2">
                 {[{ v: "paid", l: "Collected / Paid" }, { v: "pending", l: "Not yet collected" }].map(({ v, l }) => (
                   <button key={v} type="button" onClick={() => setCStatus(v)}
-                    className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                    className={`flex-1 py-2.5 text-xs font-medium rounded-xl border transition-colors min-h-[44px] ${
                       cStatus === v
                         ? v === "paid"
                           ? "bg-green-600 text-white border-green-600"
@@ -735,11 +987,11 @@ export default function MeetingDetailPage() {
               value={cNotes}
               onChange={(e) => setCNotes(e.target.value)}
               placeholder="Notes (optional — e.g. receipt no., partial payment reason)"
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
 
             <button type="submit" disabled={savingCon}
-              className="flex items-center gap-2 px-4 py-2 bg-[#0a1040] text-white text-sm rounded-lg hover:bg-[#0d1550] disabled:opacity-50 transition-colors">
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm rounded-xl hover:bg-[#0d1550] disabled:opacity-50 transition-colors min-h-[44px]">
               <Plus size={13} />{savingCon ? "Adding…" : "Add Contribution"}
             </button>
           </form>
@@ -748,32 +1000,32 @@ export default function MeetingDetailPage() {
 
       {/* ── MINUTES ── */}
       {activeTab === "minutes" && (
-        <div className="bg-white rounded-xl border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-700">Meeting Minutes</h3>
+        <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><FileText size={14} className="text-blue-400" /> Meeting Minutes</h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={generateMinutesWithAI}
                 disabled={aiMinLoading || savingMin}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-xs rounded-lg disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 text-xs rounded-xl disabled:opacity-50 transition-colors min-h-[36px]"
               >
                 {aiMinLoading ? <><Loader2 size={12} className="animate-spin" />Generating…</> : <><Sparkles size={12} />Draft with AI</>}
               </button>
               <button onClick={saveMinutes} disabled={savingMin}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0a1040] text-white text-xs rounded-lg hover:bg-[#0d1550] disabled:opacity-50 transition-colors">
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#0a1040] text-white text-xs rounded-xl hover:bg-[#0d1550] disabled:opacity-50 transition-colors min-h-[36px]">
                 {savedMin ? <><Check size={12} />Saved</> : <><Save size={12} />{savingMin ? "Saving…" : "Save"}</>}
               </button>
             </div>
           </div>
           {aiMinError && (
-            <p className="mb-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{aiMinError}</p>
+            <p className="mb-3 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">{aiMinError}</p>
           )}
           <textarea
             value={minutesContent}
             onChange={(e) => { setMinutesContent(e.target.value); setSavedMin(false); }}
             rows={16}
             placeholder="Write meeting minutes here, or click Draft with AI to generate a draft from the agenda…"
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-y font-mono"
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-y font-mono"
           />
           <p className="text-xs text-gray-400 mt-2">Minutes are visible only to portal members, not the public.</p>
         </div>

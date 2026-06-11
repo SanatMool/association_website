@@ -199,6 +199,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [tab,     setTab]     = useState<Tab>("overview");
   const [year,    setYear]    = useState<number | "all">("all");
+  const [attendanceSub, setAttendanceSub] = useState<"events" | "meetings">("events");
 
   useEffect(() => {
     setLoading(true);
@@ -211,7 +212,11 @@ export default function ReportsPage() {
       });
   }, [year]);
 
-  if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Loading…</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center py-20 text-gray-400 text-sm gap-2">
+      <TrendingUp size={16} className="animate-pulse" /> Loading reports…
+    </div>
+  );
   if (!data)   return <div className="text-center py-20 text-red-400 text-sm">Failed to load reports.</div>;
 
   const {
@@ -231,17 +236,19 @@ export default function ReportsPage() {
   return (
     <div>
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <BarChart2 size={22} className="text-indigo-500" /> Reports
+          </h1>
           <p className="text-sm text-gray-400 mt-0.5">Financial summary, attendance, and member growth.</p>
         </div>
         {/* Year filter */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2">
           <select
             value={year}
             onChange={(e) => setYear(e.target.value === "all" ? "all" : parseInt(e.target.value, 10))}
-            className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+            className="flex-1 sm:flex-none px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
           >
             <option value="all">All time</option>
             {(data?.availableYears ?? []).map((y) => (
@@ -249,10 +256,7 @@ export default function ReportsPage() {
             ))}
           </select>
           {year !== "all" && (
-            <button
-              onClick={() => setYear("all")}
-              className="text-xs text-amber-600 hover:text-amber-700 font-medium"
-            >
+            <button onClick={() => setYear("all")} className="text-xs text-amber-600 hover:text-amber-700 font-medium whitespace-nowrap">
               Clear
             </button>
           )}
@@ -260,24 +264,26 @@ export default function ReportsPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-0.5 border-b border-gray-100 mb-6">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                tab === t.key
-                  ? "border-[#0a1040] text-[#0a1040]"
-                  : "border-transparent text-gray-400 hover:text-gray-700"
-              }`}
-            >
-              <Icon size={14} />
-              {t.label}
-            </button>
-          );
-        })}
+      <div className="overflow-x-auto -mx-1 px-1 mb-6">
+        <div className="flex gap-0.5 border-b border-gray-100 min-w-max">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                  tab === t.key
+                    ? "border-[#0a1040] text-[#0a1040]"
+                    : "border-transparent text-gray-400 hover:text-gray-700"
+                }`}
+              >
+                <Icon size={14} />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab content */}
@@ -330,7 +336,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Secondary stat cards */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <StatCard icon={Users}    iconBg="bg-gray-100" label="Total Members"    value={String(summary.totalMembers)} />
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -481,82 +487,160 @@ export default function ReportsPage() {
 
           {/* ── ATTENDANCE ────────────────────────────────────────────────── */}
           {tab === "attendance" && (
-            <div className="space-y-6">
-              {/* Event attendance */}
-              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                <SectionHeader title="Event Attendance (RSVPs)" sub="Portal member RSVPs per event" />
-                {eventAttendance.length === 0 ? (
-                  <Empty msg="No events yet." />
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                      <tr>
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Event</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Date</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Attending</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {eventAttendance.map((e) => (
-                        <tr key={e.id} className="hover:bg-gray-50/50">
-                          <td className="px-4 py-3 font-medium text-gray-800">{e.title}</td>
-                          <td className="px-4 py-3 text-xs text-gray-400 hidden sm:table-cell">{formatDate(e.date)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`text-sm font-bold ${e.attending > 0 ? "text-green-600" : "text-gray-300"}`}>
-                              {e.attending}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+            <div className="space-y-4">
+              {/* Sub-tab bar */}
+              <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+                <button
+                  onClick={() => setAttendanceSub("events")}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
+                    attendanceSub === "events"
+                      ? "bg-white text-[#0a1040] shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <CalendarDays size={12} /> Events
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${attendanceSub === "events" ? "bg-indigo-100 text-indigo-700" : "bg-gray-200 text-gray-500"}`}>
+                    {eventAttendance.length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setAttendanceSub("meetings")}
+                  className={`flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
+                    attendanceSub === "meetings"
+                      ? "bg-white text-[#0a1040] shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  <BarChart2 size={12} /> Meetings
+                  <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${attendanceSub === "meetings" ? "bg-indigo-100 text-indigo-700" : "bg-gray-200 text-gray-500"}`}>
+                    {meetingStats.length}
+                  </span>
+                </button>
               </div>
 
-              {/* Meeting attendance */}
-              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                <SectionHeader title="Meeting Attendance (RSVPs)" sub="Portal member RSVPs per meeting" />
-                {meetingStats.length === 0 ? (
-                  <Empty msg="No meetings yet." />
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b border-gray-100">
-                      <tr>
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Meeting</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Type</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Date</th>
-                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">RSVPs</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {meetingStats.map((m) => (
-                        <tr key={m.id} className="hover:bg-gray-50/50">
-                          <td className="px-4 py-3 font-medium text-gray-800">{m.title}</td>
-                          <td className="px-4 py-3 hidden md:table-cell">
-                            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 uppercase">{m.type}</span>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-gray-400 hidden sm:table-cell">{formatDate(m.scheduledAt)}</td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${
-                              m.status === "scheduled"  ? "bg-green-50 text-green-700"  :
-                              m.status === "completed"  ? "bg-gray-100 text-gray-500"   :
-                              "bg-red-50 text-red-600"
-                            }`}>
-                              {m.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`text-sm font-bold ${m.attending > 0 ? "text-green-600" : "text-gray-300"}`}>
-                              {m.attending}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div key={attendanceSub} variants={tabVariants} initial="initial" animate="animate" exit="exit">
+
+                  {/* Event attendance */}
+                  {attendanceSub === "events" && (
+                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                      <SectionHeader title="Event Attendance (RSVPs)" sub="Portal member RSVPs per event" />
+                      {eventAttendance.length === 0 ? (
+                        <Empty msg="No events yet." />
+                      ) : (
+                        <>
+                          {/* Mobile cards */}
+                          <div className="sm:hidden divide-y divide-gray-50">
+                            {eventAttendance.map((e) => (
+                              <div key={e.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{e.title}</p>
+                                  <p className="text-xs text-gray-400 mt-0.5">{formatDate(e.date)}</p>
+                                </div>
+                                <span className={`text-base font-bold flex-shrink-0 ${e.attending > 0 ? "text-green-600" : "text-gray-300"}`}>
+                                  {e.attending}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Desktop table */}
+                          <table className="hidden sm:table w-full text-sm">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                              <tr>
+                                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Event</th>
+                                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+                                <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Attending</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {eventAttendance.map((e) => (
+                                <tr key={e.id} className="hover:bg-gray-50/50">
+                                  <td className="px-4 py-3 font-medium text-gray-800">{e.title}</td>
+                                  <td className="px-4 py-3 text-xs text-gray-400">{formatDate(e.date)}</td>
+                                  <td className="px-4 py-3 text-right">
+                                    <span className={`text-sm font-bold ${e.attending > 0 ? "text-green-600" : "text-gray-300"}`}>
+                                      {e.attending}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Meeting attendance */}
+                  {attendanceSub === "meetings" && (
+                    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                      <SectionHeader title="Meeting Attendance (RSVPs)" sub="Portal member RSVPs per meeting" />
+                      {meetingStats.length === 0 ? (
+                        <Empty msg="No meetings yet." />
+                      ) : (
+                        <>
+                          {/* Mobile cards */}
+                          <div className="sm:hidden divide-y divide-gray-50">
+                            {meetingStats.map((m) => (
+                              <div key={m.id} className="px-4 py-3 flex items-center gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 truncate">{m.title}</p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 uppercase">{m.type}</span>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                      m.status === "scheduled" ? "bg-green-50 text-green-700" :
+                                      m.status === "completed" ? "bg-gray-100 text-gray-500" : "bg-red-50 text-red-600"
+                                    }`}>{m.status}</span>
+                                    <span className="text-xs text-gray-400">{formatDate(m.scheduledAt)}</span>
+                                  </div>
+                                </div>
+                                <span className={`text-base font-bold flex-shrink-0 ${m.attending > 0 ? "text-green-600" : "text-gray-300"}`}>
+                                  {m.attending}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Desktop table */}
+                          <table className="hidden sm:table w-full text-sm">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                              <tr>
+                                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Meeting</th>
+                                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Type</th>
+                                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+                                <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                                <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">RSVPs</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {meetingStats.map((m) => (
+                                <tr key={m.id} className="hover:bg-gray-50/50">
+                                  <td className="px-4 py-3 font-medium text-gray-800">{m.title}</td>
+                                  <td className="px-4 py-3 hidden md:table-cell">
+                                    <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 uppercase">{m.type}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-gray-400">{formatDate(m.scheduledAt)}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                      m.status === "scheduled" ? "bg-green-50 text-green-700" :
+                                      m.status === "completed" ? "bg-gray-100 text-gray-500" : "bg-red-50 text-red-600"
+                                    }`}>{m.status}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <span className={`text-sm font-bold ${m.attending > 0 ? "text-green-600" : "text-gray-300"}`}>
+                                      {m.attending}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                </motion.div>
+              </AnimatePresence>
             </div>
           )}
 

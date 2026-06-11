@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const data = await req.json();
+  const { publishTime, ...data } = await req.json();
+  void publishTime;
   const event = await prisma.event.create({
     data: {
       ...data,

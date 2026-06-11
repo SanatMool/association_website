@@ -13,7 +13,7 @@ export default async function NewsPage() {
     orderBy: { publishedAt: "desc" },
     select: {
       id: true, title: true, category: true, author: true,
-      publishedAt: true, featured: true, image: true, slug: true,
+      publishedAt: true, featured: true, image: true, slug: true, status: true,
     },
   });
 
@@ -26,6 +26,7 @@ export default async function NewsPage() {
     featured:    a.featured,
     image:       a.image,
     slug:        a.slug,
+    status:      a.status,
   }));
 
   return <NewsClient articles={rows} />;

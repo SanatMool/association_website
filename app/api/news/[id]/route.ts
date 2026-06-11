@@ -17,7 +17,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const data = await req.json();
+  const { publishTime, ...data } = await req.json();
+  void publishTime;
   const article = await prisma.news.update({
     where: { id: params.id },
     data: { ...data, publishedAt: new Date(data.publishedAt) },

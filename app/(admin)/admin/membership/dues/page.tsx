@@ -15,6 +15,7 @@ import { formatDate } from "@/lib/utils";
 interface Member   { id: string; name: string; area: string; memberCategoryId?: string | null }
 interface Category { id: string; name: string; monthlyFee: string; annualRenewalFee: string }
 interface PaymentLine { method: string; amount: string }
+interface BreakdownLine { method: string; amount: number }
 interface Payment {
   id: string;
   type: string;
@@ -26,6 +27,7 @@ interface Payment {
   receiptNumber: string | null;
   notes: string | null;
   paidAt: string | null;
+  paymentBreakdown: BreakdownLine[] | null;
   member: { id: string; name: string; area: string };
   memberCategory: { id: string; name: string } | null;
 }
@@ -379,14 +381,16 @@ export default function DuesPage() {
       </AnimatePresence>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dues &amp; Payments</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Banknote size={22} className="text-indigo-500" /> Dues &amp; Payments
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">Record and track membership fee payments for all members.</p>
         </div>
         <button
           onClick={() => { setShowForm(true); resetForm(); }}
-          className="flex items-center gap-2 px-4 py-2 bg-[#0a1040] text-white text-sm rounded-lg hover:bg-[#0d1550] transition-colors shadow-sm"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm rounded-xl hover:bg-[#0d1550] transition-colors shadow-sm w-full sm:w-auto min-h-[44px]"
         >
           <Plus size={14} /> Record Payment
         </button>
@@ -865,129 +869,111 @@ export default function DuesPage() {
         )}
       </div>
 
-      {/* Payments table */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        {loading ? (
-          <div className="text-center py-16 text-gray-400 text-sm flex flex-col items-center gap-2">
-            <RefreshCw size={20} className="animate-spin opacity-30" />
-            Loading payment records…
-          </div>
-        ) : payments.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm flex flex-col items-center gap-3">
-            <Banknote size={32} className="opacity-20" />
-            <div>
-              <div className="font-medium text-gray-500">No payment records found</div>
-              <div className="text-xs mt-1">
-                {filterStatus || filterType || filterMember ? "Try clearing the filters above." : "Click \"Record Payment\" to add the first one."}
-              </div>
+      {/* ── Payment records ── */}
+      {loading ? (
+        <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400 text-sm flex flex-col items-center gap-2">
+          <RefreshCw size={20} className="animate-spin opacity-30" />
+          Loading payment records…
+        </div>
+      ) : payments.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400 text-sm flex flex-col items-center gap-3">
+          <Banknote size={32} className="opacity-20" />
+          <div>
+            <div className="font-medium text-gray-500">No payment records found</div>
+            <div className="text-xs mt-1">
+              {filterStatus || filterType || filterMember ? "Try clearing the filters above." : "Click \"Record Payment\" to add the first one."}
             </div>
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Member</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Category</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Period</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell">Method</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden lg:table-cell">Paid On</th>
-                <th className="px-4 py-3 w-16" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {payments.map((p) => (
+        </div>
+      ) : (
+        <>
+          {/* ── Mobile cards (hidden sm+) ── */}
+          <div className="sm:hidden bg-white rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+            {payments.map((p) => {
+              const lines: BreakdownLine[] = Array.isArray(p.paymentBreakdown) ? p.paymentBreakdown : [];
+              return (
                 <Fragment key={p.id}>
-                <motion.tr
-                  layout
-                  className="hover:bg-gray-50/60 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 text-xs">{p.member.name}</div>
-                    <div className="text-gray-400 text-xs">{p.member.area}</div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500 hidden sm:table-cell">
-                    {p.memberCategory?.name ?? <span className="text-gray-300">—</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
-                      {p.type === "monthly" ? "Monthly" : "Annual"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-700 font-medium hidden md:table-cell">{periodLabel(p)}</td>
-                  <td className="px-4 py-3 text-right text-xs font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500 capitalize hidden lg:table-cell">
-                    {p.method === "pending" ? "—" : p.method}
-                  </td>
-                  <td className="px-4 py-3">
-                    {p.status === "paid" ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-                        <CheckCircle size={10} /> Paid
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                        <Clock size={10} /> Pending
-                      </span>
+                  <div className="px-4 py-4">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 leading-snug">{p.member.name}</p>
+                        <p className="text-xs text-gray-400">{p.member.area}{p.memberCategory ? ` · ${p.memberCategory.name}` : ""}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
+                          {p.type === "monthly" ? "Monthly" : "Annual"}
+                        </span>
+                        <span className="text-xs text-gray-400">{periodLabel(p)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-base font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</span>
+                      {p.status === "paid" ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                          <CheckCircle size={10} /> Paid{p.paidAt ? ` · ${formatDate(p.paidAt)}` : ""}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                          <Clock size={10} /> Pending
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Breakdown pills */}
+                    {lines.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {lines.map((l, i) => (
+                          <span key={i} className="inline-flex items-center text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                            {PAYMENT_METHODS.find((m) => m.value === l.method)?.label ?? l.method} · Rs {Number(l.amount).toLocaleString()}
+                          </span>
+                        ))}
+                      </div>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-400 hidden lg:table-cell">
-                    {p.paidAt ? formatDate(p.paidAt) : "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2 justify-end">
+                    {p.receiptNumber && (
+                      <p className="text-xs text-gray-400 mb-2 flex items-center gap-1"><Receipt size={10} /> Receipt: {p.receiptNumber}</p>
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
                       {p.status === "pending" && (
-                        <button
-                          onClick={() => markPaid(p.id)}
-                          title="Mark as paid"
-                          disabled={markingId === p.id}
-                          className="text-green-500 hover:text-green-700 transition-colors disabled:opacity-40"
-                        >
-                          {markingId === p.id ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                        <button onClick={() => markPaid(p.id)} disabled={markingId === p.id}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-colors disabled:opacity-40 min-h-[36px]">
+                          {markingId === p.id ? <RefreshCw size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                          Mark Paid
                         </button>
                       )}
-                      <button
-                        onClick={() => editId === p.id ? setEditId(null) : openEdit(p)}
-                        title="Edit payment"
-                        className={`transition-colors ${editId === p.id ? "text-amber-500" : "text-gray-300 hover:text-amber-500"}`}
-                      >
-                        <Pencil size={13} />
+                      <button onClick={() => editId === p.id ? setEditId(null) : openEdit(p)}
+                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors min-h-[36px] ${editId === p.id ? "bg-amber-50 border-amber-200 text-amber-700" : "border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600"}`}>
+                        <Pencil size={11} /> Edit
                       </button>
                       {confirmDeleteId === p.id ? (
-                        <span className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDelete(p.id)}
-                            disabled={deletingId === p.id}
-                            className="px-2 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-40"
-                          >
+                        <span className="flex items-center gap-1 ml-auto">
+                          <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
+                            className="px-3 py-1.5 text-xs bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-40 min-h-[36px]">
                             {deletingId === p.id ? <RefreshCw size={11} className="animate-spin inline" /> : "Delete"}
                           </button>
-                          <button onClick={() => setConfirmDeleteId(null)} className="p-0.5 text-gray-400 hover:text-gray-600">
-                            <X size={12} />
+                          <button onClick={() => setConfirmDeleteId(null)} className="p-1.5 text-gray-400 hover:text-gray-600">
+                            <X size={13} />
                           </button>
                         </span>
                       ) : (
-                        <button
-                          onClick={() => { setConfirmDeleteId(p.id); setEditId(null); }}
-                          title="Delete record"
-                          className="text-gray-300 hover:text-red-500 transition-colors"
-                        >
+                        <button onClick={() => { setConfirmDeleteId(p.id); setEditId(null); }}
+                          className="ml-auto p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors min-h-[36px]">
                           <Trash2 size={13} />
                         </button>
                       )}
                     </div>
-                  </td>
-                </motion.tr>
-                {/* ── Inline edit row ── */}
-                {editId === p.id && (
-                  <tr>
-                    <td colSpan={9} className="px-4 py-3 bg-amber-50/60 border-b border-amber-100">
-                      <div className="flex flex-wrap gap-3 items-end">
+                  </div>
+
+                  {/* Mobile inline edit panel */}
+                  {editId === p.id && (
+                    <div className="px-4 py-3 bg-amber-50 border-t border-amber-100 space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
                           <select value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                            className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
+                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
                             <option value="paid">Paid</option>
                             <option value="pending">Pending</option>
                           </select>
@@ -995,7 +981,7 @@ export default function DuesPage() {
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Method</label>
                           <select value={editForm.method} onChange={(e) => setEditForm((f) => ({ ...f, method: e.target.value }))}
-                            className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
+                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
                             {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
                           </select>
                         </div>
@@ -1003,32 +989,180 @@ export default function DuesPage() {
                           <label className="block text-xs font-medium text-gray-500 mb-1">Receipt #</label>
                           <input value={editForm.receiptNumber} onChange={(e) => setEditForm((f) => ({ ...f, receiptNumber: e.target.value }))}
                             placeholder="Optional"
-                            className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 w-28" />
+                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
                         </div>
-                        <div className="flex-1 min-w-40">
+                        <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
                           <input value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                            placeholder="Optional notes"
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => handleEditSave(p.id)} disabled={editSaving}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors">
-                            {editSaving ? <RefreshCw size={11} className="animate-spin" /> : <Save size={11} />}
-                            {editSaving ? "Saving…" : "Save"}
-                          </button>
-                          <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2">Cancel</button>
+                            placeholder="Optional"
+                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
                         </div>
                       </div>
-                    </td>
-                  </tr>
-                )}
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleEditSave(p.id)} disabled={editSaving}
+                          className="flex items-center gap-1 px-4 py-2 text-xs font-medium bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-colors min-h-[36px]">
+                          {editSaving ? <RefreshCw size={11} className="animate-spin" /> : <Save size={11} />}
+                          {editSaving ? "Saving…" : "Save"}
+                        </button>
+                        <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-3 py-2">Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </Fragment>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              );
+            })}
+          </div>
+
+          {/* ── Desktop table (hidden on mobile) ── */}
+          <div className="hidden sm:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Member</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Category</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type · Period</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 w-24" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {payments.map((p) => {
+                  const lines: BreakdownLine[] = Array.isArray(p.paymentBreakdown) ? p.paymentBreakdown : [];
+                  return (
+                    <Fragment key={p.id}>
+                      <motion.tr layout className="hover:bg-gray-50/60 transition-colors">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-900 text-xs">{p.member.name}</div>
+                          <div className="text-gray-400 text-xs">{p.member.area}</div>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
+                          {p.memberCategory?.name ?? <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
+                            {p.type === "monthly" ? "Monthly" : "Annual"}
+                          </span>
+                          <div className="text-xs text-gray-500 mt-0.5">{periodLabel(p)}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-xs font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          {lines.length > 1 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {lines.map((l, i) => (
+                                <span key={i} className="inline-flex items-center text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
+                                  {PAYMENT_METHODS.find((m) => m.value === l.method)?.label ?? l.method} Rs {Number(l.amount).toLocaleString()}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-500 capitalize">
+                              {p.method === "pending" ? "—" : (PAYMENT_METHODS.find((m) => m.value === p.method)?.label ?? p.method)}
+                            </span>
+                          )}
+                          {p.receiptNumber && (
+                            <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1"><Receipt size={9} />{p.receiptNumber}</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {p.status === "paid" ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                                <CheckCircle size={10} /> Paid
+                              </span>
+                              {p.paidAt && <div className="text-xs text-gray-400 mt-0.5">{formatDate(p.paidAt)}</div>}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                              <Clock size={10} /> Pending
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2 justify-end">
+                            {p.status === "pending" && (
+                              <button onClick={() => markPaid(p.id)} title="Mark as paid" disabled={markingId === p.id}
+                                className="text-green-500 hover:text-green-700 transition-colors disabled:opacity-40">
+                                {markingId === p.id ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                              </button>
+                            )}
+                            <button onClick={() => editId === p.id ? setEditId(null) : openEdit(p)} title="Edit payment"
+                              className={`transition-colors ${editId === p.id ? "text-amber-500" : "text-gray-300 hover:text-amber-500"}`}>
+                              <Pencil size={13} />
+                            </button>
+                            {confirmDeleteId === p.id ? (
+                              <span className="flex items-center gap-1">
+                                <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
+                                  className="px-2 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-40">
+                                  {deletingId === p.id ? <RefreshCw size={11} className="animate-spin inline" /> : "Delete"}
+                                </button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="p-0.5 text-gray-400 hover:text-gray-600">
+                                  <X size={12} />
+                                </button>
+                              </span>
+                            ) : (
+                              <button onClick={() => { setConfirmDeleteId(p.id); setEditId(null); }} title="Delete record"
+                                className="text-gray-300 hover:text-red-500 transition-colors">
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </motion.tr>
+
+                      {/* Inline edit row (desktop) */}
+                      {editId === p.id && (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-3 bg-amber-50/60 border-b border-amber-100">
+                            <div className="flex flex-wrap gap-3 items-end">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
+                                <select value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
+                                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
+                                  <option value="paid">Paid</option>
+                                  <option value="pending">Pending</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Method</label>
+                                <select value={editForm.method} onChange={(e) => setEditForm((f) => ({ ...f, method: e.target.value }))}
+                                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
+                                  {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Receipt #</label>
+                                <input value={editForm.receiptNumber} onChange={(e) => setEditForm((f) => ({ ...f, receiptNumber: e.target.value }))}
+                                  placeholder="Optional"
+                                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 w-28" />
+                              </div>
+                              <div className="flex-1 min-w-40">
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+                                <input value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                                  placeholder="Optional notes"
+                                  className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => handleEditSave(p.id)} disabled={editSaving}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors">
+                                  {editSaving ? <RefreshCw size={11} className="animate-spin" /> : <Save size={11} />}
+                                  {editSaving ? "Saving…" : "Save"}
+                                </button>
+                                <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2">Cancel</button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

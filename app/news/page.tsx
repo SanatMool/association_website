@@ -9,7 +9,11 @@ export default async function NewsPage() {
   const association = await getAssociationOrThrow();
 
   const dbNews = await prisma.news.findMany({
-    where: { associationId: association.id },
+    where: {
+      associationId: association.id,
+      status: { not: "draft" },
+      publishedAt: { lte: new Date() },
+    },
     orderBy: { publishedAt: "desc" },
   });
 
