@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
 import PublicChrome from "@/components/layout/PublicChrome";
@@ -101,6 +102,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${dmSerifDisplay.variable}`}>
       <body className="font-sans">
+        <Script
+          id="sw-register"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`,
+          }}
+        />
         <LocaleProvider>
           <PublicChrome navbar={<NavbarWrapper />} footer={<FooterWrapper />}>
             {children}

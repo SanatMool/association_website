@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Building2 } from "lucide-react";
 import { getAdminContext } from "@/lib/adminAuth";
 import MembersClient, { type MemberRow } from "./MembersClient";
 
@@ -75,7 +75,10 @@ export default async function MembersPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Members</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <Building2 size={22} className="text-indigo-500" />
+            Members
+          </h1>
           <p className="text-sm text-gray-500 mt-0.5">Manage venue members for this association.</p>
         </div>
         <Link
