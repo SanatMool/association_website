@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import CommitteeCard from "@/components/ui/CommitteeCard";
+import CommitteeMemberModal from "@/components/ui/CommitteeMemberModal";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 import { CommitteeType } from "@/lib/types";
@@ -11,6 +13,7 @@ interface ExecutiveCommitteeProps {
 
 export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProps) {
   const { t } = useLocale();
+  const [selectedMember, setSelectedMember] = useState<CommitteeType | null>(null);
 
   if (!committee || committee.length === 0) return null;
 
@@ -50,7 +53,7 @@ export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProp
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {leadership.map((member, i) => (
             <AnimatedSection key={member.id} delay={i * 0.08}>
-              <CommitteeCard member={member} highlighted={member.order <= 2} />
+              <CommitteeCard member={member} highlighted={member.order <= 2} onSelect={setSelectedMember} />
             </AnimatedSection>
           ))}
         </div>
@@ -68,11 +71,13 @@ export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProp
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {rest.map((member, i) => (
             <AnimatedSection key={member.id} delay={0.3 + i * 0.06}>
-              <CommitteeCard member={member} />
+              <CommitteeCard member={member} onSelect={setSelectedMember} />
             </AnimatedSection>
           ))}
         </div>
       </div>
+
+      <CommitteeMemberModal member={selectedMember} onClose={() => setSelectedMember(null)} />
     </section>
   );
 }

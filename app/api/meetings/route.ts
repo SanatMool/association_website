@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json() as {
     title: string; type: string; scheduledAt: string;
     venue?: string; description?: string; status?: string;
+    latitude?: number | null; longitude?: number | null;
   };
 
   if (!body.title?.trim() || !body.type || !body.scheduledAt) {
@@ -39,6 +40,8 @@ export async function POST(req: NextRequest) {
       venue:       body.venue?.trim() || null,
       description: body.description?.trim() || null,
       status:      body.status ?? "scheduled",
+      latitude:    body.latitude  ?? null,
+      longitude:   body.longitude ?? null,
     },
   });
 

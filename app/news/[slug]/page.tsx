@@ -67,6 +67,11 @@ export default async function NewsDetailPage({ params }: Props) {
 
         <article className="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
           <div className="h-1 bg-gradient-to-r from-gold-500 to-navy-700" />
+          {item.image && (
+            <div className="h-64 sm:h-80 overflow-hidden">
+              <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+            </div>
+          )}
           <div className="p-8 sm:p-12">
             <div className="flex flex-wrap items-center gap-3 mb-6">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 capitalize">

@@ -36,17 +36,20 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const body = await req.json() as {
     title?: string; type?: string; scheduledAt?: string;
     venue?: string; description?: string; status?: string;
+    latitude?: number | null; longitude?: number | null;
   };
 
   const meeting = await prisma.meeting.update({
     where: { id: params.id },
     data: {
-      ...(body.title       ? { title: body.title.trim() }            : {}),
-      ...(body.type        ? { type: body.type }                     : {}),
+      ...(body.title       ? { title: body.title.trim() }                : {}),
+      ...(body.type        ? { type: body.type }                         : {}),
       ...(body.scheduledAt ? { scheduledAt: new Date(body.scheduledAt) } : {}),
-      ...(body.status      ? { status: body.status }                 : {}),
+      ...(body.status      ? { status: body.status }                     : {}),
       venue:       body.venue?.trim()       ?? undefined,
       description: body.description?.trim() ?? undefined,
+      ...(body.latitude  !== undefined ? { latitude:  body.latitude  } : {}),
+      ...(body.longitude !== undefined ? { longitude: body.longitude } : {}),
     },
   });
 

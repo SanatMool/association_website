@@ -1,11 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
   if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const aId = ctx.associationId;
+
+  const yearParam = req.nextUrl.searchParams.get("year");
+  const year      = yearParam ? parseInt(yearParam, 10) : null;
+  const dateFrom  = year ? new Date(year,     0, 1) : undefined;
+  const dateTo    = year ? new Date(year + 1, 0, 1) : undefined;
+  const dateRange = dateFrom && dateTo ? { gte: dateFrom, lt: dateTo } : undefined;
 
   const [
     duesPayments,
@@ -15,26 +21,27 @@ export async function GET() {
     events,
     memberLinks,
     portalAccounts,
+    allDuesDates,
   ] = await Promise.all([
     prisma.duesPayment.findMany({
-      where: { associationId: aId },
+      where: { associationId: aId, ...(dateRange ? { periodStart: dateRange } : {}) },
       select: { amount: true, status: true, type: true, periodStart: true, memberCategoryId: true, memberCategory: { select: { name: true } } },
     }),
     prisma.expense.findMany({
-      where: { associationId: aId },
+      where: { associationId: aId, ...(dateRange ? { meeting: { scheduledAt: dateRange } } : {}) },
       select: { amount: true, meetingId: true, meeting: { select: { title: true, scheduledAt: true } } },
     }),
     prisma.memberContribution.findMany({
-      where: { associationId: aId },
+      where: { associationId: aId, ...(dateRange ? { meeting: { scheduledAt: dateRange } } : {}) },
       select: { amount: true, status: true, member: { select: { name: true } } },
     }),
     prisma.meeting.findMany({
-      where: { associationId: aId },
+      where: { associationId: aId, ...(dateRange ? { scheduledAt: dateRange } : {}) },
       select: { id: true, title: true, scheduledAt: true, type: true, status: true, _count: { select: { rsvps: { where: { status: "attending" } } } } },
       orderBy: { scheduledAt: "desc" },
     }),
     prisma.event.findMany({
-      where: { associationId: aId },
+      where: { associationId: aId, ...(dateRange ? { date: dateRange } : {}) },
       select: { id: true, title: true, date: true, _count: { select: { rsvps: { where: { status: "attending" } } } } },
       orderBy: { date: "desc" },
       take: 20,
@@ -45,6 +52,11 @@ export async function GET() {
       orderBy: { joinedAt: "asc" },
     }),
     prisma.memberAccount.count({ where: { associationId: aId } }),
+    // fetch all periodStart dates to derive available years
+    prisma.duesPayment.findMany({
+      where: { associationId: aId },
+      select: { periodStart: true },
+    }),
   ]);
 
   // ── Dues aggregations ──────────────────────────────────────────────────────
@@ -119,12 +131,20 @@ export async function GET() {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([month, count]) => ({ month, count }));
 
+  // ── Available years (for the year filter dropdown) ─────────────────────────
+  const yearSet = new Set<number>();
+  for (const d of allDuesDates) yearSet.add(new Date(d.periodStart).getFullYear());
+  for (const m of meetings)     yearSet.add(new Date(m.scheduledAt).getFullYear());
+  const availableYears = Array.from(yearSet).sort((a, b) => b - a);
+
   // ── Summary ────────────────────────────────────────────────────────────────
   const netBalance = totalDuesPaid + totalContributions - totalExpenses;
 
   return NextResponse.json({
     success: true,
     data: {
+      year: year ?? null,
+      availableYears,
       summary: {
         totalDuesPaid,
         totalDuesPending,

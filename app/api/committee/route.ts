@@ -7,7 +7,7 @@ export async function GET() {
   const associationId = ctx?.associationId ?? null;
 
   const committee = await prisma.committeeMember.findMany({
-    where: { associationId },
+    where: { associationId, active: true },
     orderBy: { order: "asc" },
   });
   return NextResponse.json(committee);

@@ -12,17 +12,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const { title, description, status, priority, dueDate, assignee } = body;
+  const { title, description, status, priority, dueDate, assignee, notes } = body;
 
   const task = await prisma.adminTask.update({
     where: { id: params.id },
     data: {
       ...(title !== undefined && { title: title.trim() }),
       ...(description !== undefined && { description: description?.trim() || null }),
+      ...(notes !== undefined && { notes: notes?.trim() || null }),
       ...(status !== undefined && { status }),
       ...(priority !== undefined && { priority }),
       ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
       ...(assignee !== undefined && { assignee: assignee?.trim() || null }),
+      // Set completedAt when first moved to done; clear it if moved back (though UI locks done tasks)
+      ...(status === "done" && !existing.completedAt && { completedAt: new Date() }),
     },
   });
   return NextResponse.json(task);

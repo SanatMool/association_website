@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 interface CommitteeCardProps {
   member: CommitteeType;
   highlighted?: boolean;
+  onSelect?: (member: CommitteeType) => void;
 }
 
 function getInitials(name: string) {
@@ -34,7 +35,7 @@ function getAvatarColor(name: string) {
   return avatarColors[sum % avatarColors.length];
 }
 
-export default function CommitteeCard({ member, highlighted = false }: CommitteeCardProps) {
+export default function CommitteeCard({ member, highlighted = false, onSelect }: CommitteeCardProps) {
   const { t, locale } = useLocale();
 
   const roleLabel =
@@ -47,11 +48,13 @@ export default function CommitteeCard({ member, highlighted = false }: Committee
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ type: "spring", stiffness: 350, damping: 25 }}
+      onClick={() => onSelect?.(member)}
       className={cn(
         "rounded-2xl p-6 text-center transition-all duration-300 group relative overflow-hidden",
         highlighted
           ? "bg-navy-900 border border-gold-500/30 shadow-navy"
-          : "card card-hover"
+          : "card card-hover",
+        onSelect && "cursor-pointer"
       )}
     >
       {/* Subtle top border gradient for highlighted */}
@@ -61,17 +64,25 @@ export default function CommitteeCard({ member, highlighted = false }: Committee
 
       {/* Avatar */}
       <div className="relative mx-auto mb-4 w-[72px] h-[72px]">
-        <div className={cn(
-          "w-[72px] h-[72px] rounded-2xl flex items-center justify-center bg-gradient-to-br shadow-md",
-          avatarGrad
-        )}>
-          <span className={cn(
-            "font-serif font-bold text-xl",
-            highlighted ? "text-navy-900" : "text-white"
+        {member.image ? (
+          <img
+            src={member.image}
+            alt={member.name}
+            className="w-[72px] h-[72px] rounded-2xl object-cover shadow-md"
+          />
+        ) : (
+          <div className={cn(
+            "w-[72px] h-[72px] rounded-2xl flex items-center justify-center bg-gradient-to-br shadow-md",
+            avatarGrad
           )}>
-            {getInitials(member.name)}
-          </span>
-        </div>
+            <span className={cn(
+              "font-serif font-bold text-xl",
+              highlighted ? "text-navy-900" : "text-white"
+            )}>
+              {getInitials(member.name)}
+            </span>
+          </div>
+        )}
 
         {highlighted && (
           <motion.div

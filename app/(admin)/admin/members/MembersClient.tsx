@@ -29,14 +29,18 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
   const [page,        setPage]        = useState(1);
 
   const areas      = useMemo(() => Array.from(new Set(rows.map((r) => r.area).filter(Boolean))).sort(), [rows]);
-  const categories = useMemo(() => Array.from(new Set(rows.map((r) => r.category ?? "").filter(Boolean))).sort(), [rows]);
+  const categories = useMemo(() =>
+    Array.from(new Set(
+      rows.flatMap((r) => (r.category ?? "").split(",").map((s) => s.trim())).filter(Boolean)
+    )).sort()
+  , [rows]);
 
   const filtered = useMemo(() => {
     let out = rows;
     const q = search.trim().toLowerCase();
     if (q)             out = out.filter((r) => r.name.toLowerCase().includes(q) || r.area.toLowerCase().includes(q) || (r.phone ?? "").includes(q));
     if (filterArea)    out = out.filter((r) => r.area === filterArea);
-    if (filterCat)     out = out.filter((r) => r.category === filterCat);
+    if (filterCat)     out = out.filter((r) => (r.category ?? "").split(",").map((s) => s.trim()).includes(filterCat));
     if (filterVis === "visible") out = out.filter((r) => r.visible);
     if (filterVis === "hidden")  out = out.filter((r) => !r.visible);
     if (filterFeat)    out = out.filter((r) => r.featured);

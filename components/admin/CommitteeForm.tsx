@@ -2,53 +2,169 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import ImageUpload from "./ImageUpload";
+import { motion, AnimatePresence } from "framer-motion";
 import { CommitteeMember } from "@prisma/client";
+import ImageUpload from "./ImageUpload";
+import {
+  User, Briefcase, Camera,
+  ChevronRight, ChevronLeft, Check, Info, Star, Loader2,
+  Search, Building2, X, Sparkles,
+} from "lucide-react";
 
-interface Props {
-  member?: CommitteeMember;
-}
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-export default function CommitteeForm({ member }: Props) {
+const ROLE_KEYS: { key: string; label: string; desc: string }[] = [
+  { key: "president",                label: "President",                desc: "Head of EVA Nepal" },
+  { key: "immediate_past_president", label: "Immediate Past President", desc: "Previous term president" },
+  { key: "senior_vice_president",    label: "Senior Vice President",    desc: "Second-in-command" },
+  { key: "vice_president",           label: "Vice President",           desc: "VP / joint VP" },
+  { key: "general_secretary",        label: "General Secretary",        desc: "Heads the secretariat" },
+  { key: "secretary",                label: "Secretary",                desc: "Executive secretary" },
+  { key: "treasurer",                label: "Treasurer",                desc: "Manages finances" },
+  { key: "member",                   label: "Executive Member",         desc: "Committee member" },
+];
+
+const BS_MONTHS = [
+  "Baisakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashwin",
+  "Kartik",  "Mangsir", "Poush", "Magh",    "Falgun", "Chaitra",
+];
+
+const AD_MONTHS = [
+  "January", "February", "March",     "April",   "May",      "June",
+  "July",    "August",   "September", "October", "November", "December",
+];
+
+const STEPS = [
+  { id: 1, label: "Identity",    icon: User,     hint: "Name and role within the committee" },
+  { id: 2, label: "Affiliation", icon: Briefcase, hint: "Venue, organization, and display order" },
+  { id: 3, label: "Profile",     icon: Camera,   hint: "Biography and photo" },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+interface MemberOption { id: string; name: string; nameNe: string | null; area: string; }
+interface Props { member?: CommitteeMember; members?: MemberOption[]; }
+
+export default function CommitteeForm({ member, members = [] }: Props) {
   const router = useRouter();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [step,   setStep]   = useState(1);
+  const [dir,    setDir]    = useState(1);
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState("");
+  const [bioLoading,   setBioLoading]   = useState(false);
+  const [bioAiError,   setBioAiError]   = useState("");
+
+  // Member picker state
+  const [memberSearch,   setMemberSearch]   = useState("");
+  const [pickedMemberId, setPickedMemberId] = useState<string | null>(null);
+  const pickedMember = members.find((m) => m.id === pickedMemberId) ?? null;
 
   const [form, setForm] = useState({
-    name: member?.name ?? "",
-    nameNe: (member as any)?.nameNe ?? "",
-    role: member?.role ?? "",
-    roleKey: member?.roleKey ?? "member",
-    organization: member?.organization ?? "",
-    venue: member?.venue ?? "",
-    venueNe: (member as any)?.venueNe ?? "",
-    bio: member?.bio ?? "",
-    order: member?.order ?? 99,
-    highlighted: member?.highlighted ?? false,
-    image: member?.image ?? "",
+    name:         member?.name                      ?? "",
+    nameNe:       (member as any)?.nameNe           ?? "",
+    role:         member?.role                      ?? "",
+    roleKey:      member?.roleKey                   ?? "member",
+    organization: member?.organization              ?? "",
+    venue:        member?.venue                     ?? "",
+    venueNe:      (member as any)?.venueNe          ?? "",
+    bio:          member?.bio                       ?? "",
+    order:        String(member?.order              ?? "99"),
+    highlighted:  member?.highlighted               ?? false,
+    image:        member?.image                     ?? "",
+    termYearBS:   String(member?.termYearBS         ?? ""),
+    termMonthBS:  String(member?.termMonthBS        ?? ""),
+    termYearAD:   String(member?.termYearAD         ?? ""),
+    termMonthAD:  String(member?.termMonthAD        ?? ""),
   });
 
-  function set(key: string, value: string | boolean | number) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  // Known auto-filled labels — used to decide if role text was user-edited
+  const knownLabels = ROLE_KEYS.map((r) => r.label);
+
+  function set(k: string, v: string | boolean) {
+    setForm((p) => {
+      const next = { ...p, [k]: v };
+      // Auto-fill role title when roleKey changes, unless user has typed something custom
+      if (k === "roleKey" && typeof v === "string") {
+        const label = ROLE_KEYS.find((r) => r.key === v)?.label ?? "";
+        if (!p.role.trim() || knownLabels.includes(p.role)) {
+          next.role = label;
+        }
+      }
+      return next;
+    });
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
+  function pickMember(m: MemberOption) {
+    setPickedMemberId(m.id);
+    setMemberSearch("");
+    setForm((p) => ({ ...p, venue: m.name, venueNe: m.nameNe ?? "" }));
+  }
 
-    const url = member ? `/api/committee/${member.id}` : "/api/committee";
+  function clearMember() {
+    setPickedMemberId(null);
+    setForm((p) => ({ ...p, venue: "", venueNe: "" }));
+  }
+
+  // ── AI Bio Generate ──────────────────────────────────────────────────────────
+  async function generateBio() {
+    setBioLoading(true); setBioAiError("");
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "bio", name: form.name, role: form.role, venue: form.venue, organization: form.organization }),
+      });
+      const json = await res.json() as { success: boolean; data?: { text: string }; error?: string };
+      if (!json.success || !json.data) throw new Error(json.error ?? "Generation failed");
+      setForm((p) => ({ ...p, bio: json.data!.text }));
+    } catch (err) {
+      setBioAiError(err instanceof Error ? err.message : "AI generation failed");
+    } finally {
+      setBioLoading(false);
+    }
+  }
+
+  // ── Validation ───────────────────────────────────────────────────────────────
+  function validateStep(s: number): string {
+    if (s === 1 && !form.name.trim())  return "Full name is required.";
+    if (s === 1 && !form.role.trim())  return "Role title is required.";
+    if (s === 2 && form.order && isNaN(Number(form.order))) return "Display order must be a number.";
+    return "";
+  }
+
+  function goNext() {
+    const err = validateStep(step);
+    if (err) { setError(err); return; }
+    setError(""); setDir(1); setStep((s) => Math.min(STEPS.length, s + 1));
+  }
+  function goBack() { setError(""); setDir(-1); setStep((s) => Math.max(1, s - 1)); }
+
+  // ── Submit ───────────────────────────────────────────────────────────────────
+  async function handleSubmit() {
+    const err = validateStep(step);
+    if (err) { setError(err); return; }
+    setSaving(true); setError("");
+
+    const url    = member ? `/api/committee/${member.id}` : "/api/committee";
     const method = member ? "PUT" : "POST";
 
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, order: Number(form.order) }),
+      body: JSON.stringify({
+        ...form,
+        order:       Number(form.order),
+        termYearBS:  form.termYearBS  ? Number(form.termYearBS)  : null,
+        termMonthBS: form.termMonthBS ? Number(form.termMonthBS) : null,
+        termYearAD:  form.termYearAD  ? Number(form.termYearAD)  : null,
+        termMonthAD: form.termMonthAD ? Number(form.termMonthAD) : null,
+      }),
     });
 
     if (!res.ok) {
-      const err = await res.json();
-      setError(err.error ?? "Failed to save");
+      let msg = "Failed to save. Please try again.";
+      try { const e = await res.json() as { error?: string }; msg = e.error ?? msg; } catch { /* empty */ }
+      setError(msg);
       setSaving(false);
       return;
     }
@@ -57,96 +173,487 @@ export default function CommitteeForm({ member }: Props) {
     router.refresh();
   }
 
-  const field = (label: string, key: string, type = "text", placeholder = "") => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
-      <input
-        type={type}
-        value={form[key as keyof typeof form] as string}
-        onChange={(e) => set(key, e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-      />
-    </div>
-  );
+  // ── Styles ───────────────────────────────────────────────────────────────────
+  const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition";
 
+  const stepVariants = {
+    enter:  (d: number) => ({ x: d > 0 ? 60 : -60, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit:   (d: number) => ({ x: d > 0 ? -60 : 60, opacity: 0 }),
+  };
+
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
-        {field("Name (English) *", "name")}
-        {field("Name (Nepali)", "nameNe", "text", "उत्तम प्रकाश शर्मा")}
-        {field("Role (English) *", "role", "text", "President")}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Role Key *</label>
-          <select
-            value={form.roleKey}
-            onChange={(e) => set("roleKey", e.target.value)}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          >
-            {[
-              "president",
-              "immediate_past_president",
-              "senior_vice_president",
-              "vice_president",
-              "general_secretary",
-              "secretary",
-              "treasurer",
-              "member",
-            ].map((k) => (
-              <option key={k} value={k}>{k}</option>
-            ))}
-          </select>
+    <div className="max-w-2xl">
+
+      {/* ── Progress bar ──────────────────────────────────────────────────────── */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          {STEPS.map((s, i) => {
+            const done = step > s.id;
+            const cur  = step === s.id;
+            const Icon = s.icon;
+            return (
+              <div key={s.id} className="flex items-center flex-1">
+                <div className="flex flex-col items-center gap-1">
+                  <motion.div
+                    animate={{ backgroundColor: done ? "#10b981" : cur ? "#f59e0b" : "#e5e7eb", scale: cur ? 1.15 : 1 }}
+                    transition={{ duration: 0.25 }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center shadow-sm"
+                  >
+                    {done
+                      ? <Check size={16} className="text-white" strokeWidth={2.5} />
+                      : <Icon size={16} className={cur ? "text-white" : "text-gray-400"} />
+                    }
+                  </motion.div>
+                  <span className={`text-[10px] font-medium hidden sm:block ${cur ? "text-amber-600" : done ? "text-emerald-600" : "text-gray-400"}`}>
+                    {s.label}
+                  </span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className="flex-1 mx-2 h-0.5 rounded-full overflow-hidden bg-gray-200 mb-4">
+                    <motion.div
+                      animate={{ width: step > s.id ? "100%" : "0%" }}
+                      transition={{ duration: 0.4 }}
+                      className="h-full bg-emerald-400 rounded-full"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-        {field("Order", "order", "number", "1")}
-        {field("Venue (English)", "venue")}
-        {field("Venue (Nepali)", "venueNe", "text", "मानसरोवर पार्टी प्यालेस")}
-        {field("Organization", "organization")}
+        <p className="text-xs text-gray-400 text-center">
+          Step {step} of {STEPS.length} — {STEPS[step - 1].hint}
+        </p>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-        <textarea
-          value={form.bio}
-          onChange={(e) => set("bio", e.target.value)}
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-        />
-      </div>
+      {/* ── Card ──────────────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
-        <ImageUpload value={form.image} onChange={(url) => set("image", url)} />
-      </div>
+        {/* Header */}
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center gap-3">
+          {(() => {
+            const Icon = STEPS[step - 1].icon;
+            return <div className="p-2 bg-amber-50 rounded-xl"><Icon size={18} className="text-amber-600" /></div>;
+          })()}
+          <div>
+            <h2 className="font-bold text-gray-900">{STEPS[step - 1].label}</h2>
+            <p className="text-xs text-gray-400">{STEPS[step - 1].hint}</p>
+          </div>
+        </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="highlighted"
-          checked={form.highlighted}
-          onChange={(e) => set("highlighted", e.target.checked)}
-          className="rounded"
-        />
-        <label htmlFor="highlighted" className="text-sm text-gray-700">Highlighted (President / VP)</label>
-      </div>
+        {/* Step content */}
+        <AnimatePresence mode="wait" custom={dir}>
+          <motion.div
+            key={step}
+            custom={dir}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="px-6 py-6 space-y-5"
+          >
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+            {/* ── STEP 1 — Identity ────────────────────────────────────────────── */}
+            {step === 1 && (<>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex gap-2">
+                <Info size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  Enter the member&apos;s name exactly as it should appear on the public website. The Nepali name is optional but recommended.
+                </p>
+              </div>
 
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="px-5 py-2 bg-[#0a1040] text-white text-sm rounded-lg hover:bg-[#0d1550] disabled:opacity-50"
-        >
-          {saving ? "Saving…" : member ? "Update member" : "Create member"}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push("/admin/committee")}
-          className="px-5 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200"
-        >
-          Cancel
-        </button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name (English) *</label>
+                  <input
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    placeholder="e.g. Ram Prasad Shrestha"
+                    required
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Use the full official name.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name (Nepali)</label>
+                  <input
+                    value={form.nameNe}
+                    onChange={(e) => set("nameNe", e.target.value)}
+                    placeholder="e.g. राम प्रसाद श्रेष्ठ"
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">Shown alongside the English name.</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Role Title (English) *</label>
+                <input
+                  value={form.role}
+                  onChange={(e) => set("role", e.target.value)}
+                  placeholder="e.g. President, Vice President"
+                  required
+                  className={inputCls}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  The official title that appears below the name on the public committee page.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Role Category *</label>
+                <p className="text-[11px] text-gray-400 mb-2">
+                  Used for sorting and grouping. Choose the closest match — this controls how the member is ranked in the committee list.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {ROLE_KEYS.map(({ key, label, desc }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => set("roleKey", key)}
+                      className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-sm transition-all text-left
+                        ${form.roleKey === key
+                          ? "bg-amber-50 border-amber-400 text-amber-800 shadow-sm"
+                          : "bg-white border-gray-200 text-gray-600 hover:border-amber-300"}`}
+                    >
+                      <span className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-colors
+                        ${form.roleKey === key ? "bg-amber-500 border-amber-500" : "border-gray-300"}`}>
+                        {form.roleKey === key && <Check size={9} className="text-white" strokeWidth={3} />}
+                      </span>
+                      <div>
+                        <div className={`font-semibold text-sm leading-tight ${form.roleKey === key ? "text-amber-800" : "text-gray-700"}`}>{label}</div>
+                        <div className="text-[11px] text-gray-400">{desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>)}
+
+            {/* ── STEP 2 — Affiliation ─────────────────────────────────────────── */}
+            {step === 2 && (<>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex gap-2">
+                <Info size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-700">
+                  Search for the member venue this person represents, or type the venue name manually below.
+                </p>
+              </div>
+
+              {/* ── Member venue picker ─────────────────────────────────────────── */}
+              {members.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                    <Building2 size={13} className="text-gray-400" />
+                    Pick from registered members
+                    <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  </label>
+                  <p className="text-[11px] text-gray-400 mb-2">
+                    Selecting a member auto-fills the venue name below and keeps it consistent with the member directory.
+                  </p>
+
+                  {pickedMember ? (
+                    // Selected state
+                    <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <Building2 size={14} className="text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{pickedMember.name}</p>
+                        <p className="text-xs text-gray-400">{pickedMember.area}</p>
+                      </div>
+                      <button type="button" onClick={clearMember}
+                        className="p-1 rounded-lg hover:bg-blue-100 text-blue-400 hover:text-blue-700 transition-colors flex-shrink-0"
+                        title="Clear selection">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    // Search state
+                    <div className="relative">
+                      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        value={memberSearch}
+                        onChange={(e) => setMemberSearch(e.target.value)}
+                        placeholder="Search by venue name or area…"
+                        className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                      />
+                      {memberSearch.trim() && (() => {
+                        const q = memberSearch.toLowerCase();
+                        const results = members.filter(
+                          (m) => m.name.toLowerCase().includes(q) || m.area.toLowerCase().includes(q)
+                        ).slice(0, 8);
+                        return (
+                          <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                            {results.length === 0 ? (
+                              <p className="px-4 py-3 text-xs text-gray-400">No members found matching &quot;{memberSearch}&quot;</p>
+                            ) : results.map((m) => (
+                              <button key={m.id} type="button" onClick={() => pickMember(m)}
+                                className="w-full text-left px-4 py-2.5 hover:bg-amber-50 border-b border-gray-50 last:border-0 transition-colors">
+                                <p className="text-sm font-medium text-gray-900">{m.name}</p>
+                                <p className="text-xs text-gray-400">{m.area}</p>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Venue name fields (editable, pre-filled from picker) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Venue Name (English)</label>
+                  <input
+                    value={form.venue}
+                    onChange={(e) => set("venue", e.target.value)}
+                    placeholder="e.g. Hotel Annapurna Banquet"
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">The venue this person represents in EVA Nepal.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Venue Name (Nepali)</label>
+                  <input
+                    value={form.venueNe}
+                    onChange={(e) => set("venueNe", e.target.value)}
+                    placeholder="e.g. मानसरोवर पार्टी प्यालेस"
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Organization</label>
+                <input
+                  value={form.organization}
+                  onChange={(e) => set("organization", e.target.value)}
+                  placeholder="e.g. Hotel Annapurna Pvt. Ltd."
+                  className={inputCls}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  The registered company or legal entity name. Leave blank if the same as the venue.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Display Order</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.order}
+                  onChange={(e) => set("order", e.target.value)}
+                  placeholder="e.g. 1 = first, 99 = last"
+                  className={`${inputCls} max-w-[180px]`}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Lower numbers appear first on the committee page. President is typically 1.
+                </p>
+              </div>
+
+              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-amber-300 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={form.highlighted}
+                  onChange={(e) => set("highlighted", e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                <div>
+                  <div className="flex items-center gap-1 text-sm font-semibold text-gray-700">
+                    <Star size={13} className="text-amber-500" /> Highlighted Position
+                  </div>
+                  <p className="text-[11px] text-gray-400">
+                    Tick this for President, Vice Presidents, and other office bearers. Shown with a gold badge on the public website.
+                  </p>
+                </div>
+              </label>
+
+              {/* ── Term year (optional — used when editing archived members) ───── */}
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50 space-y-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-0.5">Election / Term Year</p>
+                  <p className="text-[11px] text-gray-400">
+                    Set when this person was elected. Used in the committee history page. Leave blank for the current active committee — these are filled automatically when you archive the committee.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">BS Year</label>
+                    <input
+                      type="number"
+                      value={form.termYearBS}
+                      onChange={(e) => set("termYearBS", e.target.value)}
+                      placeholder="e.g. 2082"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">BS Month</label>
+                    <select
+                      value={form.termMonthBS}
+                      onChange={(e) => set("termMonthBS", e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="">— month —</option>
+                      {BS_MONTHS.map((m, i) => (
+                        <option key={m} value={String(i + 1)}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">AD Year</label>
+                    <input
+                      type="number"
+                      value={form.termYearAD}
+                      onChange={(e) => set("termYearAD", e.target.value)}
+                      placeholder="e.g. 2025"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">AD Month</label>
+                    <select
+                      value={form.termMonthAD}
+                      onChange={(e) => set("termMonthAD", e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="">— month —</option>
+                      {AD_MONTHS.map((m, i) => (
+                        <option key={m} value={String(i + 1)}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </>)}
+
+            {/* ── STEP 3 — Profile ─────────────────────────────────────────────── */}
+            {step === 3 && (<>
+              <div className="bg-purple-50 border border-purple-200 rounded-xl px-4 py-3 flex gap-2">
+                <Info size={14} className="text-purple-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-purple-700">
+                  Add a short biography and profile photo. Both are optional but greatly improve the committee page presentation.
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-semibold text-gray-700">Biography</label>
+                  <button
+                    type="button"
+                    onClick={generateBio}
+                    disabled={!form.name || bioLoading}
+                    title={form.name ? "Generate a biography using AI" : "Enter a name in Step 1 first"}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-violet-50 border border-violet-200 text-violet-700 rounded-lg hover:bg-violet-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {bioLoading
+                      ? <><Loader2 size={11} className="animate-spin" /> Generating…</>
+                      : <><Sparkles size={11} /> Generate Bio</>}
+                  </button>
+                </div>
+                {bioAiError && (
+                  <div className="mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+                    {bioAiError}
+                  </div>
+                )}
+                <textarea
+                  value={form.bio}
+                  onChange={(e) => set("bio", e.target.value)}
+                  rows={4}
+                  placeholder="A brief introduction — background, experience, and their role at the venue…"
+                  className={`${inputCls} resize-none`}
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Shown on the committee member&apos;s public card. Aim for 2–4 sentences.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Profile Photo</label>
+                <ImageUpload value={form.image} onChange={(url) => set("image", url)} />
+                <p className="text-[11px] text-gray-400 mt-2">
+                  Use a clear, professional headshot. JPG or PNG, under 2 MB.
+                </p>
+              </div>
+
+              {/* Summary review */}
+              <div className="border border-gray-100 rounded-xl p-4 bg-gray-50 space-y-1.5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Review before saving</p>
+                <div className="text-sm text-gray-700">
+                  <span className="font-medium">Name:</span>{" "}
+                  {form.name || <span className="text-red-400 italic">missing</span>}
+                  {form.nameNe && <span className="text-gray-400 ml-1">({form.nameNe})</span>}
+                </div>
+                <div className="text-sm text-gray-700">
+                  <span className="font-medium">Role:</span>{" "}
+                  {form.role || <span className="text-red-400 italic">missing</span>}
+                  <span className="text-gray-400 ml-1">
+                    ({ROLE_KEYS.find((r) => r.key === form.roleKey)?.label ?? form.roleKey})
+                  </span>
+                </div>
+                {form.venue && (
+                  <div className="text-sm text-gray-700">
+                    <span className="font-medium">Venue:</span> {form.venue}
+                  </div>
+                )}
+                <div className="text-sm text-gray-700">
+                  <span className="font-medium">Display order:</span> {form.order}
+                  {form.highlighted && <span className="ml-2 px-1.5 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full">★ Highlighted</span>}
+                </div>
+              </div>
+            </>)}
+
+          </motion.div>
+        </AnimatePresence>
+
+        {/* ── Footer — error + navigation ───────────────────────────────────────── */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+          {error && (
+            <div className="mb-3 flex items-start gap-2 px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl">
+              <Info size={13} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-600">{error}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={step === 1}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={15} /> Back
+            </button>
+
+            {step < STEPS.length ? (
+              <button
+                type="button"
+                onClick={goNext}
+                className="flex items-center gap-1.5 px-5 py-2 bg-[#0a1040] text-white text-sm font-medium rounded-xl hover:bg-[#0d1550] transition-colors"
+              >
+                Continue <ChevronRight size={15} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2 bg-amber-500 text-white text-sm font-semibold rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-colors"
+              >
+                {saving ? (
+                  <><Loader2 size={14} className="animate-spin" />{member ? "Updating…" : "Saving…"}</>
+                ) : (
+                  <><Check size={14} />{member ? "Update Member" : "Add to Committee"}</>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-    </form>
+    </div>
   );
 }

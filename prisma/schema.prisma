@@ -98,10 +98,11 @@ model Member {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  associations        MemberAssociation[]
-  duesPayments        DuesPayment[]
-  contributions       MemberContribution[]
-  portalAccounts      MemberAccount[]
+  associations           MemberAssociation[]
+  duesPayments           DuesPayment[]
+  contributions          MemberContribution[]
+  portalAccounts         MemberAccount[]
+  membershipApplications MembershipApplication[]
 }
 
 model Event {
@@ -112,7 +113,11 @@ model Event {
   description   String
   date          DateTime
   endDate       DateTime?
+  startTime     String?   // e.g. "09:00" — stored as string, no TZ issues
+  endTime       String?   // e.g. "17:00"
   location      String
+  latitude      Float?    // GPS coordinates for map pin
+  longitude     Float?
   type          String    // networking | training | meeting | exhibition | conference
   status        String    // upcoming | past
   attendees     Int?
@@ -159,6 +164,11 @@ model CommitteeMember {
   order         Int      @default(99)
   highlighted   Boolean  @default(false)
   image         String?
+  active        Boolean  @default(true)  // true = current committee; false = archived
+  termYearAD    Int?     // AD year of election (e.g. 2025)
+  termMonthAD   Int?     // AD month 1-12 (e.g. 7 = July)
+  termYearBS    Int?     // BS year of election (e.g. 2082)
+  termMonthBS   Int?     // BS month 1-12 (e.g. 3 = Ashadh)
   associationId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -226,11 +236,13 @@ model MembershipApplication {
   capacity      String?
   website       String?
   status        String   @default("pending") // pending | reviewed | accepted | rejected
+  memberId      String?  // populated when accepted — links to the created Member record
   associationId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   association Association? @relation(fields: [associationId], references: [id])
+  member      Member?      @relation(fields: [memberId], references: [id])
 }
 
 model AdminTask {
@@ -241,6 +253,8 @@ model AdminTask {
   priority      String    @default("medium")  // low | medium | high
   dueDate       DateTime?
   assignee      String?
+  notes         String?   // progress / follow-up notes
+  completedAt   DateTime? // set when status first becomes "done"
   associationId String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -308,6 +322,7 @@ model DuesPayment {
   status            String    @default("pending") // paid | pending
   receiptNumber     String?
   notes             String?
+  paymentBreakdown  Json?     // [{method: string, amount: number}] — split payment lines
   recordedByAdminId String?
   paidAt            DateTime?
   createdAt         DateTime  @default(now())
@@ -331,6 +346,8 @@ model Meeting {
   venue         String?
   description   String?
   status        String   @default("scheduled") // scheduled | completed | cancelled
+  latitude      Float?
+  longitude     Float?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -406,8 +423,9 @@ model MemberContribution {
   meetingId         String?
   eventId           String?
   amount            Decimal   @db.Decimal(10, 2)
-  method            String    @default("pending") // cash | transfer | pending
+  method            String    @default("pending") // cash | cheque | qr | transfer | esewa | khalti | mixed | pending
   status            String    @default("pending") // paid | pending
+  paymentBreakdown  Json?     // [{method: string, amount: number}] — split payment lines
   notes             String?
   recordedByAdminId String?
   paidAt            DateTime?

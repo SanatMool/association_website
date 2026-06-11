@@ -9,10 +9,11 @@ export default function NewArticlePage() {
         <ChevronLeft size={14} />
         Back to news
       </Link>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add Article</h1>
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <NewsForm />
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Add Article</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Follow the steps to publish a new news article.</p>
       </div>
+      <NewsForm />
     </div>
   );
 }

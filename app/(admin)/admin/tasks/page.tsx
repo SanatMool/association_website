@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Plus, Trash2, CheckCircle2, Circle, Clock, AlertTriangle, ChevronDown, X } from "lucide-react";
+import { Plus, Trash2, CheckCircle2, Circle, Clock, AlertTriangle, ChevronDown, X, Search, ArrowUpDown } from "lucide-react";
+import { formatDate } from "@/lib/utils";
 
 type TaskStatus = "todo" | "in_progress" | "done";
 type TaskPriority = "low" | "medium" | "high";
@@ -14,6 +15,8 @@ interface AdminTask {
   priority: TaskPriority;
   dueDate: string | null;
   assignee: string | null;
+  notes: string | null;
+  completedAt: string | null;
   createdAt: string;
 }
 
@@ -36,18 +39,18 @@ function isOverdue(dueDate: string | null): boolean {
   return new Date(dueDate) < new Date();
 }
 
-function formatDue(dueDate: string): string {
-  const d = new Date(dueDate);
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-}
-
 export default function TasksPage() {
   const [tasks, setTasks] = useState<AdminTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [memberNames, setMemberNames] = useState<string[]>([]);
   const [filter, setFilter] = useState<TaskStatus | "all">("all");
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<"priority" | "dueDate" | "createdAt">("createdAt");
+  const [sortAsc, setSortAsc] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -56,7 +59,10 @@ export default function TasksPage() {
     priority: "medium" as TaskPriority,
     dueDate: "",
     assignee: "",
+    notes: "",
   });
+  const [editNotes, setEditNotes] = useState<Record<string, string>>({});
+  const [savingNotes, setSavingNotes] = useState<string | null>(null);
 
   async function fetchTasks() {
     const res = await fetch("/api/tasks");
@@ -64,11 +70,32 @@ export default function TasksPage() {
     setLoading(false);
   }
 
-  useEffect(() => { fetchTasks(); }, []);
+  useEffect(() => {
+    fetchTasks();
+    fetch("/api/members?limit=500")
+      .then((r) => r.json())
+      .then((json: { success?: boolean; data?: { name: string }[] } | { name: string }[]) => {
+        const list = Array.isArray(json) ? json : (json as { data?: { name: string }[] }).data ?? [];
+        setMemberNames(list.map((m: { name: string }) => m.name).filter(Boolean));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (showForm) titleRef.current?.focus();
   }, [showForm]);
+
+  async function saveNotes(task: AdminTask) {
+    const notes = editNotes[task.id] ?? task.notes ?? "";
+    setSavingNotes(task.id);
+    await fetch(`/api/tasks/${task.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes }),
+    });
+    await fetchTasks();
+    setSavingNotes(null);
+  }
 
   async function createTask(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +106,7 @@ export default function TasksPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, status: "todo" }),
     });
-    setForm({ title: "", description: "", priority: "medium", dueDate: "", assignee: "" });
+    setForm({ title: "", description: "", priority: "medium", dueDate: "", assignee: "", notes: "" });
     setShowForm(false);
     await fetchTasks();
     setSubmitting(false);
@@ -96,12 +123,35 @@ export default function TasksPage() {
   }
 
   async function deleteTask(id: string) {
-    if (!confirm("Delete this task?")) return;
+    setConfirmDeleteId(null);
     setTasks((prev) => prev.filter((t) => t.id !== id));
     await fetch(`/api/tasks/${id}`, { method: "DELETE" });
   }
 
-  const filtered = filter === "all" ? tasks : tasks.filter((t) => t.status === filter);
+  const PRIORITY_ORDER: Record<string, number> = { high: 3, medium: 2, low: 1 };
+
+  const filtered = tasks
+    .filter((t) => {
+      if (filter !== "all" && t.status !== filter) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        return t.title.toLowerCase().includes(q) || (t.assignee ?? "").toLowerCase().includes(q);
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "priority") cmp = (PRIORITY_ORDER[a.priority] ?? 0) - (PRIORITY_ORDER[b.priority] ?? 0);
+      else if (sortKey === "dueDate") {
+        const ad = a.dueDate ?? "9999-99-99";
+        const bd = b.dueDate ?? "9999-99-99";
+        cmp = ad.localeCompare(bd);
+      } else {
+        cmp = a.createdAt.localeCompare(b.createdAt);
+      }
+      return sortAsc ? cmp : -cmp;
+    });
+
   const counts = { all: tasks.length, todo: 0, in_progress: 0, done: 0 };
   tasks.forEach((t) => counts[t.status]++);
 
@@ -142,6 +192,13 @@ export default function TasksPage() {
               rows={2}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/20 focus:border-[#0a1040] resize-none"
             />
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Follow-up notes (optional)"
+              rows={2}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/20 focus:border-[#0a1040] resize-none"
+            />
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Priority</label>
@@ -160,6 +217,7 @@ export default function TasksPage() {
                 <input
                   type="date"
                   value={form.dueDate}
+                  min={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/20 focus:border-[#0a1040]"
                 />
@@ -169,9 +227,15 @@ export default function TasksPage() {
                 <input
                   value={form.assignee}
                   onChange={(e) => setForm((f) => ({ ...f, assignee: e.target.value }))}
-                  placeholder="Name or email"
+                  placeholder="Type or pick a member…"
+                  list="task-assignee-list"
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/20 focus:border-[#0a1040]"
                 />
+                <datalist id="task-assignee-list">
+                  {memberNames.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
             </div>
             <div className="flex justify-end">
@@ -186,6 +250,32 @@ export default function TasksPage() {
           </form>
         </div>
       )}
+
+      {/* Search + sort */}
+      <div className="flex flex-wrap gap-3 mb-3">
+        <div className="relative flex-1 min-w-44">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by title or assignee…"
+            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/20 focus:border-[#0a1040]"
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <ArrowUpDown size={12} className="text-gray-400" />
+          {(["priority", "dueDate", "createdAt"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => { if (sortKey === k) setSortAsc((v) => !v); else { setSortKey(k); setSortAsc(k === "dueDate"); } }}
+              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${sortKey === k ? "bg-[#0a1040] text-white border-[#0a1040]" : "border-gray-200 text-gray-500 hover:border-gray-400"}`}
+            >
+              {k === "priority" ? "Priority" : k === "dueDate" ? "Due Date" : "Newest"}
+              {sortKey === k && <span className="ml-1 opacity-60">{sortAsc ? "↑" : "↓"}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Filter tabs */}
       <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
@@ -240,19 +330,15 @@ export default function TasksPage() {
                 } ${expanded ? "shadow-sm" : ""}`}
               >
                 <div className="flex items-center gap-3 px-4 py-3">
-                  {/* Status toggle */}
+                  {/* Status toggle — done tasks are locked */}
                   <button
                     onClick={() => {
-                      const next: TaskStatus =
-                        task.status === "todo"
-                          ? "in_progress"
-                          : task.status === "in_progress"
-                          ? "done"
-                          : "todo";
+                      if (task.status === "done") return;
+                      const next: TaskStatus = task.status === "todo" ? "in_progress" : "done";
                       updateStatus(task.id, next);
                     }}
-                    title={`Mark as ${task.status === "todo" ? "in progress" : task.status === "in_progress" ? "done" : "to do"}`}
-                    className="flex-shrink-0"
+                    title={task.status === "done" ? "Completed" : task.status === "todo" ? "Mark as in progress" : "Mark as done"}
+                    className={`flex-shrink-0 ${task.status === "done" ? "cursor-default" : "cursor-pointer"}`}
                   >
                     {task.status === "done" ? (
                       <CheckCircle2 size={18} className="text-green-500" />
@@ -286,7 +372,7 @@ export default function TasksPage() {
                       </span>
                     )}
                     {task.dueDate && !overdue && task.status !== "done" && (
-                      <span className="text-xs text-gray-400 hidden sm:block">{formatDue(task.dueDate)}</span>
+                      <span className="text-xs text-gray-400 hidden sm:block">{formatDate(task.dueDate)}</span>
                     )}
                     <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${pc.bg} ${pc.color}`}>
                       {pc.label}
@@ -309,12 +395,29 @@ export default function TasksPage() {
                     >
                       <ChevronDown size={14} className={`transition-transform ${expanded ? "rotate-180" : ""}`} />
                     </button>
-                    <button
-                      onClick={() => deleteTask(task.id)}
-                      className="text-gray-300 hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    {confirmDeleteId === task.id ? (
+                      <span className="flex items-center gap-1">
+                        <button
+                          onClick={() => deleteTask(task.id)}
+                          className="text-xs font-semibold text-white bg-red-500 px-2 py-0.5 rounded hover:bg-red-600 transition-colors"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <X size={13} />
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => { setConfirmDeleteId(task.id); setExpandedId(null); }}
+                        className="text-gray-300 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -326,25 +429,54 @@ export default function TasksPage() {
                     )}
                     <div className="flex flex-wrap gap-4 text-xs text-gray-400">
                       {task.dueDate && (
-                        <span>Due: <span className={overdue ? "text-red-600 font-medium" : "text-gray-600"}>{formatDue(task.dueDate)}</span></span>
+                        <span>Due: <span className={overdue ? "text-red-600 font-medium" : "text-gray-600"}>{formatDate(task.dueDate)}</span></span>
                       )}
                       {task.assignee && (
                         <span>Assigned to: <span className="text-gray-600">{task.assignee}</span></span>
                       )}
-                      <span>Created: {new Date(task.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span>
+                      <span>Created: {formatDate(task.createdAt)}</span>
+                      {task.completedAt && (
+                        <span>Completed: <span className="text-green-600">{formatDate(task.completedAt)}</span></span>
+                      )}
                     </div>
-                    {/* Status change buttons */}
-                    <div className="flex gap-2">
-                      {STATUS_ORDER.filter((s) => s !== task.status).map((s) => (
+                    {/* Follow-up notes */}
+                    <div>
+                      <label className="text-xs font-medium text-gray-500 block mb-1">Follow-up notes</label>
+                      <textarea
+                        value={editNotes[task.id] ?? task.notes ?? ""}
+                        onChange={(e) => setEditNotes((n) => ({ ...n, [task.id]: e.target.value }))}
+                        placeholder="Add progress notes, follow-ups, blockers…"
+                        rows={2}
+                        disabled={task.status === "done"}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30 resize-none disabled:bg-gray-50 disabled:text-gray-400"
+                      />
+                      {task.status !== "done" && (editNotes[task.id] ?? task.notes ?? "") !== (task.notes ?? "") && (
                         <button
-                          key={s}
-                          onClick={() => updateStatus(task.id, s)}
-                          className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                          onClick={() => saveNotes(task)}
+                          disabled={savingNotes === task.id}
+                          className="mt-1 text-xs text-[#0a1040] hover:underline disabled:opacity-50"
                         >
-                          Move to {STATUS_LABELS[s]}
+                          {savingNotes === task.id ? "Saving…" : "Save notes"}
                         </button>
-                      ))}
+                      )}
                     </div>
+                    {/* Status change buttons — locked once done */}
+                    {task.status !== "done" && (
+                      <div className="flex gap-2">
+                        {STATUS_ORDER.filter((s) => s !== task.status && s !== "todo").map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => updateStatus(task.id, s)}
+                            className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                          >
+                            Move to {STATUS_LABELS[s]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {task.status === "done" && (
+                      <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 size={11} /> Completed{task.completedAt ? ` on ${formatDate(task.completedAt)}` : ""} — this task is locked.</p>
+                    )}
                   </div>
                 )}
               </div>

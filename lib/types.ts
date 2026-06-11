@@ -37,9 +37,14 @@ export interface EventType {
   description: string;
   date: string; // ISO string
   endDate?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   location: string;
+  latitude?: number | null;
+  longitude?: number | null;
   type: string;
   status: string;
+  attendees?: number | null;
   image?: string | null;
 }
 
@@ -65,10 +70,15 @@ export interface CommitteeType {
   roleKey: string;
   venue?: string | null;
   venueNe?: string | null;
+  organization?: string | null;
   bio?: string | null;
   order: number;
   highlighted?: boolean;
   image?: string | null;
+  termYearAD?: number | null;
+  termMonthAD?: number | null;
+  termYearBS?: number | null;
+  termMonthBS?: number | null;
 }
 
 export interface TimelineType {

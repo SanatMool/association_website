@@ -19,11 +19,24 @@ export async function GET(req: NextRequest) {
       ...(featured === "true" ? { featured: true } : {}),
       ...(area ? { area } : {}),
     },
+    include: {
+      associations: {
+        where: associationId ? { associationId } : undefined,
+        select: { memberCategoryId: true },
+      },
+    },
     orderBy: [{ featured: "desc" }, { name: "asc" }],
     ...(limit ? { take: parseInt(limit) } : {}),
   });
 
-  return NextResponse.json(members);
+  // Flatten memberCategoryId onto each member for easy client consumption
+  const result = members.map((m) => ({
+    ...m,
+    memberCategoryId: m.associations[0]?.memberCategoryId ?? null,
+    associations: undefined, // strip the nested array — callers don't need it
+  }));
+
+  return NextResponse.json(result);
 }
 
 export async function POST(req: NextRequest) {

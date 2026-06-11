@@ -21,9 +21,14 @@ export default async function EventsPage() {
     description: e.description,
     date: e.date.toISOString(),
     endDate: e.endDate?.toISOString() ?? null,
+    startTime: e.startTime ?? null,
+    endTime: e.endTime ?? null,
     location: e.location,
+    latitude: e.latitude ?? null,
+    longitude: e.longitude ?? null,
     type: e.type,
     status: e.status,
+    attendees: e.attendees ?? null,
     image: e.image,
   }));
 

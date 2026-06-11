@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { MapPin, ArrowRight } from "lucide-react";
+import { MapPin, ArrowRight, Clock } from "lucide-react";
 import { EventType } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -21,11 +22,24 @@ interface EventCardProps {
   compact?: boolean;
 }
 
+function formatTime(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
 export default function EventCard({ event, compact = false }: EventCardProps) {
   const config = typeConfig[event.type] ?? defaultTypeConfig;
   const isUpcoming = event.status === "upcoming";
 
-  return (
+  const timeLabel = event.startTime
+    ? event.endTime
+      ? `${formatTime(event.startTime)} – ${formatTime(event.endTime)}`
+      : formatTime(event.startTime)
+    : null;
+
+  const CardInner = (
     <motion.div
       whileHover={{ y: -4 }}
       transition={{ type: "spring", stiffness: 350, damping: 25 }}
@@ -44,16 +58,24 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         "relative h-36 overflow-hidden",
         isUpcoming ? "bg-navy-900" : "bg-slate-100"
       )}>
-        <div className={cn(
-          "absolute inset-0",
-          isUpcoming
-            ? "bg-gradient-to-br from-navy-800 to-navy-950"
-            : "bg-gradient-to-br from-slate-200 to-slate-300"
-        )} />
-        {/* Pattern overlay */}
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f59e0b' fill-opacity='1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E")`
-        }} />
+        {event.image ? (
+          <img src={event.image} alt={event.title} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <>
+            <div className={cn(
+              "absolute inset-0",
+              isUpcoming
+                ? "bg-gradient-to-br from-navy-800 to-navy-950"
+                : "bg-gradient-to-br from-slate-200 to-slate-300"
+            )} />
+            {/* Pattern overlay */}
+            <div className="absolute inset-0 opacity-10" style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f59e0b' fill-opacity='1' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E")`
+            }} />
+          </>
+        )}
+        {/* Overlay to keep badges readable over image */}
+        {event.image && <div className="absolute inset-0 bg-navy-950/40" />}
 
         {/* Event type badge */}
         <div className="absolute top-4 left-4">
@@ -105,6 +127,12 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
             <MapPin size={12} className="text-gold-500 flex-shrink-0" />
             <span className="line-clamp-1">{event.location}</span>
           </div>
+          {timeLabel && (
+            <div className="flex items-center gap-2 text-slate-500 text-xs">
+              <Clock size={12} className="text-gold-500 flex-shrink-0" />
+              <span>{timeLabel}</span>
+            </div>
+          )}
         </div>
 
         {isUpcoming && !compact && (
@@ -115,5 +143,11 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         )}
       </div>
     </motion.div>
+  );
+
+  return (
+    <Link href={`/events/${event.slug}`} className="block h-full">
+      {CardInner}
+    </Link>
   );
 }

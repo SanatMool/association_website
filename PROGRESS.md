@@ -774,6 +774,50 @@ Rule: every income source must be wired at the time it is built.
 
 ---
 
+## Feature 6 — AI Content Generation ✓ COMPLETE
+
+Built: /api/ai/generate POST endpoint using @anthropic-ai/sdk + claude-opus-4-6.
+Three generation types: "bio" (committee bio), "news" (excerpt + full content), "agenda" (5–7 meeting agenda items).
+AI buttons wired into: CommitteeForm Step 3 ("Generate Bio"), NewsForm Step 2 ("Generate with AI"), Meetings detail page Agenda tab ("Suggest with AI").
+Agenda suggestions shown as a dismissable panel — each item has a + button to add directly to the meeting.
+
+---
+
+## Feature 7 — Reports Charts + Tabs ✓ COMPLETE
+
+Rebuilt /admin/reports as a 4-tab layout: Overview / Finances / Attendance / Members.
+Replaced thin progress bars with proper vertical CSS bar charts (no external libs).
+DuesBarChart: stacked vertical bars (paid green + pending amber), h-36 container with flex items-end.
+MemberGrowthChart: single indigo vertical bars.
+AnimatePresence tab transitions (fade in/out). StatCard, SectionHeader, Empty, HBar helper components.
+
+---
+
+## Feature 8 — Election System + Committee History ✓ COMPLETE
+
+### Schema
+- Migration: add_term_fields_to_committee_member
+- Added to CommitteeMember: active Boolean @default(true), termYearAD Int?, termMonthAD Int?, termYearBS Int?, termMonthBS Int?
+
+### API
+- GET /api/committee — now filters active: true (current only)
+- POST /api/committee/archive — archives all active members with BS+AD term year/month stamp
+- GET /api/committee/history — returns archived members grouped by BS term year
+
+### Admin
+- /admin/committee — shows only active=true members; "Archive Committee" button (Framer Motion modal, BS+AD year+month pickers); "Past Committees" link
+- /admin/committee/history — grouped by BS term year with AD year badges; full member tables per term
+- CommitteeForm Step 2 — added optional "Election / Term Year" section (BS + AD year + month)
+
+### Public
+- /committee/history — public history page; navy header; terms grouped by BS year; office bearers grid + executive members grid; member photo cards
+
+### Data
+- Seeded 28 archived committee members across 3 past terms: 2076/2019, 2078/2021, 2080/2023 B.S./A.D.
+- Removed 105 duplicate EVA Nepal venue members (156 → 51 clean links); scripts: prisma/seed-committee-history.ts, prisma/dedup-eva-members.ts
+
+---
+
 ## Pending (real-world content, not code)
 
 | Item                                              | Where                                  |
@@ -788,5 +832,6 @@ Rule: every income source must be wired at the time it is built.
 | Set up SSL via Certbot                            | Server-side after DNS                  |
 | Change default admin password                     | DB direct or new endpoint              |
 | Set NEXTAUTH_SECRET in production                 | .env.local on server                   |
+| Add ANTHROPIC_API_KEY to production .env.local    | .env.local on server                   |
 
 ---

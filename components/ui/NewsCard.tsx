@@ -34,6 +34,17 @@ export default function NewsCard({ item, compact = false }: NewsCardProps) {
       {/* Color bar */}
       <div className={cn("h-1 bg-gradient-to-r", config.bar)} />
 
+      {/* Cover image */}
+      {item.image && (
+        <div className="h-40 overflow-hidden">
+          <img
+            src={item.image}
+            alt={item.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        </div>
+      )}
+
       <div className="p-6 flex flex-col flex-1">
         {/* Meta row */}
         <div className="flex items-center gap-2.5 mb-4">

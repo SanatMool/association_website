@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ success: true, data: payments });
 }
 
+type PaymentLine = { method: string; amount: number };
+
 export async function POST(req: NextRequest) {
   const ctx = await getAdminContext();
   if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -36,18 +38,34 @@ export async function POST(req: NextRequest) {
     memberId: string;
     memberCategoryId?: string;
     type: string;
-    amount: number;
+    amount?: number;
     periodStart: string;
     periodEnd: string;
-    method: string;
+    method?: string;
     status: string;
     receiptNumber?: string;
     notes?: string;
     paidAt?: string;
+    paymentBreakdown?: PaymentLine[];
   };
 
   if (!body.memberId || !body.type || !body.periodStart || !body.periodEnd) {
     return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Derive total and primary method from breakdown if provided
+  const breakdown = (body.paymentBreakdown ?? []).filter((l) => l.amount > 0);
+  const totalAmount = breakdown.length > 0
+    ? breakdown.reduce((s, l) => s + l.amount, 0)
+    : (body.amount ?? 0);
+  const primaryMethod = breakdown.length > 1
+    ? "mixed"
+    : breakdown.length === 1
+      ? breakdown[0].method
+      : (body.method ?? "pending");
+
+  if (!totalAmount || totalAmount <= 0) {
+    return NextResponse.json({ success: false, error: "Amount must be greater than 0" }, { status: 400 });
   }
 
   // Verify member belongs to this association
@@ -70,13 +88,14 @@ export async function POST(req: NextRequest) {
       memberId:         body.memberId,
       memberCategoryId: body.memberCategoryId || link.memberCategoryId || null,
       type:             body.type,
-      amount:           body.amount,
+      amount:           totalAmount,
       periodStart:      new Date(body.periodStart),
       periodEnd:        new Date(body.periodEnd),
-      method:           body.method,
+      method:           primaryMethod,
       status:           body.status,
       receiptNumber:    body.receiptNumber || null,
       notes:            body.notes || null,
+      paymentBreakdown: breakdown.length > 0 ? breakdown : undefined,
       paidAt:           body.status === "paid" ? (body.paidAt ? new Date(body.paidAt) : new Date()) : null,
       recordedByAdminId: (ctx.session.user as { id?: string }).id ?? null,
     },

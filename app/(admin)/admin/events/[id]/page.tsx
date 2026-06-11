@@ -17,9 +17,7 @@ export default async function EditEventPage({ params }: { params: { id: string }
         Back to events
       </Link>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Event</h1>
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <EventForm event={event} />
-      </div>
+      <EventForm event={event} />
     </div>
   );
 }

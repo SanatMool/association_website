@@ -16,10 +16,11 @@ export default async function EditArticlePage({ params }: { params: { id: string
         <ChevronLeft size={14} />
         Back to news
       </Link>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Article</h1>
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <NewsForm article={article} />
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Edit Article</h1>
+        <p className="text-sm text-gray-500 mt-0.5 truncate max-w-xl">{article.title}</p>
       </div>
+      <NewsForm article={article} />
     </div>
   );
 }

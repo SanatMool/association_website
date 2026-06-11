@@ -37,7 +37,7 @@ export default async function Home() {
       orderBy: { publishedAt: "desc" },
     }),
     prisma.committeeMember.findMany({
-      where: { associationId },
+      where: { associationId, active: true },
       orderBy: { order: "asc" },
     }),
     prisma.memberAssociation.count({ where: { associationId, visible: true } }),
@@ -100,22 +100,24 @@ export default async function Home() {
     featured: n.featured,
   }));
 
-  const committee: CommitteeType[] = dbCommittee.map((c) => {
-    const cm = c as typeof c & { nameNe?: string | null; venueNe?: string | null };
-    return {
-      id: cm.id,
-      name: cm.name,
-      nameNe: cm.nameNe,
-      role: cm.role,
-      roleKey: cm.roleKey,
-      venue: cm.venue,
-      venueNe: cm.venueNe,
-      bio: cm.bio,
-      order: cm.order,
-      highlighted: cm.highlighted,
-      image: cm.image,
-    };
-  });
+  const committee: CommitteeType[] = dbCommittee.map((c) => ({
+    id: c.id,
+    name: c.name,
+    nameNe: c.nameNe,
+    role: c.role,
+    roleKey: c.roleKey,
+    venue: c.venue,
+    venueNe: c.venueNe,
+    organization: c.organization,
+    bio: c.bio,
+    order: c.order,
+    highlighted: c.highlighted,
+    image: c.image,
+    termYearAD: c.termYearAD,
+    termMonthAD: c.termMonthAD,
+    termYearBS: c.termYearBS,
+    termMonthBS: c.termMonthBS,
+  }));
 
   const timeline: TimelineType[] = dbTimeline.map((t) => ({
     id: t.id,

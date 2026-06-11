@@ -6,6 +6,22 @@ async function getOwned(id: string, associationId: string) {
   return prisma.membershipCategory.findFirst({ where: { id, associationId } });
 }
 
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const ctx = await getAdminContext();
+  if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const cat = await getOwned(params.id, ctx.associationId);
+  if (!cat) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const members = await prisma.memberAssociation.findMany({
+    where: { memberCategoryId: params.id, associationId: ctx.associationId },
+    select: { member: { select: { id: true, name: true, area: true, category: true } } },
+    orderBy: { member: { name: "asc" } },
+  });
+
+  return NextResponse.json({ success: true, data: members.map((m) => m.member) });
+}
+
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const ctx = await getAdminContext();
   if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

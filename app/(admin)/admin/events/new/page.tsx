@@ -10,9 +10,7 @@ export default function NewEventPage() {
         Back to events
       </Link>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Add Event</h1>
-      <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <EventForm />
-      </div>
+      <EventForm />
     </div>
   );
 }

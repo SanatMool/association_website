@@ -18,21 +18,23 @@ const MONTHS = [
 ];
 
 export function formatDate(dateString: string): string {
-  // Parse date parts directly to avoid locale/timezone hydration mismatches
-  const [year, month, day] = dateString.split("-").map(Number);
+  // Take only YYYY-MM-DD — handles full ISO strings like "2026-06-10T08:30:00.000Z"
+  const datePart = dateString.substring(0, 10);
+  const [year, month, day] = datePart.split("-").map(Number);
   return `${MONTHS[month - 1]} ${day}, ${year}`;
 }
 
 export function formatMonthYear(dateString: string): string {
-  const [year, month] = dateString.split("-").map(Number);
+  const datePart = dateString.substring(0, 10);
+  const [year, month] = datePart.split("-").map(Number);
   return `${MONTHS[month - 1]} ${year}`;
 }
 
 export function formatDay(dateString: string): number {
-  return parseInt(dateString.split("-")[2], 10);
+  return parseInt(dateString.substring(8, 10), 10);
 }
 
 export function formatMonthShort(dateString: string): string {
-  const month = parseInt(dateString.split("-")[1], 10);
+  const month = parseInt(dateString.substring(5, 7), 10);
   return MONTHS[month - 1].slice(0, 3);
 }
