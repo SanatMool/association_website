@@ -375,6 +375,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: { text }, remaining: quota.remaining - 1 });
     }
 
+    // ── Translate ─────────────────────────────────────────────────────────────
+    if (type === "translate") {
+      const text       = String(body.text       ?? "").trim();
+      const targetLang = String(body.targetLang ?? "ne").trim();
+
+      if (!text) {
+        return NextResponse.json({ success: false, error: "Text is required for translation." }, { status: 400 });
+      }
+
+      const langNames: Record<string, string> = { ne: "Nepali (Devanagari script)" };
+      const langLabel = langNames[targetLang] ?? targetLang;
+
+      const prompt = [
+        `Translate the following text into ${langLabel}. Preserve the paragraph structure.`,
+        `Return only the translated text — no labels, no explanations, no original text.`,
+        ``,
+        text,
+      ].join("\n");
+
+      const translated = await callAI(prompt, 1000);
+      await incrementUsage(associationId);
+      return NextResponse.json({ success: true, data: { text: translated }, remaining: quota.remaining - 1 });
+    }
+
     return NextResponse.json({ success: false, error: "Unknown generation type." }, { status: 400 });
 
   } catch (err) {

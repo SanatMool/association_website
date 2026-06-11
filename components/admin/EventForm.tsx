@@ -104,9 +104,10 @@ export default function EventForm({ event }: Props) {
   const [dir,        setDir]        = useState(1);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState("");
-  const [genLoading, setGenLoading] = useState(false);
-  const [statusMode, setStatusMode] = useState<"auto" | "manual">("auto");
-  const [keywords,   setKeywords]   = useState("");
+  const [genLoading,    setGenLoading]    = useState(false);
+  const [descNeLoading, setDescNeLoading] = useState(false);
+  const [statusMode,    setStatusMode]    = useState<"auto" | "manual">("auto");
+  const [keywords,      setKeywords]      = useState("");
 
   // Auto-translate state
   const [translating,  setTranslating]  = useState(false);
@@ -125,10 +126,11 @@ export default function EventForm({ event }: Props) {
   );
 
   const [form, setForm] = useState({
-    title:       event?.title       ?? "",
-    titleNe:     event?.titleNe     ?? "",
-    slug:        event?.slug        ?? "",
-    description: event?.description ?? "",
+    title:         event?.title         ?? "",
+    titleNe:       event?.titleNe       ?? "",
+    slug:          event?.slug          ?? "",
+    description:   event?.description   ?? "",
+    descriptionNe: event?.descriptionNe ?? "",
     date:        toDateInput(event?.date),
     endDate:     toDateInput(event?.endDate),
     startTime:   event?.startTime   ?? "",
@@ -235,6 +237,7 @@ export default function EventForm({ event }: Props) {
   // ── Description generation ────────────────────────────────────────────────
   async function handleGenerate() {
     setGenLoading(true);
+    let englishText = "";
     try {
       const res = await fetch("/api/ai/generate", {
         method: "POST",
@@ -251,19 +254,40 @@ export default function EventForm({ event }: Props) {
       });
       const json = await res.json() as { success: boolean; data?: { text: string }; error?: string };
       if (json.success && json.data?.text) {
-        setForm((p) => ({ ...p, description: json.data!.text }));
-        setGenLoading(false);
-        return;
+        englishText = json.data.text;
       }
     } catch { /* fall through to template */ }
 
-    // Fallback: local template (no AI key or network error)
-    const desc = buildDescription({
-      title: form.title, type: form.type, location: form.location,
-      date: form.date, attendees: form.attendees, keywords,
-    });
-    setForm((p) => ({ ...p, description: desc }));
+    if (!englishText) {
+      englishText = buildDescription({
+        title: form.title, type: form.type, location: form.location,
+        date: form.date, attendees: form.attendees, keywords,
+      });
+    }
+
+    setForm((p) => ({ ...p, description: englishText }));
     setGenLoading(false);
+
+    // Auto-translate to Nepali
+    await translateDescriptionToNepali(englishText);
+  }
+
+  // ── Nepali description translation ────────────────────────────────────────
+  async function translateDescriptionToNepali(text: string) {
+    if (!text.trim()) return;
+    setDescNeLoading(true);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "translate", text, targetLang: "ne" }),
+      });
+      const json = await res.json() as { success: boolean; data?: { text: string } };
+      if (json.success && json.data?.text) {
+        setForm((p) => ({ ...p, descriptionNe: json.data!.text }));
+      }
+    } catch { /* silently fail — Nepali is optional */ }
+    setDescNeLoading(false);
   }
 
   // ── Validation ────────────────────────────────────────────────────────────
@@ -761,6 +785,40 @@ export default function EventForm({ event }: Props) {
                   placeholder="Describe the event — or add keywords above and click Auto-Generate…"
                   className={`${inputCls} resize-none`} />
                 <p className="text-[11px] text-gray-400 mt-1">You can edit any auto-generated text freely.</p>
+              </div>
+
+              {/* Nepali Description */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="flex items-center gap-1 text-sm font-semibold text-gray-700">
+                    <Languages size={13} className="text-indigo-400" />
+                    विवरण (Nepali Description)
+                    <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                    <HelperTip text="Nepali translation of the event description. Auto-filled when you click Auto-Generate, or translate manually below." />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => translateDescriptionToNepali(form.description)}
+                    disabled={descNeLoading || !form.description.trim()}
+                    title={!form.description.trim() ? "Generate or write an English description first" : "Translate current description to Nepali"}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 disabled:opacity-40 transition-colors"
+                  >
+                    {descNeLoading ? <Loader2 size={11} className="animate-spin" /> : <Languages size={11} />}
+                    {descNeLoading ? "Translating…" : "Translate"}
+                  </button>
+                </div>
+                <textarea
+                  value={form.descriptionNe}
+                  onChange={(e) => set("descriptionNe", e.target.value)}
+                  rows={6}
+                  placeholder="नेपाली विवरण यहाँ लेख्नुहोस् वा माथिको 'Translate' बटन थिच्नुहोस्…"
+                  className={`${inputCls} resize-none`}
+                />
+                {descNeLoading && (
+                  <p className="text-[11px] text-indigo-500 mt-1 flex items-center gap-1">
+                    <Loader2 size={10} className="animate-spin" /> Translating to Nepali…
+                  </p>
+                )}
               </div>
 
               {/* Image */}

@@ -8,6 +8,7 @@ import {
   ArrowUpRight, ExternalLink,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import DescriptionSection from "./DescriptionSection";
 
 export const revalidate = 3600;
 
@@ -135,12 +136,7 @@ export default async function EventDetailPage({ params }: Props) {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Description */}
           <div className="lg:col-span-2">
-            <h2 className="text-lg font-bold text-navy-900 mb-4">About this event</h2>
-            <div className="prose prose-slate max-w-none">
-              {event.description.split("\n").map((para, i) => (
-                <p key={i} className="text-slate-600 leading-relaxed mb-4">{para}</p>
-              ))}
-            </div>
+            <DescriptionSection description={event.description} descriptionNe={event.descriptionNe} />
           </div>
 
           {/* Sidebar */}
