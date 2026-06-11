@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import EventForm from "@/components/admin/EventForm";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, CalendarDays } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,10 @@ export default async function EditEventPage({ params }: { params: { id: string }
         <ChevronLeft size={14} />
         Back to events
       </Link>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Event</h1>
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 mb-6">
+        <CalendarDays size={22} className="text-indigo-500" />
+        Edit Event
+      </h1>
       <EventForm event={event} />
     </div>
   );

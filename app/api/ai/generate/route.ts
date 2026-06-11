@@ -324,6 +324,57 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: { text }, remaining: quota.remaining - 1 });
     }
 
+    // ── Event description ─────────────────────────────────────────────────────
+    if (type === "event") {
+      const title     = String(body.title     ?? "").trim();
+      const eventType = String(body.eventType ?? "").trim();
+      const location  = String(body.location  ?? "").trim();
+      const date      = String(body.date      ?? "").trim();
+      const attendees = String(body.attendees ?? "").trim();
+      const keywords  = String(body.keywords  ?? "").trim();
+
+      if (!title) {
+        return NextResponse.json({ success: false, error: "Event title is required." }, { status: 400 });
+      }
+
+      const typeLabels: Record<string, string> = {
+        networking:  "Networking Event",
+        training:    "Training & Workshop",
+        meeting:     "Meeting",
+        exhibition:  "Exhibition",
+        conference:  "Conference",
+      };
+      const typeLabel = typeLabels[eventType] ?? eventType;
+
+      const contextLines = [
+        title     ? `Event Title: ${title}`                   : null,
+        typeLabel ? `Event Type: ${typeLabel}`                : null,
+        date      ? `Date: ${date}`                          : null,
+        location  ? `Location: ${location}`                  : null,
+        attendees ? `Expected Attendance: ${attendees} people` : null,
+        keywords  ? `Key themes / talking points: ${keywords}` : null,
+      ].filter(Boolean).join("\n");
+
+      const prompt = [
+        `Write a compelling event description (2–3 paragraphs) for the following EVA Nepal (Event and Venue Association Nepal) event.`,
+        ``,
+        contextLines,
+        ``,
+        `Instructions:`,
+        `- If "Key themes / talking points" are provided, use them as the CORE content of the description — elaborate each theme into natural sentences that explain what attendees will experience or gain. Do NOT just list them; weave them into the narrative.`,
+        `- Write in a professional, engaging tone suitable for a public event announcement.`,
+        `- Paragraph 1: Introduce the event — what it is, when, and where.`,
+        `- Paragraph 2: Describe what the event will cover or involve, drawing on the key themes.`,
+        `- Paragraph 3: A closing sentence on why members or attendees should come.`,
+        `- Do NOT invent specific names, statistics, or sponsors not provided.`,
+        `- Return only the description text — no headings, no labels, no bullet points.`,
+      ].filter((l) => l !== null).join("\n");
+
+      const text = await callAI(prompt, 600);
+      await incrementUsage(associationId);
+      return NextResponse.json({ success: true, data: { text }, remaining: quota.remaining - 1 });
+    }
+
     return NextResponse.json({ success: false, error: "Unknown generation type." }, { status: 400 });
 
   } catch (err) {

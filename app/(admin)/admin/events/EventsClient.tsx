@@ -2,14 +2,18 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Pencil, Search, ChevronUp, ChevronDown, ChevronsUpDown, SlidersHorizontal } from "lucide-react";
+import {
+  Plus, Pencil, Search, ChevronUp, ChevronDown, ChevronsUpDown,
+  SlidersHorizontal, CalendarDays, MapPin, Users, Clock, X,
+  CalendarCheck, CalendarX,
+} from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { formatDate } from "@/lib/utils";
 
 interface EventRow {
   id: string;
   title: string;
-  date: string; // ISO string
+  date: string;
   type: string;
   status: string;
   location: string;
@@ -28,6 +32,14 @@ const TYPE_LABELS: Record<string, string> = {
   conference: "Conference",
 };
 
+const TYPE_COLORS: Record<string, string> = {
+  networking:  "bg-blue-50 text-blue-700 border-blue-200",
+  training:    "bg-purple-50 text-purple-700 border-purple-200",
+  meeting:     "bg-amber-50 text-amber-700 border-amber-200",
+  exhibition:  "bg-teal-50 text-teal-700 border-teal-200",
+  conference:  "bg-indigo-50 text-indigo-700 border-indigo-200",
+};
+
 const STATUS_FILTERS = ["all", "upcoming", "past"] as const;
 const TYPE_FILTERS   = ["all", "networking", "training", "meeting", "exhibition", "conference"] as const;
 
@@ -37,11 +49,11 @@ function SortIcon({ col, sortKey, sortAsc }: { col: SortKey; sortKey: SortKey; s
 }
 
 export default function EventsClient({ events }: { events: EventRow[] }) {
-  const [search,   setSearch]   = useState("");
-  const [status,   setStatus]   = useState<typeof STATUS_FILTERS[number]>("all");
-  const [typeF,    setTypeF]    = useState<typeof TYPE_FILTERS[number]>("all");
-  const [sortKey,  setSortKey]  = useState<SortKey>("date");
-  const [sortAsc,  setSortAsc]  = useState(false);
+  const [search,  setSearch]  = useState("");
+  const [status,  setStatus]  = useState<typeof STATUS_FILTERS[number]>("all");
+  const [typeF,   setTypeF]   = useState<typeof TYPE_FILTERS[number]>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortAsc, setSortAsc] = useState(false);
 
   function toggleSort(col: SortKey) {
     if (sortKey === col) setSortAsc((v) => !v);
@@ -56,7 +68,6 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
       if (typeF !== "all" && e.type !== typeF) return false;
       return true;
     });
-
     rows = [...rows].sort((a, b) => {
       let cmp = 0;
       if (sortKey === "title")  cmp = a.title.localeCompare(b.title);
@@ -68,22 +79,34 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
     return rows;
   }, [events, search, status, typeF, sortKey, sortAsc]);
 
+  const upcomingCount = events.filter((e) => e.status === "upcoming").length;
+  const pastCount     = events.length - upcomingCount;
+  const anyFilter     = search || status !== "all" || typeF !== "all";
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      {/* ── Header ─── */}
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Events</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{events.length} total</p>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <CalendarDays size={22} className="text-indigo-500" />
+            Events
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-3">
+            <span>{events.length} total</span>
+            <span className="flex items-center gap-1 text-green-600"><CalendarCheck size={11} /> {upcomingCount} upcoming</span>
+            <span className="flex items-center gap-1 text-gray-400"><CalendarX size={11} /> {pastCount} past</span>
+          </p>
         </div>
         <Link
           href="/admin/events/new"
           className="flex items-center gap-2 px-4 py-2 bg-[#0a1040] text-white text-sm rounded-lg hover:bg-[#0d1550] transition-colors"
         >
-          <Plus size={14} /> Add event
+          <Plus size={14} /> Add Event
         </Link>
       </div>
 
-      {/* Filters */}
+      {/* ── Filters ─── */}
       <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
         {/* Search */}
         <div className="relative">
@@ -92,8 +115,13 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by title or location…"
-            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-full pl-9 pr-9 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <X size={13} />
+            </button>
+          )}
         </div>
 
         {/* Filter chips */}
@@ -109,7 +137,7 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
               </button>
             ))}
           </div>
-          <div className="w-px h-4 bg-gray-200" />
+          <div className="w-px h-4 bg-gray-200 hidden sm:block" />
           <div className="flex gap-1 flex-wrap">
             {TYPE_FILTERS.map((t) => (
               <button key={t} onClick={() => setTypeF(t)}
@@ -120,32 +148,116 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
               </button>
             ))}
           </div>
+          {anyFilter && (
+            <button
+              onClick={() => { setSearch(""); setStatus("all"); setTypeF("all"); }}
+              className="ml-auto text-xs text-red-500 hover:text-red-700 underline"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {/* Results count */}
-      {(search || status !== "all" || typeF !== "all") && (
+      {anyFilter && (
         <p className="text-xs text-gray-400 mb-3">
           Showing <strong className="text-gray-700">{displayed.length}</strong> of {events.length} events
         </p>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      {/* ── Mobile cards (hidden md+) ─────────────────────────────────── */}
+      <div className="md:hidden bg-white rounded-xl border border-gray-100 overflow-hidden">
+        {displayed.length === 0 ? (
+          <div className="py-16 text-center">
+            <CalendarDays size={28} className="text-gray-200 mx-auto mb-2" />
+            <p className="text-gray-400 text-sm">
+              {events.length === 0 ? "No events yet. Tap \"Add Event\" to create one." : "No events match your filters."}
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {displayed.map((e) => {
+              const typeCls = TYPE_COLORS[e.type] ?? "bg-gray-50 text-gray-600 border-gray-200";
+              return (
+                <div key={e.id} className="px-4 py-4">
+                  <div className="flex items-start gap-3">
+                    {/* Thumbnail */}
+                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+                      {e.image ? (
+                        <img src={e.image} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-lg font-bold">
+                          {e.title.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-gray-900 text-sm leading-snug">{e.title}</p>
+                        <span className={`flex-shrink-0 px-2 py-0.5 text-[11px] rounded-full border capitalize ${
+                          e.status === "upcoming"
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-gray-50 text-gray-600 border-gray-200"
+                        }`}>
+                          {e.status}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <CalendarDays size={10} /> {formatDate(e.date)}
+                          {e.startTime && ` · ${e.startTime}`}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin size={10} />
+                          <span className="truncate max-w-[160px]">{e.location}</span>
+                        </span>
+                        {e.attendees && (
+                          <span className="flex items-center gap-1">
+                            <Users size={10} /> {e.attendees} pax
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-2.5">
+                        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${typeCls}`}>
+                          {TYPE_LABELS[e.type] ?? e.type}
+                        </span>
+                        <div className="ml-auto flex items-center gap-1.5">
+                          <Link
+                            href={`/admin/events/${e.id}`}
+                            className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+                          >
+                            <Pencil size={11} /> Edit
+                          </Link>
+                          <DeleteButton id={e.id} entity="events" redirectTo="/admin/events" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Desktop table (hidden below md) ──────────────────────────── */}
+      <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="px-4 py-3 w-8" />
               <th className="text-left px-4 py-3 text-gray-500 font-medium">
                 <button onClick={() => toggleSort("title")} className="flex items-center gap-1 hover:text-gray-800">
-                  Title <SortIcon col="title" sortKey={sortKey} sortAsc={sortAsc} />
+                  <CalendarDays size={12} /> Title <SortIcon col="title" sortKey={sortKey} sortAsc={sortAsc} />
                 </button>
               </th>
               <th className="text-left px-4 py-3 text-gray-500 font-medium">
                 <button onClick={() => toggleSort("date")} className="flex items-center gap-1 hover:text-gray-800">
-                  Date <SortIcon col="date" sortKey={sortKey} sortAsc={sortAsc} />
+                  <Clock size={12} /> Date <SortIcon col="date" sortKey={sortKey} sortAsc={sortAsc} />
                 </button>
               </th>
-              <th className="text-left px-4 py-3 text-gray-500 font-medium hidden md:table-cell">
+              <th className="text-left px-4 py-3 text-gray-500 font-medium hidden lg:table-cell">
                 <button onClick={() => toggleSort("type")} className="flex items-center gap-1 hover:text-gray-800">
                   Type <SortIcon col="type" sortKey={sortKey} sortAsc={sortAsc} />
                 </button>
@@ -162,11 +274,11 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
             {displayed.map((e) => (
               <tr key={e.id} className="hover:bg-gray-50/50">
                 <td className="px-4 py-3">
-                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                     {e.image ? (
                       <img src={e.image} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs font-bold">
+                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm font-bold">
                         {e.title.charAt(0)}
                       </div>
                     )}
@@ -174,15 +286,24 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <p className="font-medium text-gray-900 truncate max-w-[220px]">{e.title}</p>
-                  <p className="text-xs text-gray-400 truncate max-w-[220px] mt-0.5">{e.location}</p>
+                  <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                    <MapPin size={10} />
+                    <span className="truncate max-w-[200px]">{e.location}</span>
+                  </p>
                 </td>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                  <p>{formatDate(e.date)}</p>
+                  <p className="flex items-center gap-1"><CalendarDays size={11} className="text-gray-300" /> {formatDate(e.date)}</p>
                   {e.startTime && (
-                    <p className="text-xs text-gray-400 mt-0.5">{e.startTime}{e.attendees ? ` · ${e.attendees} pax` : ""}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {e.startTime}{e.attendees ? ` · ${e.attendees} pax` : ""}
+                    </p>
                   )}
                 </td>
-                <td className="px-4 py-3 text-gray-500 capitalize hidden md:table-cell">{TYPE_LABELS[e.type] ?? e.type}</td>
+                <td className="px-4 py-3 hidden lg:table-cell">
+                  <span className={`px-2 py-0.5 text-xs rounded-full border ${TYPE_COLORS[e.type] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                    {TYPE_LABELS[e.type] ?? e.type}
+                  </span>
+                </td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 text-xs rounded-full border capitalize ${
                     e.status === "upcoming"
@@ -210,8 +331,9 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
 
         {displayed.length === 0 && (
           <div className="py-16 text-center">
+            <CalendarDays size={28} className="text-gray-200 mx-auto mb-2" />
             <p className="text-gray-400 text-sm">
-              {events.length === 0 ? "No events yet. Click \"Add event\" to create one." : "No events match your search or filters."}
+              {events.length === 0 ? "No events yet. Click \"Add Event\" to create one." : "No events match your search or filters."}
             </p>
           </div>
         )}

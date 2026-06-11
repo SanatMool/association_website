@@ -1,6 +1,6 @@
 import EventForm from "@/components/admin/EventForm";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, CalendarPlus } from "lucide-react";
 
 export default function NewEventPage() {
   return (
@@ -9,7 +9,10 @@ export default function NewEventPage() {
         <ChevronLeft size={14} />
         Back to events
       </Link>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Add Event</h1>
+      <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 mb-6">
+        <CalendarPlus size={22} className="text-indigo-500" />
+        Add Event
+      </h1>
       <EventForm />
     </div>
   );
