@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { LocaleProvider } from "@/context/LocaleContext";
@@ -20,6 +20,13 @@ const dmSerifDisplay = DM_Serif_Display({
   weight: "400",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  themeColor: "#0a1040",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const association = await getAssociation();
@@ -60,6 +67,14 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
       title: name,
       description,
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: name,
+    },
+    formatDetection: {
+      telephone: false,
     },
     robots: {
       index: true,

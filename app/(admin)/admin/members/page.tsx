@@ -6,31 +6,69 @@ import MembersClient, { type MemberRow } from "./MembersClient";
 
 export const dynamic = "force-dynamic";
 
+function checkIncomplete(m: {
+  phone: string | null; email: string | null; ownerName: string | null;
+  description: string | null; image: string | null; category: string | null;
+  capacity: number | null; location: string | null;
+}): string[] {
+  return [
+    (!m.phone     || !m.phone.trim())       && "Phone",
+    (!m.email     || !m.email.trim())       && "Email",
+    (!m.ownerName || !m.ownerName.trim())   && "Owner name",
+    (!m.description || !m.description.trim()) && "Description",
+    !m.image                                && "Photo",
+    (!m.category  || !m.category.trim())    && "Category",
+    !m.capacity                             && "Capacity",
+    (!m.location  || !m.location.trim())    && "Address",
+  ].filter(Boolean) as string[];
+}
+
 export default async function MembersPage() {
   const ctx = await getAdminContext();
   const associationId = ctx?.associationId ?? null;
 
-  const links = await prisma.memberAssociation.findMany({
-    where: { associationId: associationId ?? undefined },
-    include: { member: true },
-    orderBy: [
-      { member: { featured: "desc" } },
-      { member: { name: "asc" } },
-    ],
-  });
+  const [links, pendingGroups] = await Promise.all([
+    prisma.memberAssociation.findMany({
+      where: { associationId: associationId ?? undefined },
+      include: {
+        member: {
+          select: {
+            id: true, name: true, area: true, capacity: true, category: true,
+            type: true, phone: true, email: true, featured: true,
+            description: true, image: true, ownerName: true, location: true,
+          },
+        },
+      },
+      orderBy: [
+        { member: { featured: "desc" } },
+        { member: { name: "asc" } },
+      ],
+    }),
+    prisma.duesPayment.groupBy({
+      by: ["memberId"],
+      where: { associationId: associationId ?? undefined, status: "pending" },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const pendingMap = new Map(
+    pendingGroups.map((p) => [p.memberId, Number(p._sum.amount ?? 0)])
+  );
 
   const rows: MemberRow[] = links.map(({ member: m, visible }) => ({
-    id:       m.id,
-    memberId: m.id,
-    name:     m.name,
-    area:     m.area,
-    capacity: m.capacity,
-    category: m.category,
-    type:     m.type,
-    phone:    m.phone,
-    email:    m.email,
-    featured: m.featured,
+    id:              m.id,
+    memberId:        m.id,
+    name:            m.name,
+    area:            m.area,
+    capacity:        m.capacity,
+    category:        m.category,
+    type:            m.type,
+    phone:           m.phone,
+    email:           m.email,
+    featured:        m.featured,
     visible,
+    missingFields:   checkIncomplete(m),
+    pendingDues:     pendingMap.get(m.id) ?? 0,
   }));
 
   return (

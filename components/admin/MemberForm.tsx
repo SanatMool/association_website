@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Member } from "@prisma/client";
@@ -10,7 +10,7 @@ import {
   Building2, MapPin, Tag, Phone, Image as ImageIcon,
   ChevronRight, ChevronLeft, Check, Info, Plus, X,
   Facebook, Instagram, Youtube, Globe, Mail, Star,
-  Sparkles, Loader2, Navigation,
+  Sparkles, Loader2, Navigation, AlertTriangle, Receipt,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -90,6 +90,14 @@ async function geocode(query: string): Promise<NominatimResult[]> {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+interface CategoryOption {
+  id: string;
+  name: string;
+  annualRenewalFee: string; // Decimal serialized as string
+}
+
+type BillingOption = "pending" | "paid" | "none";
+
 type MemberExt = Member;
 interface Props { member?: MemberExt }
 
@@ -103,6 +111,11 @@ export default function MemberForm({ member }: Props) {
 
   const [genLoading, setGenLoading] = useState(false);
 
+  // Membership category + billing (new member only)
+  const [memberCategories,   setMemberCategories]   = useState<CategoryOption[]>([]);
+  const [memberCategoryId,   setMemberCategoryId]   = useState<string>("");
+  const [billingOption,      setBillingOption]      = useState<BillingOption>("pending");
+
   // Geocoding state
   const [geoLoading,  setGeoLoading]  = useState(false);
   const [geoResults,  setGeoResults]  = useState<NominatimResult[]>([]);
@@ -110,6 +123,17 @@ export default function MemberForm({ member }: Props) {
   const [mapPreview,  setMapPreview]  = useState<{ lat: number; lng: number } | null>(
     member?.latitude && member?.longitude ? { lat: member.latitude, lng: member.longitude } : null
   );
+
+  // Fetch membership categories for new member billing
+  useEffect(() => {
+    if (member) return; // edit mode — skip
+    fetch("/api/membership/categories")
+      .then((r) => r.json())
+      .then((res: { success: boolean; data?: CategoryOption[] }) => {
+        if (res.success && res.data) setMemberCategories(res.data);
+      })
+      .catch(() => { /* silently ignore if categories unavailable */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const parseMulti = (v: string | null | undefined) =>
     v ? v.split(",").map((s) => s.trim()).filter(Boolean) : [];
@@ -234,6 +258,11 @@ export default function MemberForm({ member }: Props) {
       category:  Array.from(categories).map(lc).join(", "),
       type:      Array.from(types).map(lc).join(", "),
       amenities: Array.from(amenities).map(lc),
+      // Billing — only sent for new member
+      ...(!member && {
+        memberCategoryId: memberCategoryId || null,
+        billingOption,
+      }),
     };
 
     const url    = member ? `/api/members/${member.id}` : "/api/members";
@@ -279,8 +308,32 @@ export default function MemberForm({ member }: Props) {
     exit:   (d: number) => ({ x: d > 0 ? -60 : 60, opacity: 0 }),
   };
 
+  // ── Incomplete profile notice (edit mode only) ──────────────────────────────
+  const incompleteFields = member ? [
+    !member.phone       && "Phone number",
+    !member.email       && "Email address",
+    !member.description && "Venue description",
+    !member.image       && "Venue photo",
+    !member.category    && "Venue category",
+  ].filter(Boolean) as string[] : [];
+
   return (
     <div className="max-w-2xl">
+      {/* ── Incomplete profile notice ──────────────────────────────────────── */}
+      {incompleteFields.length > 0 && (
+        <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
+          <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-700">
+              Incomplete profile — {incompleteFields.length} field{incompleteFields.length !== 1 ? "s" : ""} missing
+            </p>
+            <p className="text-xs text-amber-600 mt-0.5">
+              Missing: {incompleteFields.join(", ")}. Complete these to improve this venue&apos;s public profile.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Progress bar ─────────────────────────────────────────────────────── */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
@@ -617,6 +670,73 @@ export default function MemberForm({ member }: Props) {
                 <p className="text-[11px] text-gray-400 mb-2">Upload a photo or logo. Shown on the member card and profile page.</p>
                 <ImageUpload value={form.image} onChange={(url) => set("image", url)} />
               </div>
+
+              {/* ── Membership Billing (new member only) ─────────────────── */}
+              {!member && (
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 border-b border-gray-200">
+                    <Receipt size={14} className="text-indigo-500" />
+                    <span className="text-sm font-semibold text-gray-700">Membership Billing</span>
+                    <span className="text-xs text-gray-400 ml-1">(optional)</span>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    {/* Category selector */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Membership Category</label>
+                      {memberCategories.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">No fee categories set up yet. <a href="/admin/membership/categories" className="text-indigo-500 underline">Add one first</a>.</p>
+                      ) : (
+                        <select
+                          value={memberCategoryId}
+                          onChange={(e) => setMemberCategoryId(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        >
+                          <option value="">— No category / skip billing —</option>
+                          {memberCategories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name} — Rs. {Number(c.annualRenewalFee).toLocaleString()}/yr
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Billing option — only shown when a category is selected */}
+                    {memberCategoryId && (() => {
+                      const cat = memberCategories.find((c) => c.id === memberCategoryId);
+                      const fee = cat ? Number(cat.annualRenewalFee) : 0;
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-xs text-gray-500">
+                            Annual fee: <span className="font-semibold text-gray-800">Rs. {fee.toLocaleString()}</span>
+                          </p>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Billing action</label>
+                          {([
+                            { value: "pending", label: "Set as pending due", desc: `Create an unpaid due for Rs. ${fee.toLocaleString()} — to be collected` },
+                            { value: "paid",    label: "Already paid",        desc: `Record as paid now — you can add receipt/method details later` },
+                            { value: "none",    label: "Skip billing for now", desc: "Assign category only — no dues record created" },
+                          ] as { value: BillingOption; label: string; desc: string }[]).map((opt) => (
+                            <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${billingOption === opt.value ? "border-indigo-300 bg-indigo-50" : "border-gray-200 hover:border-gray-300"}`}>
+                              <input
+                                type="radio"
+                                name="billingOption"
+                                value={opt.value}
+                                checked={billingOption === opt.value}
+                                onChange={() => setBillingOption(opt.value)}
+                                className="mt-0.5 flex-shrink-0"
+                              />
+                              <div>
+                                <span className="text-sm font-medium text-gray-800">{opt.label}</span>
+                                <p className="text-[11px] text-gray-500 mt-0.5">{opt.desc}</p>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
 
               {/* Summary review */}
               <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">

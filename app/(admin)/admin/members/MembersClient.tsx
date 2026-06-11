@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Pencil, ChevronLeft, ChevronRight, AlertTriangle, BadgeDollarSign, Building2, MapPin, Users, Tag, ShieldCheck, Eye, Star, LayoutList } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
 import VisibilityToggle from "@/components/admin/VisibilityToggle";
 
@@ -11,6 +11,8 @@ export interface MemberRow {
   capacity: number | null; category: string | null; type: string | null;
   phone: string | null; email: string | null;
   featured: boolean; visible: boolean;
+  missingFields: string[];
+  pendingDues: number;
 }
 
 type SortKey = "name" | "area" | "capacity";
@@ -19,11 +21,13 @@ type SortDir = "asc" | "desc";
 const PAGE_SIZE = 25;
 
 export default function MembersClient({ rows, totalCount }: { rows: MemberRow[]; totalCount: number }) {
-  const [search,      setSearch]      = useState("");
-  const [filterArea,  setFilterArea]  = useState("");
-  const [filterCat,   setFilterCat]   = useState("");
-  const [filterVis,   setFilterVis]   = useState<"all" | "visible" | "hidden">("all");
-  const [filterFeat,  setFilterFeat]  = useState(false);
+  const [search,         setSearch]         = useState("");
+  const [filterArea,     setFilterArea]      = useState("");
+  const [filterCat,      setFilterCat]       = useState("");
+  const [filterVis,      setFilterVis]       = useState<"all" | "visible" | "hidden">("all");
+  const [filterFeat,     setFilterFeat]      = useState(false);
+  const [filterIncomplete, setFilterIncomplete] = useState(false);
+  const [filterPending,  setFilterPending]   = useState(false);
   const [sortKey,     setSortKey]     = useState<SortKey>("name");
   const [sortDir,     setSortDir]     = useState<SortDir>("asc");
   const [page,        setPage]        = useState(1);
@@ -38,14 +42,16 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
   const filtered = useMemo(() => {
     let out = rows;
     const q = search.trim().toLowerCase();
-    if (q)             out = out.filter((r) => r.name.toLowerCase().includes(q) || r.area.toLowerCase().includes(q) || (r.phone ?? "").includes(q));
-    if (filterArea)    out = out.filter((r) => r.area === filterArea);
-    if (filterCat)     out = out.filter((r) => (r.category ?? "").split(",").map((s) => s.trim()).includes(filterCat));
+    if (q)                out = out.filter((r) => r.name.toLowerCase().includes(q) || r.area.toLowerCase().includes(q) || (r.phone ?? "").includes(q));
+    if (filterArea)       out = out.filter((r) => r.area === filterArea);
+    if (filterCat)        out = out.filter((r) => (r.category ?? "").split(",").map((s) => s.trim()).includes(filterCat));
     if (filterVis === "visible") out = out.filter((r) => r.visible);
     if (filterVis === "hidden")  out = out.filter((r) => !r.visible);
-    if (filterFeat)    out = out.filter((r) => r.featured);
+    if (filterFeat)       out = out.filter((r) => r.featured);
+    if (filterIncomplete) out = out.filter((r) => r.missingFields.length > 0);
+    if (filterPending)    out = out.filter((r) => r.pendingDues > 0);
     return out;
-  }, [rows, search, filterArea, filterCat, filterVis, filterFeat]);
+  }, [rows, search, filterArea, filterCat, filterVis, filterFeat, filterIncomplete, filterPending]);
 
   const sorted = useMemo(() => {
     const s = [...filtered];
@@ -74,67 +80,85 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
     return sortDir === "asc" ? <ChevronUp size={12} className="text-indigo-500" /> : <ChevronDown size={12} className="text-indigo-500" />;
   }
 
-  const visibleCount = rows.filter((r) => r.visible).length;
-  const hiddenCount  = rows.length - visibleCount;
+  const visibleCount    = rows.filter((r) => r.visible).length;
+  const hiddenCount     = rows.length - visibleCount;
+  const incompleteCount = rows.filter((r) => r.missingFields.length > 0).length;
+  const pendingCount    = rows.filter((r) => r.pendingDues > 0).length;
 
   const selectCls = "border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300 bg-white";
 
   return (
     <div>
       {/* ── Stats ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-4 text-xs text-gray-400">
-        <span>{totalCount} total</span>
-        <span className="text-green-600">{visibleCount} visible</span>
-        <span className="text-gray-400">{hiddenCount} hidden</span>
+      <div className="flex items-center flex-wrap gap-4 mb-4 text-xs text-gray-400">
+        <span className="flex items-center gap-1"><Building2 size={11} /> {totalCount} total</span>
+        <span className="flex items-center gap-1 text-green-600"><Eye size={11} /> {visibleCount} visible</span>
+        <span className="flex items-center gap-1 text-gray-400"><Eye size={11} className="opacity-40" /> {hiddenCount} hidden</span>
+        {incompleteCount > 0 && (
+          <span className="text-amber-600 font-medium flex items-center gap-1">
+            <AlertTriangle size={11} /> {incompleteCount} incomplete profile{incompleteCount !== 1 ? "s" : ""}
+          </span>
+        )}
+        {pendingCount > 0 && (
+          <span className="text-red-500 font-medium flex items-center gap-1">
+            <BadgeDollarSign size={11} /> {pendingCount} with pending dues
+          </span>
+        )}
         {filtered.length !== totalCount && (
           <span className="text-indigo-600 font-medium">{filtered.length} matching filters</span>
         )}
       </div>
 
       {/* ── Filters ──────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 flex flex-wrap gap-3 items-center">
-        {/* Search */}
-        <div className="relative flex-1 min-w-48">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search name, area, phone…"
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300"
-          />
+      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
+        {/* Row 1: search + selects */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-48">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Search name, area, phone…"
+              className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300"
+            />
+          </div>
+          <select value={filterArea} onChange={(e) => { setFilterArea(e.target.value); setPage(1); }} className={selectCls}>
+            <option value="">All Areas</option>
+            {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={filterCat} onChange={(e) => { setFilterCat(e.target.value); setPage(1); }} className={selectCls}>
+            <option value="">All Categories</option>
+            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select value={filterVis} onChange={(e) => { setFilterVis(e.target.value as "all" | "visible" | "hidden"); setPage(1); }} className={selectCls}>
+            <option value="all">All Visibility</option>
+            <option value="visible">Visible only</option>
+            <option value="hidden">Hidden only</option>
+          </select>
         </div>
 
-        {/* Area filter */}
-        <select value={filterArea} onChange={(e) => { setFilterArea(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">All Areas</option>
-          {areas.map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
-
-        {/* Category filter */}
-        <select value={filterCat} onChange={(e) => { setFilterCat(e.target.value); setPage(1); }} className={selectCls}>
-          <option value="">All Categories</option>
-          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-
-        {/* Visibility filter */}
-        <select value={filterVis} onChange={(e) => { setFilterVis(e.target.value as "all" | "visible" | "hidden"); setPage(1); }} className={selectCls}>
-          <option value="all">All Visibility</option>
-          <option value="visible">Visible only</option>
-          <option value="hidden">Hidden only</option>
-        </select>
-
-        {/* Featured toggle */}
-        <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none">
-          <input type="checkbox" checked={filterFeat} onChange={(e) => { setFilterFeat(e.target.checked); setPage(1); }} className="rounded" />
-          Featured only
-        </label>
-
-        {/* Clear */}
-        {(search || filterArea || filterCat || filterVis !== "all" || filterFeat) && (
-          <button onClick={() => { setSearch(""); setFilterArea(""); setFilterCat(""); setFilterVis("all"); setFilterFeat(false); setPage(1); }}
-            className="text-xs text-red-500 hover:text-red-700 underline">
-            Clear filters
-          </button>
-        )}
+        {/* Row 2: toggles + clear */}
+        <div className="flex items-center gap-5 pt-1 border-t border-gray-100">
+          <label className="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer select-none">
+            <input type="checkbox" checked={filterFeat} onChange={(e) => { setFilterFeat(e.target.checked); setPage(1); }} className="rounded" />
+            Featured only
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-amber-600 cursor-pointer select-none">
+            <input type="checkbox" checked={filterIncomplete} onChange={(e) => { setFilterIncomplete(e.target.checked); setPage(1); }} className="rounded" />
+            Incomplete only
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-red-500 cursor-pointer select-none">
+            <input type="checkbox" checked={filterPending} onChange={(e) => { setFilterPending(e.target.checked); setPage(1); }} className="rounded" />
+            Pending dues only
+          </label>
+          {(search || filterArea || filterCat || filterVis !== "all" || filterFeat || filterIncomplete || filterPending) && (
+            <button
+              onClick={() => { setSearch(""); setFilterArea(""); setFilterCat(""); setFilterVis("all"); setFilterFeat(false); setFilterIncomplete(false); setFilterPending(false); setPage(1); }}
+              className="ml-auto text-xs text-red-500 hover:text-red-700 underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Table ────────────────────────────────────────────────────── */}
@@ -148,24 +172,36 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort("name")}
                     className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
-                    Name <SortIcon k="name" />
+                    <Building2 size={12} /> Name <SortIcon k="name" />
                   </button>
                 </th>
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort("area")}
                     className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
-                    Area <SortIcon k="area" />
+                    <MapPin size={12} /> Area <SortIcon k="area" />
                   </button>
                 </th>
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort("capacity")}
                     className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
-                    Capacity <SortIcon k="capacity" />
+                    <Users size={12} /> Capacity <SortIcon k="capacity" />
                   </button>
                 </th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Category</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Visibility</th>
-                <th className="text-left px-4 py-3 text-gray-500 font-medium">Featured</th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">
+                  <span className="flex items-center gap-1"><Tag size={12} /> Category</span>
+                </th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">
+                  <span className="flex items-center gap-1"><ShieldCheck size={12} /> Profile</span>
+                </th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">
+                  <span className="flex items-center gap-1"><BadgeDollarSign size={12} /> Dues</span>
+                </th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">
+                  <span className="flex items-center gap-1"><Eye size={12} /> Visibility</span>
+                </th>
+                <th className="text-left px-4 py-3 text-gray-500 font-medium">
+                  <span className="flex items-center gap-1"><Star size={12} /> Featured</span>
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -176,6 +212,32 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                   <td className="px-4 py-3 text-gray-500">{m.area}</td>
                   <td className="px-4 py-3 text-gray-500">{m.capacity ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-500">{m.category ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {m.missingFields.length > 0 ? (
+                      <div className="relative group inline-block">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-lg whitespace-nowrap cursor-help">
+                          <AlertTriangle size={11} />
+                          {m.missingFields.length} missing
+                        </span>
+                        <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover:block w-max max-w-xs bg-gray-900 text-white text-[11px] rounded-lg px-2.5 py-1.5 shadow-lg pointer-events-none">
+                          Missing: {m.missingFields.join(", ")}
+                          <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-900 rotate-45" />
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-emerald-600 font-medium">Complete</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {m.pendingDues > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-50 text-red-600 border border-red-200 rounded-lg whitespace-nowrap">
+                        <BadgeDollarSign size={11} />
+                        Rs. {m.pendingDues.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <VisibilityToggle memberId={m.memberId} visible={m.visible} />
                   </td>

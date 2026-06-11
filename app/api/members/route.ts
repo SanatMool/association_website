@@ -45,20 +45,59 @@ export async function POST(req: NextRequest) {
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { associationId } = ctx;
 
-  const data = await req.json();
+  const rawData = await req.json() as Record<string, unknown>;
+
+  // Extract billing fields — not Member model fields
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const { memberCategoryId, billingOption, ...memberData } = rawData;
 
   // Generate slug if not provided
-  if (!data.slug && data.name) {
-    data.slug = slugify(data.name);
+  if (!memberData.slug && memberData.name) {
+    memberData.slug = slugify(memberData.name as string);
   }
 
   let member;
   try {
     member = await prisma.$transaction(async (tx) => {
-      const m = await tx.member.create({ data });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const m = await tx.member.create({ data: memberData as any });
+
       if (associationId) {
-        await tx.memberAssociation.create({ data: { memberId: m.id, associationId } });
+        await tx.memberAssociation.create({
+          data: {
+            memberId:         m.id,
+            associationId,
+            memberCategoryId: (memberCategoryId as string | undefined) || null,
+          },
+        });
       }
+
+      // Create dues payment if a category is selected and billing isn't skipped
+      if (associationId && memberCategoryId && billingOption && billingOption !== "none") {
+        const cat = await tx.membershipCategory.findUnique({
+          where: { id: memberCategoryId as string },
+        });
+        if (cat) {
+          const now  = new Date();
+          const year = now.getFullYear();
+          await tx.duesPayment.create({
+            data: {
+              associationId,
+              memberId:         m.id,
+              memberCategoryId: cat.id,
+              type:             "annual_renewal",
+              amount:           cat.annualRenewalFee,
+              periodStart:      new Date(`${year}-01-01`),
+              periodEnd:        new Date(`${year}-12-31`),
+              status:           billingOption === "paid" ? "paid" : "pending",
+              method:           "pending",
+              paidAt:           billingOption === "paid" ? now : null,
+              recordedByAdminId: (ctx.session.user as { id?: string }).id ?? null,
+            },
+          });
+        }
+      }
+
       return m;
     });
   } catch (err) {
