@@ -43,6 +43,7 @@ model Association {
   expenses               Expense[]
   memberContributions    MemberContribution[]
   memberAccounts         MemberAccount[]
+  aiUsage                AiUsage[]
 }
 
 // Join table — a venue can belong to multiple associations
@@ -476,6 +477,23 @@ model MeetingRsvp {
   memberAccount MemberAccount @relation(fields: [memberAccountId], references: [id], onDelete: Cascade)
 
   @@unique([meetingId, memberAccountId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI USAGE TRACKING
+// ─────────────────────────────────────────────────────────────────────────────
+
+// One row per association per calendar day — upserted on every AI generation
+model AiUsage {
+  id            String   @id @default(cuid())
+  associationId String
+  date          String   // "YYYY-MM-DD" — easy daily grouping, no TZ issues
+  count         Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([associationId, date])
 }
 
 model EventRsvp {

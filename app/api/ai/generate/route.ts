@@ -1,5 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminContext } from "@/lib/adminAuth";
+import { prisma } from "@/lib/prisma";
+
+const AI_DEFAULT_LIMIT = 50;
+
+async function getQuota(associationId: string): Promise<{ limit: number; used: number; remaining: number }> {
+  const today = new Date().toISOString().substring(0, 10);
+  const [limitSetting, usage] = await Promise.all([
+    prisma.siteSettings.findUnique({
+      where: { key_associationId: { key: "ai_daily_limit", associationId } },
+    }),
+    prisma.aiUsage.findUnique({
+      where: { associationId_date: { associationId, date: today } },
+    }),
+  ]);
+  const limit = parseInt(limitSetting?.value ?? String(AI_DEFAULT_LIMIT), 10);
+  const used  = usage?.count ?? 0;
+  return { limit, used, remaining: Math.max(0, limit - used) };
+}
+
+async function incrementUsage(associationId: string): Promise<void> {
+  const today = new Date().toISOString().substring(0, 10);
+  await prisma.aiUsage.upsert({
+    where:  { associationId_date: { associationId, date: today } },
+    create: { associationId, date: today, count: 1 },
+    update: { count: { increment: 1 } },
+  });
+}
 
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 
@@ -37,9 +64,9 @@ async function callAI(prompt: string, maxTokens: number): Promise<string> {
 
 export async function POST(req: NextRequest) {
   const ctx = await getAdminContext();
-  if (!ctx) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-  }
+  if (!ctx) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  if (!ctx.associationId) return NextResponse.json({ success: false, error: "No association context" }, { status: 400 });
+  const associationId: string = ctx.associationId;
 
   let body: Record<string, unknown>;
   try {
@@ -49,6 +76,27 @@ export async function POST(req: NextRequest) {
   }
 
   const { type } = body;
+
+  // ── Enabled check ──────────────────────────────────────────────────────────
+  const enabledSetting = await prisma.siteSettings.findUnique({
+    where: { key_associationId: { key: "ai_enabled", associationId } },
+  });
+  if (enabledSetting?.value === "false") {
+    return NextResponse.json({
+      success: false,
+      error: "AI generation is disabled for your account. Contact your platform admin to enable it.",
+    }, { status: 403 });
+  }
+
+  // ── Quota check ────────────────────────────────────────────────────────────
+  const quota = await getQuota(associationId);
+  if (quota.remaining <= 0) {
+    return NextResponse.json({
+      success: false,
+      error: `Daily AI quota reached (${quota.limit} generations/day). Contact your platform admin to increase the limit.`,
+      quota,
+    }, { status: 429 });
+  }
 
   try {
     // ── Bio ──────────────────────────────────────────────────────────────────────
@@ -79,7 +127,8 @@ export async function POST(req: NextRequest) {
       ].filter((l) => l !== null).join("\n");
 
       const text = await callAI(prompt, 400);
-      return NextResponse.json({ success: true, data: { text } });
+      await incrementUsage(associationId);
+      return NextResponse.json({ success: true, data: { text }, remaining: quota.remaining - 1 });
     }
 
     // ── News ─────────────────────────────────────────────────────────────────────
@@ -119,7 +168,8 @@ export async function POST(req: NextRequest) {
       const excerpt = excerptMatch ? excerptMatch[1].trim() : "";
       const content = contentMatch ? contentMatch[1].trim() : raw;
 
-      return NextResponse.json({ success: true, data: { excerpt, content } });
+      await incrementUsage(associationId);
+      return NextResponse.json({ success: true, data: { excerpt, content }, remaining: quota.remaining - 1 });
     }
 
     // ── Agenda ───────────────────────────────────────────────────────────────────
@@ -177,7 +227,8 @@ export async function POST(req: NextRequest) {
       }
       if (pending) items.push(pending);
 
-      return NextResponse.json({ success: true, data: { items } });
+      await incrementUsage(associationId);
+      return NextResponse.json({ success: true, data: { items }, remaining: quota.remaining - 1 });
     }
 
     // ── Meeting description ───────────────────────────────────────────────────────
@@ -214,7 +265,8 @@ export async function POST(req: NextRequest) {
       ].filter((l) => l !== null).join("\n");
 
       const text = await callAI(prompt, 300);
-      return NextResponse.json({ success: true, data: { text } });
+      await incrementUsage(associationId);
+      return NextResponse.json({ success: true, data: { text }, remaining: quota.remaining - 1 });
     }
 
     // ── Meeting Minutes ───────────────────────────────────────────────────────────
@@ -268,7 +320,8 @@ export async function POST(req: NextRequest) {
       ].filter((l) => l !== null).join("\n");
 
       const text = await callAI(prompt, 1500);
-      return NextResponse.json({ success: true, data: { text } });
+      await incrementUsage(associationId);
+      return NextResponse.json({ success: true, data: { text }, remaining: quota.remaining - 1 });
     }
 
     return NextResponse.json({ success: false, error: "Unknown generation type." }, { status: 400 });

@@ -3,6 +3,7 @@ import { getPlatformUser } from "@/lib/platformAuth";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, XCircle, Users, Calendar, Newspaper, Award, Clock, ExternalLink, Pencil } from "lucide-react";
+import AiQuotaManager from "./AiQuotaManager";
 
 export const dynamic = "force-dynamic";
 
@@ -36,11 +37,28 @@ export default async function AssociationDetailPage({ params }: Props) {
 
   if (!association) notFound();
 
-  const recentLogs = await prisma.apiLog.findMany({
-    where: { associationId: association.id },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
+  const today = new Date().toISOString().substring(0, 10);
+  const [recentLogs, aiLimitSetting, aiEnabledSetting, aiUsageToday] = await Promise.all([
+    prisma.apiLog.findMany({
+      where: { associationId: association.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    prisma.siteSettings.findUnique({
+      where: { key_associationId: { key: "ai_daily_limit", associationId: association.id } },
+    }),
+    prisma.siteSettings.findUnique({
+      where: { key_associationId: { key: "ai_enabled", associationId: association.id } },
+    }),
+    prisma.aiUsage.findUnique({
+      where: { associationId_date: { associationId: association.id, date: today } },
+    }),
+  ]);
+
+  const aiLimit   = parseInt(aiLimitSetting?.value ?? "50", 10);
+  const aiUsed    = aiUsageToday?.count ?? 0;
+  const aiEnabled = aiEnabledSetting?.value !== "false";
+  const aiQuota   = { used: aiUsed, limit: aiLimit, remaining: Math.max(0, aiLimit - aiUsed), date: today, enabled: aiEnabled };
 
   const statCards = [
     { label: "Members", value: association._count.memberLinks, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -123,6 +141,11 @@ export default async function AssociationDetailPage({ params }: Props) {
             <div className="text-xs text-gray-400 mt-0.5">{label}</div>
           </div>
         ))}
+      </div>
+
+      {/* AI Quota */}
+      <div className="mb-6">
+        <AiQuotaManager associationId={association.id} initial={aiQuota} />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
