@@ -46,10 +46,11 @@ export async function POST(req: NextRequest) {
       ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
     });
 
-    // Fire-and-forget admin notification email
+    // Fire-and-forget: notify admins + confirm to applicant
     if (association?.id) {
       notifyAdmins(association.id, association.name, body).catch(console.error);
     }
+    confirmApplicant(body, association?.name ?? "the association").catch(console.error);
 
     return NextResponse.json({ success: true, data: application });
   } catch (err) {
@@ -111,6 +112,47 @@ async function notifyAdmins(
   await sendMail({
     to: recipients,
     subject: `New membership application — ${app.venueName}`,
+    fromName: associationName,
+    html,
+  });
+}
+
+async function confirmApplicant(
+  app: { venueName: string; ownerName: string; email: string; location: string; phone: string },
+  associationName: string,
+) {
+  const html = `
+    <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#f8fafc;padding:32px 24px;border-radius:12px;">
+      <div style="background:#0a1040;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
+        <h2 style="color:#f59e0b;margin:0;font-size:18px;">Application Received</h2>
+        <p style="color:rgba(255,255,255,0.6);margin:4px 0 0;font-size:13px;">${associationName}</p>
+      </div>
+      <div style="background:white;border-radius:8px;padding:24px;border:1px solid #e2e8f0;">
+        <p style="color:#1e293b;font-size:14px;margin:0 0 16px;">Dear <strong>${app.ownerName}</strong>,</p>
+        <p style="color:#475569;font-size:14px;margin:0 0 16px;">
+          Thank you for submitting a membership application for <strong>${app.venueName}</strong>.
+          We have received your application and our team will review it shortly.
+        </p>
+        <p style="color:#475569;font-size:14px;margin:0 0 20px;">
+          We will contact you at <strong>${app.email}</strong> or <strong>${app.phone}</strong>
+          once your application has been reviewed.
+        </p>
+        <div style="background:#f8fafc;border-radius:8px;padding:16px;border:1px solid #e2e8f0;">
+          <p style="color:#64748b;font-size:12px;margin:0 0 8px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Your Application Details</p>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <tr><td style="padding:4px 0;color:#64748b;width:120px;">Venue</td><td style="padding:4px 0;color:#1e293b;font-weight:600;">${app.venueName}</td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;">Owner</td><td style="padding:4px 0;color:#1e293b;">${app.ownerName}</td></tr>
+            <tr><td style="padding:4px 0;color:#64748b;">Location</td><td style="padding:4px 0;color:#1e293b;">${app.location}</td></tr>
+          </table>
+        </div>
+      </div>
+      <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:16px;">${associationName} · Membership Team</p>
+    </div>
+  `;
+
+  await sendMail({
+    to: app.email,
+    subject: `Application received — ${app.venueName}`,
     fromName: associationName,
     html,
   });

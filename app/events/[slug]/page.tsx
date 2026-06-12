@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import DescriptionSection from "./DescriptionSection";
+import TicketSection from "./TicketSection";
 
 export const revalidate = 3600;
 
@@ -53,6 +54,12 @@ export default async function EventDetailPage({ params }: Props) {
   const association = await getAssociationOrThrow();
   const event = await prisma.event.findFirst({
     where: { slug: params.slug, associationId: association.id },
+    include: {
+      ticketTypes: {
+        where: { active: true },
+        orderBy: { order: "asc" },
+      },
+    },
   });
   if (!event) notFound();
 
@@ -212,6 +219,18 @@ export default async function EventDetailPage({ params }: Props) {
                   </a>
                 </div>
               </div>
+            )}
+
+            {/* Tickets */}
+            {event.ticketTypes.length > 0 && (
+              <TicketSection
+                eventId={event.id}
+                ticketTypes={event.ticketTypes.map((t) => ({
+                  ...t,
+                  price: t.price.toString(),
+                  memberPrice: t.memberPrice?.toString() ?? null,
+                }))}
+              />
             )}
 
             <Link

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Pencil, ChevronLeft, ChevronRight, AlertTriangle, BadgeDollarSign, Building2, MapPin, Users, Tag, ShieldCheck, Eye, Star, LayoutList } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Pencil, ChevronLeft, ChevronRight, AlertTriangle, BadgeDollarSign, Building2, MapPin, Users, Tag, ShieldCheck, Eye, EyeOff, Star, LayoutList } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
 import VisibilityToggle from "@/components/admin/VisibilityToggle";
+import { useRouter } from "next/navigation";
 
 export interface MemberRow {
   id: string; memberId: string; name: string; area: string;
@@ -21,6 +22,7 @@ type SortDir = "asc" | "desc";
 const PAGE_SIZE = 25;
 
 export default function MembersClient({ rows, totalCount }: { rows: MemberRow[]; totalCount: number }) {
+  const router = useRouter();
   const [search,         setSearch]         = useState("");
   const [filterArea,     setFilterArea]      = useState("");
   const [filterCat,      setFilterCat]       = useState("");
@@ -31,6 +33,8 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
   const [sortKey,     setSortKey]     = useState<SortKey>("name");
   const [sortDir,     setSortDir]     = useState<SortDir>("asc");
   const [page,        setPage]        = useState(1);
+  const [selected,    setSelected]    = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const areas      = useMemo(() => Array.from(new Set(rows.map((r) => r.area).filter(Boolean))).sort(), [rows]);
   const categories = useMemo(() =>
@@ -74,6 +78,39 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
     else { setSortKey(key); setSortDir("asc"); }
     setPage(1);
   }
+
+  const pageIds = paged.map((m) => m.memberId);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+
+  function togglePageSelect() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) { pageIds.forEach((id) => next.delete(id)); }
+      else { pageIds.forEach((id) => next.add(id)); }
+      return next;
+    });
+  }
+
+  function toggleRow(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const bulkSetVisibility = useCallback(async (visible: boolean) => {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    await fetch("/api/members/bulk-visibility", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberIds: Array.from(selected), visible }),
+    });
+    setSelected(new Set());
+    setBulkLoading(false);
+    router.refresh();
+  }, [selected, router]);
 
   function SortIcon({ k }: { k: SortKey }) {
     if (sortKey !== k) return <ChevronsUpDown size={12} className="text-gray-300" />;
@@ -161,6 +198,35 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
         </div>
       </div>
 
+      {/* ── Bulk action bar ──────────────────────────────────────────── */}
+      {selected.size > 0 && (
+        <div className="mb-3 flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-2.5">
+          <span className="text-sm font-medium text-indigo-800">{selected.size} selected</span>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={() => bulkSetVisibility(true)}
+              disabled={bulkLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+            >
+              <Eye size={12} /> Show all
+            </button>
+            <button
+              onClick={() => bulkSetVisibility(false)}
+              disabled={bulkLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-60 transition-colors"
+            >
+              <EyeOff size={12} /> Hide all
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              className="text-xs text-indigo-500 hover:text-indigo-700 font-medium px-2"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Table ────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {paged.length === 0 ? (
@@ -169,6 +235,15 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
+                <th className="w-8 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={togglePageSelect}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                    title="Select all on this page"
+                  />
+                </th>
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort("name")}
                     className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
@@ -207,7 +282,15 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
             </thead>
             <tbody className="divide-y divide-gray-50">
               {paged.map((m) => (
-                <tr key={m.id} className={`hover:bg-gray-50/50 ${!m.visible ? "opacity-60" : ""}`}>
+                <tr key={m.id} className={`hover:bg-gray-50/50 ${!m.visible ? "opacity-60" : ""} ${selected.has(m.memberId) ? "bg-indigo-50/40" : ""}`}>
+                  <td className="w-8 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(m.memberId)}
+                      onChange={() => toggleRow(m.memberId)}
+                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-400"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{m.name}</td>
                   <td className="px-4 py-3 text-gray-500">{m.area}</td>
                   <td className="px-4 py-3 text-gray-500">{m.capacity ?? "—"}</td>

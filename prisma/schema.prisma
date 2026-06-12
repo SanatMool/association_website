@@ -45,6 +45,8 @@ model Association {
   memberAccounts         MemberAccount[]
   aiUsage                AiUsage[]
   activityLogs           ActivityLog[]
+  ticketTypes            TicketType[]
+  ticketRegistrations    TicketRegistration[]
 }
 
 // Join table — a venue can belong to multiple associations
@@ -129,10 +131,12 @@ model Event {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  association  Association? @relation(fields: [associationId], references: [id])
-  rsvps        EventRsvp[]
-  expenses     Expense[]
-  contributions MemberContribution[]
+  association       Association? @relation(fields: [associationId], references: [id])
+  rsvps             EventRsvp[]
+  expenses          Expense[]
+  contributions     MemberContribution[]
+  ticketTypes       TicketType[]
+  registrations     TicketRegistration[]
 }
 
 model News {
@@ -578,4 +582,77 @@ model ActivityLog {
 
   @@index([associationId, createdAt(sort: Desc)])
   @@index([associationId, entityType])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENT TICKETING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TicketType {
+  id             String   @id @default(cuid())
+  eventId        String
+  associationId  String
+  name           String   // e.g. "VIP", "General", "Table (10 seats)"
+  description    String?
+  section        String?  // free-text seating zone, e.g. "Banquet Hall A"
+  price          Decimal  @default(0)
+  memberPrice    Decimal? // optional discounted price for members
+  totalCapacity  Int?     // null = unlimited
+  strictCapacity Boolean  @default(false) // if true, block when soldCount >= capacity
+  soldCount      Int      @default(0)     // maintained by API
+  order          Int      @default(0)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  event         Event               @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  association   Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  registrations TicketRegistration[]
+
+  @@index([eventId])
+}
+
+model TicketRegistration {
+  id             String   @id @default(cuid())
+  ticketTypeId   String
+  eventId        String
+  associationId  String
+
+  // Buyer
+  buyerName      String
+  buyerEmail     String
+  buyerPhone     String
+  notes          String?
+  quantity       Int      @default(1)
+
+  // Payment
+  paymentStatus  String   @default("pending") // pending | paid | cancelled | refunded
+  amount         Decimal?
+  paymentMethod  String?  // cash | bank_transfer | cheque | other
+  receiptNumber  String?
+  paidAt         DateTime?
+  recordedByAdminId String?
+
+  // Cancellation / refund
+  cancelledAt    DateTime?
+  cancelReason   String?
+  refundedAt     DateTime?
+  refundAmount   Decimal?
+
+  // Check-in
+  checkInToken   String   @unique @default(cuid())
+  checkedIn      Boolean  @default(false)
+  checkedInAt    DateTime?
+  checkedInBy    String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ticketType    TicketType  @relation(fields: [ticketTypeId], references: [id])
+  event         Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  association   Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([associationId])
+  @@index([checkInToken])
 }
