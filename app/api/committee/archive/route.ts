@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { logActivity } from "@/lib/activityLogger";
 
 // POST /api/committee/archive
 // Archives all active=true committee members for this association,
@@ -36,5 +37,13 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "committee.archive",
+    entityType: "committee",
+    meta:       { archived: result.count, termYearAD, termYearBS },
+  });
   return NextResponse.json({ success: true, data: { archived: result.count } });
 }

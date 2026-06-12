@@ -8,7 +8,7 @@ import Image from "next/image";
 import {
   LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings,
   UserCog, CheckSquare, ClipboardList, Tag, CreditCard, CalendarDays,
-  KeyRound, BarChart2, ChevronLeft, ChevronRight, Menu, X,
+  KeyRound, BarChart2, ChevronLeft, ChevronRight, Menu, X, Bell, Activity,
 } from "lucide-react";
 import "../admin.css";
 
@@ -34,6 +34,7 @@ const NAV_GROUPS = [
     items: [
       { href: "/admin/meetings", label: "Meetings", icon: CalendarDays },
       { href: "/admin/tasks",    label: "Tasks",    icon: CheckSquare },
+      { href: "/admin/activity", label: "Activity", icon: Activity },
       { href: "/admin/reports",  label: "Reports",  icon: BarChart2 },
     ],
   },
@@ -42,14 +43,14 @@ const NAV_GROUPS = [
     items: [
       { href: "/admin/membership/categories", label: "Fee Categories",  icon: Tag },
       { href: "/admin/membership/dues",       label: "Dues & Payments", icon: CreditCard },
-      { href: "/admin/portal-accounts",       label: "Portal Accounts", icon: KeyRound },
     ],
   },
   {
     label: "System",
     items: [
-      { href: "/admin/settings", label: "Settings", icon: Settings },
-      { href: "/admin/users",    label: "Users",    icon: UserCog },
+      { href: "/admin/settings",      label: "Settings",        icon: Settings },
+      { href: "/admin/users",         label: "Users",           icon: UserCog },
+      { href: "/admin/portal-accounts", label: "Portal Accounts", icon: KeyRound },
     ],
   },
 ];
@@ -60,6 +61,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingApps, setPendingApps] = useState(0);
+
+  useEffect(() => {
+    if (!session) return;
+    fetch("/api/admin/notifications")
+      .then((r) => r.json())
+      .then((res) => { if (res.success) setPendingApps(res.data.pendingApplications); })
+      .catch(() => {});
+  }, [session, pathname]);
 
   useEffect(() => {
     if (pathname !== "/admin/login" && status === "unauthenticated") {
@@ -148,7 +158,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     key={href}
                     href={href}
                     title={collapsed ? itemLabel : undefined}
-                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                    className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                       active
                         ? "bg-white/10 text-white"
                         : "text-white/55 hover:text-white/90 hover:bg-white/5"
@@ -156,6 +166,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   >
                     <Icon size={15} strokeWidth={active ? 2.5 : 1.8} className="flex-shrink-0" />
                     {!collapsed && itemLabel}
+                    {!collapsed && href === "/admin/applications" && pendingApps > 0 && (
+                      <span className="ml-auto text-[10px] font-bold bg-amber-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
+                        {pendingApps}
+                      </span>
+                    )}
+                    {collapsed && href === "/admin/applications" && pendingApps > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full text-[8px] font-bold text-white flex items-center justify-center">
+                        {pendingApps > 9 ? "9+" : pendingApps}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -245,7 +265,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             className="h-6 w-auto"
             priority
           />
-          <span className="text-xs text-gray-400 font-medium">Admin Panel</span>
+          <span className="text-xs text-gray-400 font-medium flex-1">Admin Panel</span>
+          <Link href="/admin/applications" className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+            <Bell size={17} />
+            {pendingApps > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-amber-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center">
+                {pendingApps > 9 ? "9+" : pendingApps}
+              </span>
+            )}
+          </Link>
         </div>
 
         <div className="p-4 sm:p-8">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { logActivity } from "@/lib/activityLogger";
 
 async function getOwned(id: string, associationId: string) {
   return prisma.meeting.findFirst({ where: { id, associationId } });
@@ -62,8 +63,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const ctx = await getAdminContext();
   if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!await getOwned(params.id, ctx.associationId)) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const owned = await getOwned(params.id, ctx.associationId);
+  if (!owned) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.meeting.delete({ where: { id: params.id } });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "meeting.delete",
+    entityType: "meeting",
+    entityId:   params.id,
+    entityName: owned.title,
+  });
   return NextResponse.json({ success: true });
 }

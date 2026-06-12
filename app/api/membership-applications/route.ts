@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAssociation } from "@/lib/getAssociation";
 import { getAdminContext } from "@/lib/adminAuth";
 import { logApiCall } from "@/lib/apiLogger";
+import { sendMail } from "@/lib/mailer";
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -44,11 +45,75 @@ export async function POST(req: NextRequest) {
       responseTimeMs: Date.now() - start,
       ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
     });
+
+    // Fire-and-forget admin notification email
+    if (association?.id) {
+      notifyAdmins(association.id, association.name, body).catch(console.error);
+    }
+
     return NextResponse.json({ success: true, data: application });
   } catch (err) {
     console.error("Membership application error:", err);
     return NextResponse.json({ success: false, error: "Failed to submit application" }, { status: 500 });
   }
+}
+
+async function notifyAdmins(
+  associationId: string,
+  associationName: string,
+  app: { venueName: string; ownerName: string; phone: string; email: string; location: string; capacity?: string; website?: string },
+) {
+  // Get notification email from SiteSettings, fall back to first admin user
+  const setting = await prisma.siteSettings.findUnique({
+    where: { key_associationId: { key: "admin_notification_email", associationId } },
+  });
+
+  let recipients: string[] = [];
+  if (setting?.value) {
+    recipients = [setting.value];
+  } else {
+    const admins = await prisma.adminUser.findMany({
+      where: { associationId },
+      select: { email: true },
+    });
+    recipients = admins.map((a) => a.email);
+  }
+
+  if (recipients.length === 0) return;
+
+  const html = `
+    <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#f8fafc;padding:32px 24px;border-radius:12px;">
+      <div style="background:#0a1040;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
+        <h2 style="color:#f59e0b;margin:0;font-size:18px;">New Membership Application</h2>
+        <p style="color:rgba(255,255,255,0.6);margin:4px 0 0;font-size:13px;">${associationName} Admin Panel</p>
+      </div>
+      <div style="background:white;border-radius:8px;padding:24px;border:1px solid #e2e8f0;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+          <tr><td style="padding:8px 0;color:#64748b;width:130px;">Venue Name</td><td style="padding:8px 0;font-weight:600;color:#1e293b;">${app.venueName}</td></tr>
+          <tr><td style="padding:8px 0;color:#64748b;">Owner</td><td style="padding:8px 0;color:#1e293b;">${app.ownerName}</td></tr>
+          <tr><td style="padding:8px 0;color:#64748b;">Phone</td><td style="padding:8px 0;color:#1e293b;">${app.phone}</td></tr>
+          <tr><td style="padding:8px 0;color:#64748b;">Email</td><td style="padding:8px 0;color:#1e293b;">${app.email}</td></tr>
+          <tr><td style="padding:8px 0;color:#64748b;">Location</td><td style="padding:8px 0;color:#1e293b;">${app.location}</td></tr>
+          ${app.capacity ? `<tr><td style="padding:8px 0;color:#64748b;">Capacity</td><td style="padding:8px 0;color:#1e293b;">${app.capacity}</td></tr>` : ""}
+          ${app.website ? `<tr><td style="padding:8px 0;color:#64748b;">Website</td><td style="padding:8px 0;color:#1e293b;">${app.website}</td></tr>` : ""}
+        </table>
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #f1f5f9;">
+          <a href="${process.env.NEXTAUTH_URL ?? ""}/admin/applications"
+            style="display:inline-block;background:#0a1040;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">
+            Review Application →
+          </a>
+        </div>
+      </div>
+      <p style="text-align:center;color:#94a3b8;font-size:11px;margin-top:16px;">${associationName} · Admin Panel</p>
+    </div>
+  `;
+
+  await sendMail({
+    to: recipients,
+    subject: `New membership application — ${app.venueName}`,
+    fromName: associationName,
+    html,
+  });
 }
 
 export async function GET() {

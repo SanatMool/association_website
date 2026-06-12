@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { slugify } from "@/lib/utils";
 import { logApiCall } from "@/lib/apiLogger";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
@@ -113,6 +114,15 @@ export async function POST(req: NextRequest) {
     responseTimeMs: Date.now() - start,
     adminUserId: (ctx.session.user as { id?: string }).id ?? null,
     ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
+  });
+  logActivity({
+    associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "member.create",
+    entityType: "member",
+    entityId:   member.id,
+    entityName: member.name,
   });
   return NextResponse.json(member, { status: 201 });
 }

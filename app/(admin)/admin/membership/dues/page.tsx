@@ -1048,7 +1048,7 @@ export default function DuesPage() {
                         </td>
                         <td className="px-4 py-3 text-right text-xs font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</td>
                         <td className="px-4 py-3">
-                          {lines.length > 1 ? (
+                          {lines.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {lines.map((l, i) => (
                                 <span key={i} className="inline-flex items-center text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">

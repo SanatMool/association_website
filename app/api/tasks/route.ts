@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminContext } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET() {
   const ctx = await getAdminContext();
@@ -58,6 +59,16 @@ export async function POST(req: Request) {
       detail: `Task "${task.title}" created`,
       actorName: ctx.session?.user?.name ?? "Admin",
     },
+  });
+
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "task.create",
+    entityType: "task",
+    entityId:   task.id,
+    entityName: task.title,
   });
 
   return NextResponse.json(task, { status: 201 });

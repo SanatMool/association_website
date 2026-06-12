@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { logApiCall } from "@/lib/apiLogger";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const event = await prisma.event.findUnique({ where: { id: params.id } });
@@ -38,6 +39,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     adminUserId: (ctx.session.user as { id?: string }).id ?? null,
     ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
   });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "event.update",
+    entityType: "event",
+    entityId:   event.id,
+    entityName: event.title,
+  });
   return NextResponse.json(event);
 }
 
@@ -52,6 +62,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.event.delete({ where: { id: params.id } });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "event.delete",
+    entityType: "event",
+    entityId:   params.id,
+    entityName: existing.title,
+  });
   logApiCall({
     associationId: ctx.associationId,
     path: new URL(req.url).pathname,

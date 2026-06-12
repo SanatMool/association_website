@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET() {
   const ctx = await getAdminContext();
@@ -25,6 +26,15 @@ export async function POST(req: NextRequest) {
       associationId: ctx.associationId,
       publishedAt: new Date(data.publishedAt ?? Date.now()),
     },
+  });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "news.create",
+    entityType: "news",
+    entityId:   article.id,
+    entityName: article.title,
   });
   return NextResponse.json(article, { status: 201 });
 }

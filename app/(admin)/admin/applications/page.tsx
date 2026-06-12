@@ -6,6 +6,7 @@ import {
   ArrowRight, UserPlus, Lock, Search, X, RotateCcw,
   ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight,
   ClipboardList, User, Phone, Mail, MapPin, Users, Globe, Building2,
+  Banknote, Receipt, CreditCard, SkipForward, PlusCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,6 +62,31 @@ export default function ApplicationsPage() {
   const [currentPage, setCurrentPage]   = useState(1);
   const PAGE_SIZE = 20;
 
+  // ── Fee panel state ───────────────────────────────────────────────────────
+  interface FeeCategory { id: string; name: string; monthlyFee: string; annualRenewalFee: string }
+  const [feeMode, setFeeMode]           = useState<"prompt" | "form" | "done">("prompt");
+  const [feePayStatus, setFeePayStatus] = useState<"paid" | "pending">("paid");
+  const [feeDueType, setFeeDueType]     = useState<"monthly" | "annual">("annual");
+  const [feeAmount, setFeeAmount]       = useState("");
+  const [feeMethod, setFeeMethod]       = useState("cash");
+  const [feeReceipt, setFeeReceipt]     = useState("");
+  const [feePeriodStart, setFeePeriodStart] = useState("");
+  const [feePeriodEnd, setFeePeriodEnd]     = useState("");
+  const [feeCategoryId, setFeeCategoryId]   = useState("");
+  const [feeCategories, setFeeCategories]   = useState<FeeCategory[]>([]);
+  const [feeSaving, setFeeSaving]       = useState(false);
+
+  const FEE_METHODS = [
+    { value: "cash",         label: "Cash" },
+    { value: "cheque",       label: "Cheque" },
+    { value: "bank_transfer",label: "Bank Transfer" },
+    { value: "online",       label: "Online / eSewa / Khalti" },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
   function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3500);
@@ -80,6 +106,27 @@ export default function ApplicationsPage() {
   }, []);
 
   useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);
+
+  // Fetch fee categories once
+  useEffect(() => {
+    fetch("/api/membership/categories")
+      .then((r) => r.json())
+      .then((res) => { if (res.success) setFeeCategories(res.data ?? []); })
+      .catch(() => {});
+  }, []);
+
+  // Reset fee panel when selected application changes
+  useEffect(() => {
+    setFeeMode("prompt");
+    setFeePayStatus("paid");
+    setFeeDueType("annual");
+    setFeeAmount("");
+    setFeeMethod("cash");
+    setFeeReceipt("");
+    setFeePeriodStart("");
+    setFeePeriodEnd("");
+    setFeeCategoryId("");
+  }, [selected?.id]);
 
   function selectApp(app: Application) {
     if (selected?.id === app.id) { clearConfirms(); setSelected(null); return; }
@@ -197,6 +244,34 @@ export default function ApplicationsPage() {
     setCurrentPage(1);
   }
 
+  async function saveFeePayment() {
+    if (!selected?.memberId || feeSaving) return;
+    if (!feeAmount || !feePeriodStart || !feePeriodEnd) {
+      showToast("Please fill in amount and period.", false); return;
+    }
+    setFeeSaving(true);
+    const res = await fetch("/api/membership/dues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        memberId:        selected.memberId,
+        memberCategoryId: feeCategoryId || undefined,
+        type:            feeDueType,
+        amount:          parseFloat(feeAmount),
+        periodStart:     feePeriodStart,
+        periodEnd:       feePeriodEnd,
+        method:          feePayStatus === "paid" ? feeMethod : "pending",
+        status:          feePayStatus,
+        receiptNumber:   feeReceipt || undefined,
+      }),
+    });
+    const json = await res.json() as { success: boolean; error?: string };
+    setFeeSaving(false);
+    if (!json.success) { showToast(json.error ?? "Failed to save payment", false); return; }
+    showToast(feePayStatus === "paid" ? "Payment recorded!" : "Due created!", true);
+    setFeeMode("done");
+  }
+
   function SortIcon({ col }: { col: typeof sortKey }) {
     if (sortKey !== col) return <ChevronsUpDown size={11} className="text-gray-300 ml-0.5 inline" />;
     return sortDir === "asc"
@@ -300,20 +375,177 @@ export default function ApplicationsPage() {
 
           {/* ── ACCEPTED ─── */}
           {selected.status === "accepted" && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-              <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm mb-1">
-                <CheckCircle size={15} /> Application Accepted
-              </div>
-              <p className="text-xs text-emerald-600">
-                A member profile was created from this application.{" "}
-                {selected.memberId ? (
-                  <Link href={`/admin/members/${selected.memberId}`} className="underline font-semibold hover:text-emerald-700">
-                    View in Members section
+            <div className="space-y-3">
+              {/* Member profile link */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-emerald-700 font-semibold text-xs">
+                  <CheckCircle size={13} /> Member profile created
+                </div>
+                {selected.memberId && (
+                  <Link href={`/admin/members/${selected.memberId}`}
+                    className="text-xs text-emerald-700 underline font-semibold hover:text-emerald-800 flex-shrink-0">
+                    View profile →
                   </Link>
-                ) : (
-                  <span className="font-semibold">Check the Members section.</span>
                 )}
-              </p>
+              </div>
+
+              {/* ── Fee panel ── */}
+              {feeMode === "prompt" && (
+                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+                  <div className="flex items-center gap-2 text-gray-700 font-semibold text-xs mb-2">
+                    <Banknote size={13} /> Record membership fee?
+                  </div>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Add a payment record or due for this member, or skip if not needed.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setFeeMode("form")}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors">
+                      <PlusCircle size={11} /> Add Payment / Due
+                    </button>
+                    <button onClick={() => setFeeMode("done")}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
+                      <SkipForward size={11} /> Skip
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {feeMode === "done" && (
+                <div className="border border-gray-100 rounded-xl p-3 bg-gray-50 flex items-center justify-between">
+                  <span className="text-xs text-gray-500">Fee step complete.</span>
+                  <button onClick={() => setFeeMode("form")}
+                    className="text-xs text-[#0a1040] underline font-medium">Add another</button>
+                </div>
+              )}
+
+              {feeMode === "form" && (
+                <div className="border border-gray-200 rounded-xl p-4 space-y-3 bg-white">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                      <CreditCard size={12} /> Fee Payment
+                    </span>
+                    <button onClick={() => setFeeMode("prompt")} className="text-gray-300 hover:text-gray-500">
+                      <X size={13} />
+                    </button>
+                  </div>
+
+                  {/* Mode toggle */}
+                  <div className="flex gap-1.5">
+                    {(["paid","pending"] as const).map((m) => (
+                      <button key={m} onClick={() => setFeePayStatus(m)}
+                        className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                          feePayStatus === m
+                            ? m === "paid" ? "bg-emerald-600 text-white border-emerald-600" : "bg-amber-500 text-white border-amber-500"
+                            : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                        }`}>
+                        {m === "paid" ? "✓ Record Payment" : "⏳ Create Due"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Category */}
+                  {feeCategories.length > 0 && (
+                    <div>
+                      <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Category (optional)</label>
+                      <select value={feeCategoryId} onChange={(e) => {
+                        setFeeCategoryId(e.target.value);
+                        const cat = feeCategories.find((c) => c.id === e.target.value);
+                        if (cat) setFeeAmount(feeDueType === "monthly" ? cat.monthlyFee : cat.annualRenewalFee);
+                      }}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30">
+                        <option value="">No category</option>
+                        {feeCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Due type */}
+                  <div>
+                    <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Due type</label>
+                    <div className="flex gap-1.5">
+                      {(["monthly","annual"] as const).map((t) => (
+                        <button key={t} onClick={() => {
+                          setFeeDueType(t);
+                          const cat = feeCategories.find((c) => c.id === feeCategoryId);
+                          if (cat) setFeeAmount(t === "monthly" ? cat.monthlyFee : cat.annualRenewalFee);
+                        }}
+                          className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors ${
+                            feeDueType === t ? "bg-[#0a1040] text-white border-[#0a1040]" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                          }`}>
+                          {t === "monthly" ? "Monthly" : "Annual"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Period */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Period start</label>
+                      <select value={feePeriodStart} onChange={(e) => setFeePeriodStart(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30">
+                        <option value="">Select</option>
+                        {YEARS.flatMap((y) => MONTHS.map((m, mi) => {
+                          const val = `${y}-${String(mi + 1).padStart(2,"0")}-01`;
+                          return <option key={val} value={val}>{m} {y}</option>;
+                        }))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Period end</label>
+                      <select value={feePeriodEnd} onChange={(e) => setFeePeriodEnd(e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30">
+                        <option value="">Select</option>
+                        {YEARS.flatMap((y) => MONTHS.map((m, mi) => {
+                          const val = `${y}-${String(mi + 1).padStart(2,"0")}-28`;
+                          return <option key={val} value={val}>{m} {y}</option>;
+                        }))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Amount (Rs)</label>
+                    <input type="number" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)}
+                      placeholder="0"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30" />
+                  </div>
+
+                  {/* Method + receipt (paid only) */}
+                  {feePayStatus === "paid" && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Payment method</label>
+                        <select value={feeMethod} onChange={(e) => setFeeMethod(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30">
+                          {FEE_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">
+                          Receipt no. <span className="normal-case text-gray-300">(optional)</span>
+                        </label>
+                        <div className="relative">
+                          <Receipt size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                          <input type="text" value={feeReceipt} onChange={(e) => setFeeReceipt(e.target.value)}
+                            placeholder="e.g. REC-001"
+                            className="w-full pl-8 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30" />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <button onClick={saveFeePayment} disabled={feeSaving}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors disabled:opacity-50">
+                    {feeSaving
+                      ? <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      : feePayStatus === "paid" ? <><CheckCircle size={12} /> Save Payment</> : <><PlusCircle size={12} /> Create Due</>
+                    }
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

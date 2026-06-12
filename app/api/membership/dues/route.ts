@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
@@ -105,5 +106,15 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     body.status === "paid" ? "dues.record_paid" : "dues.record_pending",
+    entityType: "dues",
+    entityId:   payment.id,
+    entityName: payment.member.name,
+    meta:       { amount: Number(payment.amount), type: payment.type, status: payment.status },
+  });
   return NextResponse.json({ success: true, data: payment });
 }

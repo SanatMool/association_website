@@ -17,6 +17,10 @@ interface RecentEvent   { id: string; title: string; status: string; date: strin
 interface PendingTask   { id: string; title: string; status: string; priority: string; dueDate: string | null }
 interface OverdueTask   { id: string; title: string; dueDate: string | null; priority: string }
 interface UpcomingMtg   { id: string; title: string; scheduledAt: string; type: string }
+interface ActivityLogRow {
+  id: string; action: string; entityType: string; entityName: string | null;
+  adminName: string | null; createdAt: string; meta: Record<string, unknown> | null;
+}
 
 interface Props {
   memberCount:      number;
@@ -32,6 +36,7 @@ interface Props {
   overdueTasks:     OverdueTask[];
   upcomingMeetings: UpcomingMtg[];
   pendingDuesCount: number;
+  activityLogs:     ActivityLogRow[];
 }
 
 const TABS = [
@@ -43,11 +48,68 @@ const TABS = [
 
 type TabKey = typeof TABS[number]["key"];
 
+// ── Activity log helpers ────────────────────────────────────────────────────
+const ACTION_LABELS: Record<string, string> = {
+  "member.create":          "Added member",
+  "member.update":          "Updated member",
+  "member.delete":          "Deleted member",
+  "event.create":           "Created event",
+  "event.update":           "Updated event",
+  "event.delete":           "Deleted event",
+  "news.create":            "Published news",
+  "news.update":            "Updated news",
+  "news.delete":            "Deleted news",
+  "committee.create":       "Added committee member",
+  "committee.update":       "Updated committee member",
+  "committee.delete":       "Removed committee member",
+  "committee.archive":      "Archived committee",
+  "meeting.create":         "Created meeting",
+  "meeting.delete":         "Deleted meeting",
+  "task.create":            "Created task",
+  "task.complete":          "Completed task",
+  "task.delete":            "Deleted task",
+  "application.accept":     "Accepted application",
+  "application.reviewed":   "Marked reviewed",
+  "application.rejected":   "Rejected application",
+  "application.pending":    "Reset to pending",
+  "application.delete":     "Deleted application",
+  "dues.record_paid":       "Recorded payment",
+  "dues.record_pending":    "Added pending due",
+};
+
+const ACTION_COLORS: Record<string, string> = {
+  "member.create": "bg-blue-100 text-blue-700",
+  "member.delete": "bg-red-100 text-red-700",
+  "event.create":  "bg-green-100 text-green-700",
+  "event.delete":  "bg-red-100 text-red-700",
+  "news.create":   "bg-amber-100 text-amber-700",
+  "news.delete":   "bg-red-100 text-red-700",
+  "committee.archive": "bg-slate-100 text-slate-600",
+  "application.accept": "bg-emerald-100 text-emerald-700",
+  "application.rejected": "bg-red-100 text-red-700",
+  "dues.record_paid": "bg-teal-100 text-teal-700",
+  "task.complete": "bg-indigo-100 text-indigo-700",
+};
+
+function actionLabel(action: string)  { return ACTION_LABELS[action]  ?? action; }
+function actionColor(action: string)  { return ACTION_COLORS[action]  ?? "bg-gray-100 text-gray-600"; }
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins  < 1)  return "just now";
+  if (mins  < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
+}
+
 export default function DashboardClient({
   memberCount, eventCount, newsCount, committeeCount,
   recentMembers, recentNews, recentEvents,
   checklist, completedCount,
-  pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount,
+  pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount, activityLogs,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
@@ -358,85 +420,42 @@ export default function DashboardClient({
 
           {/* ── ACTIVITY ── */}
           {activeTab === "activity" && (
-            <div className="space-y-4">
-              {/* Recent members */}
-              <div className="bg-white rounded-xl border border-gray-100 p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
-                    <Users size={14} className="text-gray-400" />
-                    Recent Members
-                  </h2>
-                  <Link href="/admin/members" className="text-xs text-amber-600 hover:text-amber-700 font-medium">View all →</Link>
-                </div>
-                {recentMembers.length === 0 ? (
-                  <p className="text-sm text-gray-400 py-4 text-center">No members yet.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {recentMembers.map((m) => (
-                      <Link key={m.id} href={`/admin/members/${m.id}`} className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-gray-50 group">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-semibold text-blue-600">{m.name[0]}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-900 group-hover:text-[#0a1040]">{m.name}</span>
-                            <span className="text-xs text-gray-400 ml-2">{m.area}</span>
-                          </div>
-                        </div>
-                        <span className="text-xs text-gray-400">{formatDate(m.createdAt)}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
+                  <Activity size={14} className="text-gray-400" />
+                  Recent Activity
+                </h2>
+                <Link href="/admin/activity" className="text-xs text-amber-600 hover:text-amber-700 font-medium">
+                  Full log →
+                </Link>
               </div>
-
-              {/* News + Events */}
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
-                      <Newspaper size={13} className="text-gray-400" />
-                      Latest News
-                    </h2>
-                    <Link href="/admin/news" className="text-xs text-amber-600 font-medium">All →</Link>
-                  </div>
-                  {recentNews.length === 0 ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">No articles yet.</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {recentNews.map((n) => (
-                        <Link key={n.id} href={`/admin/news/${n.id}`} className="block group">
-                          <p className="text-sm text-gray-700 line-clamp-1 group-hover:text-[#0a1040]">{n.title}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">{formatDate(n.publishedAt)}</p>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+              {activityLogs.length === 0 ? (
+                <div className="text-center py-10">
+                  <Activity size={28} className="text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">No activity recorded yet.</p>
+                  <p className="text-xs text-gray-300 mt-1">Actions you take will appear here.</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
-                      <Calendar size={13} className="text-gray-400" />
-                      Latest Events
-                    </h2>
-                    <Link href="/admin/events" className="text-xs text-amber-600 font-medium">All →</Link>
-                  </div>
-                  {recentEvents.length === 0 ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">No events yet.</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {recentEvents.map((e) => (
-                        <Link key={e.id} href={`/admin/events/${e.id}`} className="block group">
-                          <p className="text-sm text-gray-700 line-clamp-1 group-hover:text-[#0a1040]">{e.title}</p>
-                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded mt-0.5 inline-block ${
-                            e.status === "upcoming" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                          }`}>{e.status}</span>
-                        </Link>
-                      ))}
+              ) : (
+                <div className="space-y-1">
+                  {activityLogs.map((log) => (
+                    <div key={log.id} className="flex items-start gap-3 py-2.5 px-2 rounded-lg hover:bg-gray-50 transition-colors">
+                      <span className={`mt-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0 ${actionColor(log.action)}`}>
+                        {actionLabel(log.action)}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        {log.entityName && (
+                          <p className="text-sm text-gray-800 truncate">{log.entityName}</p>
+                        )}
+                        {log.adminName && (
+                          <p className="text-xs text-gray-400">{log.adminName}</p>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0 pt-0.5">{relativeTime(log.createdAt)}</span>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           )}
         </motion.div>

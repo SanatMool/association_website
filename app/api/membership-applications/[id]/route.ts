@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { slugify } from "@/lib/utils";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const ctx = await getAdminContext();
@@ -66,6 +67,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return { member, updated };
     });
 
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "application.accept",
+    entityType: "application",
+    entityId:   params.id,
+    entityName: app.venueName,
+    meta:       { memberId: result.member.id },
+  });
     return NextResponse.json({ success: true, data: result.updated, memberId: result.member.id });
   }
 
@@ -73,6 +84,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const updated = await prisma.membershipApplication.update({
     where: { id: params.id },
     data:  { status },
+  });
+
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     `application.${status}`,
+    entityType: "application",
+    entityId:   params.id,
+    entityName: app.venueName,
   });
 
   return NextResponse.json({ success: true, data: updated });
@@ -88,5 +109,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!app) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.membershipApplication.delete({ where: { id: params.id } });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "application.delete",
+    entityType: "application",
+    entityId:   params.id,
+    entityName: app.venueName,
+  });
   return NextResponse.json({ success: true });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET() {
   const ctx = await getAdminContext();
@@ -45,5 +46,14 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "meeting.create",
+    entityType: "meeting",
+    entityId:   meeting.id,
+    entityName: meeting.title,
+  });
   return NextResponse.json({ success: true, data: meeting });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { logApiCall } from "@/lib/apiLogger";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const member = await prisma.member.findUnique({ where: { id: params.id } });
@@ -31,6 +32,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     adminUserId: (ctx.session.user as { id?: string }).id ?? null,
     ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
   });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "member.update",
+    entityType: "member",
+    entityId:   member.id,
+    entityName: member.name,
+  });
   return NextResponse.json(member);
 }
 
@@ -45,6 +55,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   });
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const deletedMember = await prisma.member.findUnique({ where: { id: params.id }, select: { name: true } });
   await prisma.member.delete({ where: { id: params.id } });
   logApiCall({
     associationId: ctx.associationId,
@@ -54,6 +65,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     responseTimeMs: Date.now() - start,
     adminUserId: (ctx.session.user as { id?: string }).id ?? null,
     ip: req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip"),
+  });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "member.delete",
+    entityType: "member",
+    entityId:   params.id,
+    entityName: deletedMember?.name ?? null,
   });
   return NextResponse.json({ success: true });
 }

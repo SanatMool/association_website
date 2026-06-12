@@ -11,7 +11,7 @@ export default async function DashboardPage() {
   const now     = new Date();
   const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [memberCount, eventCount, newsCount, committeeCount, recentMembers, recentNews, recentEvents, settings, pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount] =
+  const [memberCount, eventCount, newsCount, committeeCount, recentMembers, recentNews, recentEvents, settings, pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount, activityLogs] =
     await Promise.all([
       prisma.memberAssociation.count({ where: { associationId: associationId ?? undefined, visible: true } }),
       prisma.event.count({ where: { associationId: associationId ?? undefined } }),
@@ -57,6 +57,11 @@ export default async function DashboardPage() {
         take: 5,
       }),
       prisma.duesPayment.count({ where: { associationId: associationId ?? undefined, status: "pending" } }),
+      prisma.activityLog.findMany({
+        where: { associationId: associationId ?? undefined },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      }),
     ]);
 
   const settingsMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
@@ -89,6 +94,7 @@ export default async function DashboardPage() {
       overdueTasks={overdueTasks.map((t) => ({ ...t, dueDate: t.dueDate?.toISOString() ?? null }))}
       upcomingMeetings={upcomingMeetings.map((m) => ({ ...m, scheduledAt: m.scheduledAt.toISOString() }))}
       pendingDuesCount={pendingDuesCount}
+      activityLogs={activityLogs.map((l) => ({ ...l, createdAt: l.createdAt.toISOString(), meta: l.meta as Record<string, unknown> | null }))}
     />
   );
 }

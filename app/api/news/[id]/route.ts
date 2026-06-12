@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { logActivity } from "@/lib/activityLogger";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const article = await prisma.news.findUnique({ where: { id: params.id } });
@@ -23,6 +24,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { id: params.id },
     data: { ...data, publishedAt: new Date(data.publishedAt) },
   });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "news.update",
+    entityType: "news",
+    entityId:   article.id,
+    entityName: article.title,
+  });
   return NextResponse.json(article);
 }
 
@@ -36,5 +46,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.news.delete({ where: { id: params.id } });
+  logActivity({
+    associationId: ctx.associationId,
+    adminId:    (ctx.session.user as { id?: string }).id ?? null,
+    adminName:  ctx.session.user?.name ?? null,
+    action:     "news.delete",
+    entityType: "news",
+    entityId:   params.id,
+    entityName: existing.title,
+  });
   return NextResponse.json({ success: true });
 }

@@ -44,6 +44,7 @@ model Association {
   memberContributions    MemberContribution[]
   memberAccounts         MemberAccount[]
   aiUsage                AiUsage[]
+  activityLogs           ActivityLog[]
 }
 
 // Join table — a venue can belong to multiple associations
@@ -555,4 +556,26 @@ model EventRsvp {
   memberAccount MemberAccount @relation(fields: [memberAccountId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, memberAccountId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id            String   @id @default(cuid())
+  associationId String
+  adminId       String?  // null for system/public actions
+  adminName     String?  // snapshot of admin name at log time
+  action        String   // e.g. "member.create", "event.delete", "application.approve"
+  entityType    String   // "member" | "event" | "news" | "committee" | "meeting" | "application" | "dues" | "task"
+  entityId      String?
+  entityName    String?  // human-readable label, e.g. venue name or event title
+  meta          Json?    // optional extra data (e.g. old status → new status)
+  createdAt     DateTime @default(now())
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@index([associationId, createdAt(sort: Desc)])
+  @@index([associationId, entityType])
 }
