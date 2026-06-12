@@ -8,7 +8,13 @@ function isStatic(url) {
 }
 
 function isApiOrNext(url) {
-  return url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/");
+  return (
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.startsWith("/admin/") ||
+    url.pathname.startsWith("/portal/") ||
+    url.pathname.startsWith("/platform/")
+  );
 }
 
 // Install — no pre-caching needed; cache fills on first use
