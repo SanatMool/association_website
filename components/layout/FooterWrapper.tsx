@@ -18,7 +18,7 @@ export default async function FooterWrapper() {
       settings={{
         logo,
         name:        association?.name ?? undefined,
-        logoInvert:  logo.includes("_transparent"),
+        logoInvert:  false,
         foundedYear: association?.foundedYear ?? 2011,
         hqLocation:  s.contact_address?.split("\n")[0] ?? "Kathmandu",
         memberCount,

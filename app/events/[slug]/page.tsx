@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/utils";
 import DescriptionSection from "./DescriptionSection";
 import TicketSection from "./TicketSection";
 
-export const revalidate = 3600;
+export const revalidate = 60;
 
 interface Props { params: { slug: string } }
 

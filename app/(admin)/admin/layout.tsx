@@ -55,6 +55,8 @@ const NAV_GROUPS = [
   },
 ];
 
+const FALLBACK_LOGO = "/eva/evanepal2_transparent.png";
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -62,6 +64,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingApps, setPendingApps] = useState(0);
+  const [logoUrl, setLogoUrl] = useState<string>(FALLBACK_LOGO);
+  const [assocName, setAssocName] = useState("EVA Nepal");
+
+  useEffect(() => {
+    fetch("/api/admin/branding")
+      .then((r) => r.json())
+      .then((res) => {
+        if (!res.success) return;
+        if (res.data.logo) setLogoUrl(res.data.logo);
+        if (res.data.name) setAssocName(res.data.name);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!session) return;
@@ -106,8 +121,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {!collapsed && (
           <Link href="/admin/dashboard" className="flex flex-col items-center flex-1 min-w-0">
             <Image
-              src="/eva/evanepal2_transparent.png"
-              alt="EVA Nepal"
+              src={logoUrl}
+              alt={assocName}
               width={160}
               height={102}
               className="h-12 w-auto"
@@ -121,8 +136,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {collapsed && (
           <Link href="/admin/dashboard" className="flex justify-center w-full">
             <Image
-              src="/eva/evanepal2_transparent.png"
-              alt="EVA Nepal"
+              src={logoUrl}
+              alt={assocName}
               width={44}
               height={44}
               className="h-9 w-auto"
@@ -258,8 +273,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Menu size={18} />
           </button>
           <Image
-            src="/eva/evanepal2_transparent.png"
-            alt="EVA Nepal"
+            src={logoUrl}
+            alt={assocName}
             width={80}
             height={51}
             className="h-6 w-auto"

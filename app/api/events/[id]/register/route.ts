@@ -26,32 +26,45 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const qty = Math.max(1, body.quantity ?? 1);
 
-  // Capacity check
-  if (ticketType.strictCapacity && ticketType.totalCapacity !== null) {
-    if (ticketType.soldCount + qty > ticketType.totalCapacity) {
-      return NextResponse.json({ error: "Sorry, this ticket type is sold out." }, { status: 409 });
-    }
+  // Atomic capacity check + create + soldCount increment to prevent race conditions
+  let registration: Awaited<ReturnType<typeof prisma.ticketRegistration.create>>;
+  try {
+    registration = await prisma.$transaction(async (tx) => {
+      // Re-fetch inside transaction for up-to-date soldCount
+      const fresh = await tx.ticketType.findUnique({ where: { id: body.ticketTypeId } });
+      if (!fresh || !fresh.active) throw new Error("TICKET_NOT_FOUND");
+
+      if (fresh.strictCapacity && fresh.totalCapacity !== null) {
+        if (fresh.soldCount + qty > fresh.totalCapacity) throw new Error("SOLD_OUT");
+      }
+
+      const reg = await tx.ticketRegistration.create({
+        data: {
+          ticketTypeId:  body.ticketTypeId,
+          eventId:       params.id,
+          associationId: association?.id ?? "",
+          buyerName:     body.buyerName.trim(),
+          buyerEmail:    body.buyerEmail.trim().toLowerCase(),
+          buyerPhone:    body.buyerPhone.trim(),
+          notes:         body.notes?.trim() || null,
+          quantity:      qty,
+          amount:        Number(fresh.price) * qty,
+        },
+      });
+
+      await tx.ticketType.update({
+        where: { id: body.ticketTypeId },
+        data:  { soldCount: { increment: qty } },
+      });
+
+      return reg;
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg === "SOLD_OUT") return NextResponse.json({ error: "Sorry, this ticket type is sold out." }, { status: 409 });
+    if (msg === "TICKET_NOT_FOUND") return NextResponse.json({ error: "Ticket type not found." }, { status: 404 });
+    return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 });
   }
-
-  const registration = await prisma.ticketRegistration.create({
-    data: {
-      ticketTypeId:  body.ticketTypeId,
-      eventId:       params.id,
-      associationId: association?.id ?? "",
-      buyerName:     body.buyerName.trim(),
-      buyerEmail:    body.buyerEmail.trim().toLowerCase(),
-      buyerPhone:    body.buyerPhone.trim(),
-      notes:         body.notes?.trim() || null,
-      quantity:      qty,
-      amount:        Number(ticketType.price) * qty,
-    },
-  });
-
-  // Increment soldCount
-  await prisma.ticketType.update({
-    where: { id: body.ticketTypeId },
-    data:  { soldCount: { increment: qty } },
-  });
 
   // Notify admins (fire-and-forget)
   if (association?.id) {
