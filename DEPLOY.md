@@ -306,6 +306,6 @@ Then open `http://localhost:5555` in your browser.
 | `/etc/nginx/sites-available/eva-nepal` | Nginx config                         |
 | `/var/log/nginx/`                      | Nginx access + error logs            |
 
-rsync -avz --delete --exclude node*modules --exclude .next --exclude .git \
+rsync -avz --delete --exclude node*modules --exclude .next --exclude .env --exclude .env.local --exclude .git \
 /Users/sanatmool/Documents/website\ *\ Eva\ Nepal/ \
 sysadmin@139.59.65.222:/var/www/eva-nepal/
