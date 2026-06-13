@@ -68,6 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [assocName, setAssocName] = useState("EVA Nepal");
 
   useEffect(() => {
+    if (pathname === "/admin/login") return;
     fetch("/api/admin/branding")
       .then((r) => r.json())
       .then((res) => {
@@ -76,7 +77,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (res.data.name) setAssocName(res.data.name);
       })
       .catch(() => {});
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     if (!session) return;

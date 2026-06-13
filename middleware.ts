@@ -98,6 +98,16 @@ export async function middleware(request: NextRequest) {
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
+
+    // If the session belongs to a different association's domain, clear it and redirect to login
+    const tokenDomain = token.associationDomain as string | null;
+    if (tokenDomain && tokenDomain !== hostname) {
+      const loginUrl = new URL("/admin/login", request.url);
+      const response = NextResponse.redirect(loginUrl);
+      response.cookies.delete("__Secure-next-auth.session-token");
+      response.cookies.delete("next-auth.session-token");
+      return response;
+    }
   }
 
   // ── 5. All other routes — inject hostname and pass through ─────────────────
@@ -107,8 +117,8 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Run on all routes except static files, images, and uploads
+  // Run on all routes except static files, images, uploads, and service worker
   matcher: [
-    "/((?!_next/static|_next/image|favicon\\.ico|uploads/|.*\\.(?:png|jpg|jpeg|svg|ico|webp|gif)).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|uploads/|.*\\.(?:png|jpg|jpeg|svg|ico|webp|gif)).*)",
   ],
 };

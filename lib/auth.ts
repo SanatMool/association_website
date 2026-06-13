@@ -35,6 +35,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           associationId: user.associationId ?? null,
           associationSlug: user.association?.slug ?? null,
+          associationDomain: user.association?.domain ?? null,
         };
       },
     }),
@@ -46,6 +47,7 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as { role?: string }).role;
         token.associationId = (user as { associationId?: string | null }).associationId ?? null;
         token.associationSlug = (user as { associationSlug?: string | null }).associationSlug ?? null;
+        token.associationDomain = (user as { associationDomain?: string | null }).associationDomain ?? null;
       }
       return token;
     },

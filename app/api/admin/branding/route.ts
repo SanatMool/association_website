@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
-import { getAdminContext } from "@/lib/adminAuth";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const ctx = await getAdminContext();
-  if (!ctx?.associationId) {
-    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  const association = await prisma.association.findUnique({
-    where: { id: ctx.associationId },
-  });
+  const headersList = await headers();
+  const hostname = headersList.get("x-hostname") ?? "";
+  const association = await prisma.association.findUnique({ where: { domain: hostname } });
   if (!association) {
     return NextResponse.json({ success: false, error: "Association not found" }, { status: 404 });
   }
@@ -33,5 +28,7 @@ export async function GET() {
       yearsActive,
       memberCount,
     },
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }
