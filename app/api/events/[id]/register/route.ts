@@ -81,6 +81,9 @@ async function notifyAdminsNewReg(
   reg: { buyerName: string; buyerEmail: string; buyerPhone: string; quantity: number },
   ticketTypeName: string,
 ) {
+  const assocRecord = await prisma.association.findUnique({ where: { id: associationId }, select: { domain: true } });
+  const baseUrl = assocRecord?.domain ? `https://${assocRecord.domain}` : "";
+
   const setting = await prisma.siteSettings.findUnique({
     where: { key_associationId: { key: "admin_notification_email", associationId } },
   });
@@ -109,7 +112,7 @@ async function notifyAdminsNewReg(
           <tr><td style="padding:6px 0;color:#64748b;">Ticket</td><td style="color:#1e293b;">${ticketTypeName} × ${reg.quantity}</td></tr>
         </table>
         <div style="margin-top:16px;padding-top:16px;border-top:1px solid #f1f5f9;">
-          <a href="${process.env.NEXTAUTH_URL ?? ""}/admin/events" style="display:inline-block;background:#0a1040;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600;">View Registrations →</a>
+          <a href="${baseUrl}/admin/events" style="display:inline-block;background:#0a1040;color:white;padding:8px 16px;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600;">View Registrations →</a>
         </div>
       </div>
     </div>`,

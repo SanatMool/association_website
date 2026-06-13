@@ -30,6 +30,11 @@ export default function LoginPage() {
   const [yearsActive, setYearsActive] = useState<string>("13+");
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error")) setError("Invalid email or password. Please try again.");
+  }, []);
+
+  useEffect(() => {
     fetch("/api/admin/branding")
       .then((r) => r.json())
       .then((res) => {
@@ -59,7 +64,7 @@ export default function LoginPage() {
       setError("Invalid email or password. Please try again.");
       setLoading(false);
     } else {
-      router.push("/admin/dashboard");
+      window.location.href = "/admin/dashboard";
     }
   }
 

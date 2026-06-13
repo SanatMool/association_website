@@ -99,6 +99,8 @@ export default function MemberCard({ member, index = 0, defaultImage }: MemberCa
             <img
               src={heroImage}
               alt={member.name}
+              loading="lazy"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover object-center"
             />
             <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%)" }} />

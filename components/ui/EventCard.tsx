@@ -59,7 +59,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         isUpcoming ? "bg-navy-900" : "bg-slate-100"
       )}>
         {event.image ? (
-          <img src={event.image} alt={event.title} className="absolute inset-0 w-full h-full object-cover" />
+          <img src={event.image} alt={event.title} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <>
             <div className={cn(

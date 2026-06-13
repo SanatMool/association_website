@@ -88,9 +88,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (pathname !== "/admin/login" && status === "unauthenticated") {
-      router.push("/admin/login");
+      window.location.href = "/admin/login";
     }
-  }, [status, router, pathname]);
+  }, [status, pathname]);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -111,7 +111,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   async function handleSignOut() {
     await signOut({ redirect: false });
-    router.push("/admin/login");
+    window.location.href = "/admin/login";
   }
 
   const sidebarContent = (

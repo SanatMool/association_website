@@ -102,9 +102,10 @@ async function sendPaymentConfirmEmail(
   reg: { buyerEmail: string; buyerName: string; checkInToken: string; quantity: number; event: { title: string }; ticketType: { name: string } },
   associationId: string,
 ) {
-  const assoc = await prisma.association.findUnique({ where: { id: associationId }, select: { name: true } });
+  const assoc = await prisma.association.findUnique({ where: { id: associationId }, select: { name: true, domain: true } });
   const assocName = assoc?.name ?? "EVA Nepal";
-  const checkInUrl = `${process.env.NEXTAUTH_URL ?? ""}/admin/checkin/${reg.checkInToken}`;
+  const baseUrl = assoc?.domain ? `https://${assoc.domain}` : "";
+  const checkInUrl = `${baseUrl}/admin/checkin/${reg.checkInToken}`;
   const qrDataUrl = await QRCode.toDataURL(checkInUrl, { width: 200, margin: 1 });
 
   await sendMail({

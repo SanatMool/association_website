@@ -64,6 +64,9 @@ async function notifyAdmins(
   associationName: string,
   app: { venueName: string; ownerName: string; phone: string; email: string; location: string; capacity?: string; website?: string },
 ) {
+  const assocRecord = await prisma.association.findUnique({ where: { id: associationId }, select: { domain: true } });
+  const baseUrl = assocRecord?.domain ? `https://${assocRecord.domain}` : "";
+
   // Get notification email from SiteSettings, fall back to first admin user
   const setting = await prisma.siteSettings.findUnique({
     where: { key_associationId: { key: "admin_notification_email", associationId } },
@@ -99,7 +102,7 @@ async function notifyAdmins(
           ${app.website ? `<tr><td style="padding:8px 0;color:#64748b;">Website</td><td style="padding:8px 0;color:#1e293b;">${app.website}</td></tr>` : ""}
         </table>
         <div style="margin-top:20px;padding-top:20px;border-top:1px solid #f1f5f9;">
-          <a href="${process.env.NEXTAUTH_URL ?? ""}/admin/applications"
+          <a href="${baseUrl}/admin/applications"
             style="display:inline-block;background:#0a1040;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;">
             Review Application →
           </a>

@@ -68,6 +68,8 @@ export default function CommitteeCard({ member, highlighted = false, onSelect }:
           <img
             src={member.image}
             alt={member.name}
+            loading="lazy"
+            decoding="async"
             className="w-[72px] h-[72px] rounded-2xl object-cover shadow-md"
           />
         ) : (

@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
-import { getAssociation } from "@/lib/getAssociation";
+import { getAdminContext } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const association = await getAssociation();
+  const ctx = await getAdminContext();
+  if (!ctx?.associationId) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  const association = await prisma.association.findUnique({
+    where: { id: ctx.associationId },
+  });
   if (!association) {
     return NextResponse.json({ success: false, error: "Association not found" }, { status: 404 });
   }
