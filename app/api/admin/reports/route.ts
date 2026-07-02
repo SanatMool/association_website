@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     prisma.duesPayment.findMany({
       where: { associationId: aId, ...(dateRange ? { periodStart: dateRange } : {}) },
-      select: { amount: true, status: true, type: true, periodStart: true, memberCategoryId: true, memberCategory: { select: { name: true } } },
+      select: { amount: true, dueAmount: true, status: true, type: true, periodStart: true, memberCategoryId: true, memberCategory: { select: { name: true } } },
     }),
     prisma.expense.findMany({
       where: { associationId: aId, ...(dateRange ? { meeting: { scheduledAt: dateRange } } : {}) },
@@ -60,10 +60,20 @@ export async function GET(req: NextRequest) {
   ]);
 
   // ── Dues aggregations ──────────────────────────────────────────────────────
+  // For partial records: amount = collected so far, dueAmount = original bill
+  // outstanding = dueAmount - amount (what's still owed)
+  function outstandingAmount(d: { amount: unknown; dueAmount: unknown; status: string }) {
+    if (d.status === "paid") return 0;
+    if (d.status === "partial" && d.dueAmount) return Number(d.dueAmount) - Number(d.amount);
+    // pending: dueAmount is the full bill if set, otherwise amount is the billed figure
+    return d.dueAmount ? Number(d.dueAmount) : Number(d.amount);
+  }
+
   const paid    = duesPayments.filter((d) => d.status === "paid");
-  const pending = duesPayments.filter((d) => d.status === "pending");
   const totalDuesPaid    = paid.reduce((s, d) => s + Number(d.amount), 0);
-  const totalDuesPending = pending.reduce((s, d) => s + Number(d.amount), 0);
+  const totalDuesPending = duesPayments
+    .filter((d) => d.status !== "paid")
+    .reduce((s, d) => s + outstandingAmount(d), 0);
 
   // By month (use periodStart year-month as key)
   const duesMonthMap = new Map<string, { paid: number; pending: number }>();
@@ -72,7 +82,7 @@ export async function GET(req: NextRequest) {
     const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
     const cur = duesMonthMap.get(key) ?? { paid: 0, pending: 0 };
     if (d.status === "paid") cur.paid += Number(d.amount);
-    else cur.pending += Number(d.amount);
+    else cur.pending += outstandingAmount(d);
     duesMonthMap.set(key, cur);
   }
   const duesByMonth = Array.from(duesMonthMap.entries())
@@ -86,7 +96,7 @@ export async function GET(req: NextRequest) {
     const cur = catMap.get(name) ?? { paid: 0, pending: 0, count: 0 };
     cur.count++;
     if (d.status === "paid") cur.paid += Number(d.amount);
-    else cur.pending += Number(d.amount);
+    else cur.pending += outstandingAmount(d);
     catMap.set(name, cur);
   }
   const duesByCategory = Array.from(catMap.entries())

@@ -20,6 +20,7 @@ interface Payment {
   id: string;
   type: string;
   amount: string;
+  dueAmount: string | null;
   periodStart: string;
   periodEnd: string;
   method: string;
@@ -48,9 +49,11 @@ const STEPS = [
 ];
 
 const PAYMENT_METHODS = [
-  { value: "cash",     label: "Cash",          icon: "💵" },
-  { value: "transfer", label: "Bank Transfer", icon: "🏦" },
-  { value: "cheque",   label: "Cheque",        icon: "📄" },
+  { value: "cash",         label: "Cash",              icon: "💵" },
+  { value: "cheque",       label: "Cheque",            icon: "📄" },
+  { value: "transfer",     label: "Bank Transfer",     icon: "🏦" },
+  { value: "qr",           label: "QR Code",           icon: "📱" },
+  { value: "online",       label: "eSewa / Khalti",    icon: "🌐" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -133,7 +136,7 @@ export default function DuesPage() {
   const [fType,       setFType]       = useState("monthly");
   const [fMonth,      setFMonth]      = useState(new Date().getMonth() + 1);
   const [fYear,       setFYear]       = useState(currentYear);
-  const [fAmount,     setFAmount]     = useState("");
+  const [fAmount,     setFAmount]     = useState(""); // total due amount
   const [fBreakdown,  setFBreakdown]  = useState<PaymentLine[]>([{ method: "cash", amount: "" }]);
   const [fStatus,     setFStatus]     = useState("paid");
   const [fReceipt,    setFReceipt]    = useState("");
@@ -142,9 +145,11 @@ export default function DuesPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Edit state
-  const [editId,     setEditId]     = useState<string | null>(null);
-  const [editForm,   setEditForm]   = useState<{ status: string; method: string; receiptNumber: string; notes: string }>({ status: "", method: "", receiptNumber: "", notes: "" });
-  const [editSaving, setEditSaving] = useState(false);
+  const [editId,        setEditId]        = useState<string | null>(null);
+  const [editForm,      setEditForm]      = useState<{ status: string; receiptNumber: string; notes: string; dueAmount: string }>({ status: "", receiptNumber: "", notes: "", dueAmount: "" });
+  const [editBreakdown, setEditBreakdown] = useState<PaymentLine[]>([{ method: "cash", amount: "" }]);
+  const [editSaving,    setEditSaving]    = useState(false);
+  const editBreakdownTotal = editBreakdown.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("");
@@ -271,7 +276,11 @@ export default function DuesPage() {
     setSaving(true); setError(null);
     try {
       const { periodStart, periodEnd } = periodDates(fType, fMonth, fYear);
-      const validLines = fBreakdown.filter((l) => parseFloat(l.amount) > 0);
+      const validLines  = fBreakdown.filter((l) => parseFloat(l.amount) > 0);
+      const paidTotal   = validLines.reduce((s, l) => s + parseFloat(l.amount), 0);
+      const dueTotal    = parseFloat(fAmount) || 0;
+      // Send dueAmount only when the paid breakdown is less than the total due
+      const sendDueAmt  = dueTotal > 0 && paidTotal < dueTotal ? dueTotal : undefined;
       const body = {
         memberId:         fMemberId,
         memberCategoryId: fCategoryId || undefined,
@@ -281,6 +290,7 @@ export default function DuesPage() {
         receiptNumber:    fReceipt || undefined,
         notes:            fNotes   || undefined,
         paymentBreakdown: validLines.map((l) => ({ method: l.method, amount: parseFloat(l.amount) })),
+        ...(sendDueAmt !== undefined ? { dueAmount: sendDueAmt } : {}),
       };
       const res  = await fetch("/api/membership/dues", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -300,9 +310,11 @@ export default function DuesPage() {
 
   async function markPaid(id: string) {
     setMarkingId(id);
+    // Send dueAmount: null to clear partial tracking — otherwise the API ignores
+    // body.status and auto-derives "partial" from the existing dueAmount vs amount.
     await fetch(`/api/membership/dues/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "paid" }),
+      body: JSON.stringify({ status: "paid", dueAmount: null }),
     });
     await loadPayments();
     setMarkingId(null);
@@ -313,19 +325,31 @@ export default function DuesPage() {
 
   function openEdit(p: Payment) {
     setEditId(p.id);
-    setEditForm({ status: p.status, method: p.method, receiptNumber: p.receiptNumber ?? "", notes: p.notes ?? "" });
+    setEditForm({
+      status:        p.status,
+      receiptNumber: p.receiptNumber ?? "",
+      notes:         p.notes ?? "",
+      dueAmount:     p.dueAmount ? String(p.dueAmount) : "",
+    });
+    // Init breakdown from existing data or fall back to single line from method+amount
+    const existing: PaymentLine[] = Array.isArray(p.paymentBreakdown) && p.paymentBreakdown.length > 0
+      ? p.paymentBreakdown.map((l) => ({ method: l.method, amount: String(l.amount) }))
+      : [{ method: p.method === "pending" || p.method === "mixed" ? "cash" : p.method, amount: p.status === "pending" ? "" : String(p.amount) }];
+    setEditBreakdown(existing);
     setConfirmDeleteId(null);
   }
 
   async function handleEditSave(id: string) {
     setEditSaving(true);
+    const validLines = editBreakdown.filter((l) => parseFloat(l.amount) > 0).map((l) => ({ method: l.method, amount: parseFloat(l.amount) }));
+    const dueAmtVal  = parseFloat(editForm.dueAmount);
     await fetch(`/api/membership/dues/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        status:        editForm.status,
-        method:        editForm.method || undefined,
-        receiptNumber: editForm.receiptNumber,
-        notes:         editForm.notes,
+        receiptNumber:   editForm.receiptNumber,
+        notes:           editForm.notes,
+        ...(editForm.dueAmount ? { dueAmount: isNaN(dueAmtVal) ? null : dueAmtVal } : { dueAmount: null }),
+        ...(validLines.length > 0 ? { paymentBreakdown: validLines } : {}),
       }),
     });
     setEditId(null);
@@ -351,6 +375,8 @@ export default function DuesPage() {
   const selectedCategory = categories.find((c) => c.id === fCategoryId);
   const paidTotal        = payments.filter((p) => p.status === "paid").reduce((s, p) => s + Number(p.amount), 0);
   const pendingTotal     = payments.filter((p) => p.status === "pending").reduce((s, p) => s + Number(p.amount), 0);
+  // For partial: outstanding = dueAmount - amount paid so far
+  const partialOutstanding = payments.filter((p) => p.status === "partial").reduce((s, p) => s + (p.dueAmount ? Number(p.dueAmount) - Number(p.amount) : 0), 0);
 
   const filteredMembers = members.filter((m) =>
     memberSearch === "" ||
@@ -399,10 +425,10 @@ export default function DuesPage() {
       {/* Stats bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Total Records",     value: payments.length,                                       icon: FileText,    color: "text-gray-700",   bg: "bg-white",      border: "border-gray-100" },
-          { label: "Paid",              value: payments.filter((p) => p.status === "paid").length,    icon: BadgeCheck,  color: "text-green-700",  bg: "bg-green-50",   border: "border-green-100" },
-          { label: "Pending",           value: payments.filter((p) => p.status === "pending").length, icon: Clock,       color: "text-amber-700",  bg: "bg-amber-50",   border: "border-amber-100" },
-          { label: "Amount Collected",  value: `Rs ${paidTotal.toLocaleString()}`,                    icon: TrendingUp,  color: "text-indigo-700", bg: "bg-indigo-50",  border: "border-indigo-100" },
+          { label: "Total Records",     value: payments.length,                                                                              icon: FileText,    color: "text-gray-700",   bg: "bg-white",      border: "border-gray-100" },
+          { label: "Paid",              value: payments.filter((p) => p.status === "paid").length,                                            icon: BadgeCheck,  color: "text-green-700",  bg: "bg-green-50",   border: "border-green-100" },
+          { label: "Pending / Partial", value: payments.filter((p) => p.status === "pending" || p.status === "partial").length,               icon: Clock,       color: "text-amber-700",  bg: "bg-amber-50",   border: "border-amber-100" },
+          { label: "Amount Collected",  value: `Rs ${paidTotal.toLocaleString()}`,                                                             icon: TrendingUp,  color: "text-indigo-700", bg: "bg-indigo-50",  border: "border-indigo-100" },
         ].map(({ label, value, icon: Icon, color, bg, border }) => (
           <div key={label} className={`${bg} rounded-xl border ${border} px-4 py-3 flex items-start gap-3`}>
             <div className={`mt-0.5 ${color} opacity-70`}><Icon size={16} /></div>
@@ -414,11 +440,18 @@ export default function DuesPage() {
         ))}
       </div>
 
-      {/* Pending alert */}
-      {pendingTotal > 0 && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl mb-5 text-sm text-amber-800">
-          <AlertCircle size={15} className="shrink-0" />
-          <span><strong>Rs {pendingTotal.toLocaleString()}</strong> is pending collection from {payments.filter((p) => p.status === "pending").length} payment{payments.filter((p) => p.status === "pending").length > 1 ? "s" : ""}.</span>
+      {/* Pending / partial alert */}
+      {(pendingTotal > 0 || partialOutstanding > 0) && (
+        <div className="flex items-start gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl mb-5 text-sm text-amber-800">
+          <AlertCircle size={15} className="shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            {pendingTotal > 0 && (
+              <div><strong>Rs {pendingTotal.toLocaleString()}</strong> fully unpaid from {payments.filter((p) => p.status === "pending").length} pending record{payments.filter((p) => p.status === "pending").length > 1 ? "s" : ""}.</div>
+            )}
+            {partialOutstanding > 0 && (
+              <div><strong>Rs {partialOutstanding.toLocaleString()}</strong> remaining balance from {payments.filter((p) => p.status === "partial").length} partial payment{payments.filter((p) => p.status === "partial").length > 1 ? "s" : ""}.</div>
+            )}
+          </div>
         </div>
       )}
 
@@ -612,15 +645,15 @@ export default function DuesPage() {
 
                           <div>
                             <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1">
-                              <Banknote size={12} /> Amount (Rs) <span className="text-red-400">*</span>
+                              <Banknote size={12} /> Full Bill Amount (Rs) <span className="text-red-400">*</span>
                             </label>
                             <p className="text-xs text-gray-400 mb-2">
-                              Auto-filled from category. You can edit this if the amount differs.
+                              How much does this member owe? (e.g. Rs 2,500 annual fee). In the next step you&apos;ll enter what was actually collected — if less, it records a partial payment.
                             </p>
                             <input
                               type="number" min="0" step="1"
                               value={fAmount} onChange={(e) => { setFAmount(e.target.value); setFieldErrors((er) => ({ ...er, amount: "" })); }}
-                              placeholder="Enter amount in rupees"
+                              placeholder="Enter total due in rupees"
                               className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400
                                 ${fieldErrors.amount ? "border-red-300 bg-red-50" : "border-gray-200"}`}
                             />
@@ -760,9 +793,13 @@ export default function DuesPage() {
                                 {fType === "annual_renewal" ? `Year ${fYear}` : `${MONTHS[fMonth - 1]} ${fYear}`}
                               </span>
                             </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Total Due</span>
+                              <span className="font-medium text-gray-900">Rs {Number(fAmount || 0).toLocaleString()}</span>
+                            </div>
                             <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
-                              <span className="text-gray-700 font-semibold">Total</span>
-                              <span className="font-bold text-indigo-700 text-base">Rs {breakdownTotal > 0 ? breakdownTotal.toLocaleString() : Number(fAmount || 0).toLocaleString()}</span>
+                              <span className="text-gray-700 font-semibold">Paid Now</span>
+                              <span className="font-bold text-indigo-700 text-base">Rs {breakdownTotal.toLocaleString()}</span>
                             </div>
                             {fBreakdown.filter((l) => parseFloat(l.amount) > 0).map((l, i) => (
                               <div key={i} className="flex justify-between text-xs">
@@ -770,10 +807,17 @@ export default function DuesPage() {
                                 <span className="text-gray-600">Rs {parseFloat(l.amount).toLocaleString()}</span>
                               </div>
                             ))}
+                            {/* Partial payment indicator */}
+                            {breakdownTotal > 0 && Number(fAmount) > 0 && breakdownTotal < Number(fAmount) && (
+                              <div className="flex justify-between text-xs text-orange-700 font-medium bg-orange-50 px-2 py-1 rounded-lg">
+                                <span>Remaining balance</span>
+                                <span>Rs {(Number(fAmount) - breakdownTotal).toLocaleString()} → Partial</span>
+                              </div>
+                            )}
                             <div className="flex justify-between">
                               <span className="text-gray-500">Status</span>
-                              <span className={`font-semibold ${fStatus === "paid" ? "text-green-600" : "text-amber-600"}`}>
-                                {fStatus === "paid" ? "Paid" : "Pending"}
+                              <span className={`font-semibold ${breakdownTotal > 0 && Number(fAmount) > 0 && breakdownTotal < Number(fAmount) ? "text-orange-600" : fStatus === "paid" ? "text-green-600" : "text-amber-600"}`}>
+                                {breakdownTotal > 0 && Number(fAmount) > 0 && breakdownTotal < Number(fAmount) ? "Partial" : fStatus === "paid" ? "Paid" : "Pending"}
                               </span>
                             </div>
                             {fReceipt && (
@@ -891,6 +935,13 @@ export default function DuesPage() {
           <div className="sm:hidden bg-white rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
             {payments.map((p) => {
               const lines: BreakdownLine[] = Array.isArray(p.paymentBreakdown) ? p.paymentBreakdown : [];
+              const mobileDueAmt  = editId === p.id && editForm.dueAmount
+                ? (parseFloat(editForm.dueAmount) || 0)
+                : (p.dueAmount ? Number(p.dueAmount) : Number(p.amount));
+              const mobileDiff    = editBreakdownTotal - mobileDueAmt;
+              const mobileExact   = editId === p.id && editBreakdownTotal > 0 && Math.abs(mobileDiff) < 0.01;
+              const mobileOver    = editId === p.id && editBreakdownTotal > 0 && mobileDiff > 0.01;
+              const mobileUnder   = editId === p.id && editBreakdownTotal > 0 && mobileDiff < -0.01;
               return (
                 <Fragment key={p.id}>
                   <div className="px-4 py-4">
@@ -907,14 +958,30 @@ export default function DuesPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-base font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</span>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      {p.dueAmount ? (
+                        <div>
+                          <div className="text-[11px] text-gray-400">Bill: <span className="font-semibold text-gray-600">Rs {Number(p.dueAmount).toLocaleString()}</span></div>
+                          <div className="text-base font-bold text-gray-900">Paid: Rs {Number(p.amount).toLocaleString()}</div>
+                          {p.status === "partial" && Number(p.amount) < Number(p.dueAmount) && (
+                            <div className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+                              <Clock size={10} /> Rs {(Number(p.dueAmount) - Number(p.amount)).toLocaleString()} remaining
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-base font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</span>
+                      )}
                       {p.status === "paid" ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full whitespace-nowrap">
                           <CheckCircle size={10} /> Paid{p.paidAt ? ` · ${formatDate(p.paidAt)}` : ""}
                         </span>
+                      ) : p.status === "partial" ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                          <Clock size={10} /> Partial
+                        </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full whitespace-nowrap">
                           <Clock size={10} /> Pending
                         </span>
                       )}
@@ -936,7 +1003,7 @@ export default function DuesPage() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2">
-                      {p.status === "pending" && (
+                      {(p.status === "pending" || p.status === "partial") && (
                         <button onClick={() => markPaid(p.id)} disabled={markingId === p.id}
                           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-100 rounded-xl hover:bg-green-100 transition-colors disabled:opacity-40 min-h-[36px]">
                           {markingId === p.id ? <RefreshCw size={11} className="animate-spin" /> : <CheckCircle size={11} />}
@@ -968,22 +1035,22 @@ export default function DuesPage() {
 
                   {/* Mobile inline edit panel */}
                   {editId === p.id && (
-                    <div className="px-4 py-3 bg-amber-50 border-t border-amber-100 space-y-3">
+                    <div className="bg-amber-50 border-t border-amber-100">
+                      {/* Edit header */}
+                      <div className="flex items-center gap-2 px-4 py-2 border-b border-amber-100">
+                        <Banknote size={13} className="text-amber-600 flex-shrink-0" />
+                        <span className="text-xs font-medium text-gray-700 truncate">Editing: {p.member.name}</span>
+                        {p.memberCategory && <span className="text-xs text-gray-400 truncate">· {p.memberCategory.name}</span>}
+                      </div>
+
+                      <div className="px-4 py-3 space-y-3">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
-                          <select value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
-                            <option value="paid">Paid</option>
-                            <option value="pending">Pending</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Method</label>
-                          <select value={editForm.method} onChange={(e) => setEditForm((f) => ({ ...f, method: e.target.value }))}
-                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
-                            {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                          </select>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Full Bill (Rs)</label>
+                          <input type="number" value={editForm.dueAmount} placeholder="What they owe"
+                            onChange={(e) => setEditForm((f) => ({ ...f, dueAmount: e.target.value }))}
+                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                          <div className="text-[10px] text-gray-400 mt-0.5">Total owed by member</div>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-gray-500 mb-1">Receipt #</label>
@@ -991,13 +1058,54 @@ export default function DuesPage() {
                             placeholder="Optional"
                             className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
-                          <input value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                            placeholder="Optional"
-                            className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
-                        </div>
                       </div>
+
+                      <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount collected <span className="font-normal text-gray-400">(cash/cheque received)</span></label>
+                          <div className="space-y-1.5">
+                            {editBreakdown.map((line, i) => (
+                              <div key={i} className="flex gap-1.5 items-center">
+                                <select value={line.method}
+                                  onChange={(e) => setEditBreakdown((bd) => bd.map((l, idx) => idx === i ? { ...l, method: e.target.value } : l))}
+                                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 flex-shrink-0">
+                                  {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                </select>
+                                <input type="number" value={line.amount} placeholder="Rs 0"
+                                  onChange={(e) => setEditBreakdown((bd) => bd.map((l, idx) => idx === i ? { ...l, amount: e.target.value } : l))}
+                                  className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                                {editBreakdown.length > 1 && (
+                                  <button type="button" onClick={() => setEditBreakdown((bd) => bd.filter((_, idx) => idx !== i))}
+                                    className="text-gray-300 hover:text-red-400 flex-shrink-0"><X size={12} /></button>
+                                )}
+                              </div>
+                            ))}
+                            <button type="button"
+                              onClick={() => setEditBreakdown((bd) => [...bd, { method: "cash", amount: "" }])}
+                              className="text-[11px] text-amber-700 hover:text-amber-900 font-medium flex items-center gap-1">
+                              <PlusCircle size={11} /> Add line
+                            </button>
+                            {editBreakdownTotal > 0 && (
+                              <div className={`text-[11px] font-semibold border-t pt-1 flex items-center gap-1.5
+                                ${mobileExact ? "text-emerald-700 border-emerald-200" : mobileOver ? "text-red-600 border-red-200" : "text-amber-700 border-amber-200"}`}>
+                                {mobileExact && <CheckCircle size={11} />}
+                                {mobileOver  && <AlertCircle size={11} />}
+                                {mobileUnder && <AlertCircle size={11} />}
+                                Total paid: Rs {editBreakdownTotal.toLocaleString()}
+                                {mobileOver  && <span className="font-normal">· Rs {Math.abs(mobileDiff).toLocaleString()} extra → Paid</span>}
+                                {mobileUnder && <span className="font-normal">· Rs {Math.abs(mobileDiff).toLocaleString()} still unpaid → Partial</span>}
+                                {mobileExact && <span className="font-normal">· covers bill exactly → Paid</span>}
+                              </div>
+                            )}
+                          </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Notes</label>
+                        <input value={editForm.notes} onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                          placeholder="Optional"
+                          className="w-full px-2 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                      </div>
+
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleEditSave(p.id)} disabled={editSaving}
                           className="flex items-center gap-1 px-4 py-2 text-xs font-medium bg-amber-500 text-white rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-colors min-h-[36px]">
@@ -1006,6 +1114,7 @@ export default function DuesPage() {
                         </button>
                         <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-3 py-2">Cancel</button>
                       </div>
+                    </div>
                     </div>
                   )}
                 </Fragment>
@@ -1021,7 +1130,7 @@ export default function DuesPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Member</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Category</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type · Period</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Bill / Paid</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 w-24" />
@@ -1030,6 +1139,14 @@ export default function DuesPage() {
               <tbody className="divide-y divide-gray-50">
                 {payments.map((p) => {
                   const lines: BreakdownLine[] = Array.isArray(p.paymentBreakdown) ? p.paymentBreakdown : [];
+                  // deskDueAmt: use user-edited dueAmount if in edit mode, else stored dueAmount, else payment amount
+                  const deskDueAmt = editId === p.id && editForm.dueAmount
+                    ? (parseFloat(editForm.dueAmount) || 0)
+                    : (p.dueAmount ? Number(p.dueAmount) : Number(p.amount));
+                  const deskDiff   = editBreakdownTotal - deskDueAmt;
+                  const deskExact  = editId === p.id && editBreakdownTotal > 0 && Math.abs(deskDiff) < 0.01;
+                  const deskOver   = editId === p.id && editBreakdownTotal > 0 && deskDiff > 0.01;
+                  const deskUnder  = editId === p.id && editBreakdownTotal > 0 && deskDiff < -0.01;
                   return (
                     <Fragment key={p.id}>
                       <motion.tr layout className="hover:bg-gray-50/60 transition-colors">
@@ -1046,7 +1163,25 @@ export default function DuesPage() {
                           </span>
                           <div className="text-xs text-gray-500 mt-0.5">{periodLabel(p)}</div>
                         </td>
-                        <td className="px-4 py-3 text-right text-xs font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          {p.dueAmount ? (
+                            <div className="text-right leading-tight">
+                              <div className="text-[10px] text-gray-400">
+                                Bill: <span className="font-semibold text-gray-600">Rs {Number(p.dueAmount).toLocaleString()}</span>
+                              </div>
+                              <div className="text-xs font-bold text-gray-900">
+                                Paid: Rs {Number(p.amount).toLocaleString()}
+                              </div>
+                              {p.status === "partial" && Number(p.amount) < Number(p.dueAmount) && (
+                                <div className="text-[10px] text-amber-700 font-medium">
+                                  Rs {(Number(p.dueAmount) - Number(p.amount)).toLocaleString()} remaining
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-xs font-bold text-gray-900">Rs {Number(p.amount).toLocaleString()}</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           {lines.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
@@ -1073,6 +1208,13 @@ export default function DuesPage() {
                               </span>
                               {p.paidAt && <div className="text-xs text-gray-400 mt-0.5">{formatDate(p.paidAt)}</div>}
                             </div>
+                          ) : p.status === "partial" ? (
+                            <div>
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full">
+                                <Clock size={10} /> Partial
+                              </span>
+                              {p.paidAt && <div className="text-xs text-gray-400 mt-0.5">{formatDate(p.paidAt)}</div>}
+                            </div>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
                               <Clock size={10} /> Pending
@@ -1081,8 +1223,8 @@ export default function DuesPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 justify-end">
-                            {p.status === "pending" && (
-                              <button onClick={() => markPaid(p.id)} title="Mark as paid" disabled={markingId === p.id}
+                            {(p.status === "pending" || p.status === "partial") && (
+                              <button onClick={() => markPaid(p.id)} title="Mark as fully paid" disabled={markingId === p.id}
                                 className="text-green-500 hover:text-green-700 transition-colors disabled:opacity-40">
                                 {markingId === p.id ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle size={13} />}
                               </button>
@@ -1114,24 +1256,70 @@ export default function DuesPage() {
                       {/* Inline edit row (desktop) */}
                       {editId === p.id && (
                         <tr>
-                          <td colSpan={7} className="px-4 py-3 bg-amber-50/60 border-b border-amber-100">
-                            <div className="flex flex-wrap gap-3 items-end">
-                              <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
-                                <select value={editForm.status} onChange={(e) => setEditForm((f) => ({ ...f, status: e.target.value }))}
-                                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
-                                  <option value="paid">Paid</option>
-                                  <option value="pending">Pending</option>
-                                </select>
+                          <td colSpan={7} className="px-4 py-0 border-b border-amber-100">
+                            {/* Due amount header */}
+                            <div className="flex items-center gap-3 px-0 py-2 border-b border-amber-100 bg-amber-50/80">
+                              <Banknote size={13} className="text-amber-600 flex-shrink-0" />
+                              <span className="text-xs text-gray-500">{p.member.name}</span>
+                              {p.memberCategory && <span className="text-xs text-gray-400">· {p.memberCategory.name}</span>}
+                              <span className="text-gray-300 text-xs">·</span>
+                              <span className="text-xs text-gray-400">{p.type === "monthly" ? "Monthly" : "Annual"} · {periodLabel(p)}</span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-4 items-start py-3 bg-amber-50/60">
+
+                              {/* Bill amount */}
+                              <div className="flex-shrink-0">
+                                <label className="block text-xs font-medium text-gray-500 mb-1">Full Bill Amount (Rs)</label>
+                                <input type="number" value={editForm.dueAmount} placeholder="e.g. 2500"
+                                  onChange={(e) => setEditForm((f) => ({ ...f, dueAmount: e.target.value }))}
+                                  className="w-32 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                                <div className="text-[10px] text-gray-400 mt-0.5">What this member owes in total</div>
                               </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-500 mb-1">Method</label>
-                                <select value={editForm.method} onChange={(e) => setEditForm((f) => ({ ...f, method: e.target.value }))}
-                                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400 bg-white">
-                                  {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                                </select>
+
+                              {/* Payment breakdown — always show for editing */}
+                              <div className="flex-shrink-0">
+                                  <label className="block text-xs font-medium text-gray-500 mb-1">Amount collected <span className="font-normal text-gray-400">(cash/cheque received today)</span></label>
+                                  <div className="space-y-1.5">
+                                    {editBreakdown.map((line, i) => (
+                                      <div key={i} className="flex gap-1.5 items-center">
+                                        <select value={line.method}
+                                          onChange={(e) => setEditBreakdown((bd) => bd.map((l, idx) => idx === i ? { ...l, method: e.target.value } : l))}
+                                          className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-amber-400">
+                                          {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                        </select>
+                                        <input type="number" value={line.amount} placeholder="Rs 0"
+                                          onChange={(e) => setEditBreakdown((bd) => bd.map((l, idx) => idx === i ? { ...l, amount: e.target.value } : l))}
+                                          className="w-24 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                                        {editBreakdown.length > 1 && (
+                                          <button type="button" onClick={() => setEditBreakdown((bd) => bd.filter((_, idx) => idx !== i))}
+                                            className="text-gray-300 hover:text-red-400"><X size={12} /></button>
+                                        )}
+                                      </div>
+                                    ))}
+                                    <button type="button"
+                                      onClick={() => setEditBreakdown((bd) => [...bd, { method: "cash", amount: "" }])}
+                                      className="text-[11px] text-amber-700 hover:text-amber-900 font-medium flex items-center gap-1">
+                                      <PlusCircle size={11} /> Add line
+                                    </button>
+                                    {/* Total + mismatch warning */}
+                                    {editBreakdownTotal > 0 && (
+                                      <div className={`text-[11px] font-semibold border-t pt-1 flex items-center gap-1.5
+                                        ${deskExact ? "text-emerald-700 border-emerald-200" : deskOver ? "text-red-600 border-red-200" : "text-amber-700 border-amber-200"}`}>
+                                        {deskExact && <CheckCircle size={11} />}
+                                        {deskOver  && <AlertCircle size={11} />}
+                                        {deskUnder && <AlertCircle size={11} />}
+                                        Total: Rs {editBreakdownTotal.toLocaleString()}
+                                        {deskOver  && <span className="font-normal text-[10px]">· Rs {Math.abs(deskDiff).toLocaleString()} more than the bill → saved as Paid</span>}
+                                        {deskUnder && <span className="font-normal text-[10px]">· Rs {Math.abs(deskDiff).toLocaleString()} still unpaid → saved as Partial</span>}
+                                        {deskExact && <span className="font-normal text-[10px]">· exactly covers the bill → saved as Paid</span>}
+                                      </div>
+                                    )}
+                                  </div>
                               </div>
-                              <div>
+
+                              {/* Receipt & Notes */}
+                              <div className="flex-shrink-0">
                                 <label className="block text-xs font-medium text-gray-500 mb-1">Receipt #</label>
                                 <input value={editForm.receiptNumber} onChange={(e) => setEditForm((f) => ({ ...f, receiptNumber: e.target.value }))}
                                   placeholder="Optional"
@@ -1143,7 +1331,9 @@ export default function DuesPage() {
                                   placeholder="Optional notes"
                                   className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-amber-400" />
                               </div>
-                              <div className="flex items-center gap-2">
+
+                              {/* Actions */}
+                              <div className="flex items-end gap-2 pb-0.5">
                                 <button onClick={() => handleEditSave(p.id)} disabled={editSaving}
                                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors">
                                   {editSaving ? <RefreshCw size={11} className="animate-spin" /> : <Save size={11} />}
@@ -1151,6 +1341,7 @@ export default function DuesPage() {
                                 </button>
                                 <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 px-2">Cancel</button>
                               </div>
+
                             </div>
                           </td>
                         </tr>

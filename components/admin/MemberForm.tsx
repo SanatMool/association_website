@@ -6,11 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Member } from "@prisma/client";
 import ImageUpload from "./ImageUpload";
 import MapPicker from "./MapPicker";
+import { NEPAL_PROVINCES, getDistrictsByProvince } from "@/lib/nepal-geo";
 import {
   Building2, MapPin, Tag, Phone, Image as ImageIcon,
-  ChevronRight, ChevronLeft, Check, Info, Plus, X,
+  ChevronRight, ChevronLeft, ChevronDown, Check, Info, Plus, X,
   Facebook, Instagram, Youtube, Globe, Mail, Star,
   Sparkles, Loader2, Navigation, AlertTriangle, Receipt,
+  User, FileText, Heart, Home,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -31,11 +33,12 @@ const AMENITIES = [
   "Tent / Canopy Setup", "Sufficient Lighting",
 ];
 const STEPS = [
-  { id: 1, label: "Venue Basics",  icon: Building2, hint: "Name, slug, and membership year" },
-  { id: 2, label: "Location",      icon: MapPin,    hint: "Address and map pin" },
-  { id: 3, label: "Venue Profile", icon: Tag,       hint: "Category, type, and description" },
-  { id: 4, label: "Contact",       icon: Phone,     hint: "Phones, email, and social media" },
-  { id: 5, label: "Amenities",     icon: ImageIcon, hint: "Features, photo, and review" },
+  { id: 1, label: "Venue Basics",   icon: Building2, hint: "Name, slug, and membership year" },
+  { id: 2, label: "Location",       icon: MapPin,    hint: "Address and map pin" },
+  { id: 3, label: "Venue Profile",  icon: Tag,       hint: "Category, type, and description" },
+  { id: 4, label: "Contact",        icon: Phone,     hint: "Phones, email, and social media" },
+  { id: 5, label: "Owner Details",  icon: User,      hint: "Firm registration and owner personal info" },
+  { id: 6, label: "Amenities",      icon: ImageIcon, hint: "Features, photo, and review" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -139,22 +142,39 @@ export default function MemberForm({ member }: Props) {
     v ? v.split(",").map((s) => s.trim()).filter(Boolean) : [];
 
   const [form, setForm] = useState({
-    name:        member?.name        ?? "",
-    slug:        member?.slug        ?? "",
-    area:        member?.area        ?? "",
-    location:    member?.location    ?? "",
-    capacity:    String(member?.capacity ?? ""),
-    description: member?.description ?? "",
-    memberSince: member?.memberSince ?? "",
-    email:       member?.email       ?? "",
-    website:     member?.website     ?? "",
-    facebook:    member?.facebook    ?? "",
-    instagram:   member?.instagram   ?? "",
-    youtube:     member?.youtube     ?? "",
-    image:       member?.image       ?? "",
-    featured:    member?.featured    ?? false,
-    latitude:    String(member?.latitude  ?? ""),
-    longitude:   String(member?.longitude ?? ""),
+    name:            member?.name            ?? "",
+    slug:            member?.slug            ?? "",
+    area:            member?.area            ?? "",
+    location:        member?.location        ?? "",
+    capacity:        String(member?.capacity ?? ""),
+    description:     member?.description     ?? "",
+    memberSince:     member?.memberSince     ?? "",
+    email:           member?.email           ?? "",
+    website:         member?.website         ?? "",
+    facebook:        member?.facebook        ?? "",
+    instagram:       member?.instagram       ?? "",
+    youtube:         member?.youtube         ?? "",
+    image:           member?.image           ?? "",
+    featured:        member?.featured        ?? false,
+    latitude:        String(member?.latitude  ?? ""),
+    longitude:       String(member?.longitude ?? ""),
+    // Owner personal / legal details
+    ownerName:        member?.ownerName        ?? "",
+    firmRegNo:        member?.firmRegNo        ?? "",
+    firmType:         member?.firmType         ?? "",
+    fatherName:       member?.fatherName       ?? "",
+    grandfatherName:  member?.grandfatherName  ?? "",
+    spouseName:       member?.spouseName       ?? "",
+    permWard:         member?.permWard         ?? "",
+    permTole:         member?.permTole         ?? "",
+    permMunicipality: member?.permMunicipality ?? "",
+    permDistrict:     member?.permDistrict     ?? "",
+    permProvince:     member?.permProvince     ?? "",
+    tempWard:         member?.tempWard         ?? "",
+    tempTole:         member?.tempTole         ?? "",
+    tempMunicipality: member?.tempMunicipality ?? "",
+    tempDistrict:     member?.tempDistrict     ?? "",
+    tempProvince:     member?.tempProvince     ?? "",
   });
 
   const [phones,      setPhones]      = useState<string[]>(parseMulti(member?.phone).length ? parseMulti(member?.phone) : [""]);
@@ -236,7 +256,7 @@ export default function MemberForm({ member }: Props) {
   function goNext() {
     const err = validateStep(step);
     if (err) { setError(err); return; }
-    setError(""); setDir(1); setStep((s) => Math.min(5, s + 1));
+    setError(""); setDir(1); setStep((s) => Math.min(6, s + 1));
   }
   function goBack() { setError(""); setDir(-1); setStep((s) => Math.max(1, s - 1)); }
 
@@ -654,8 +674,170 @@ export default function MemberForm({ member }: Props) {
               </div>
             </>)}
 
-            {/* ── STEP 5 ─────────────────────────────────────────────────────── */}
+            {/* ── STEP 5 — Owner Details ──────────────────────────────────── */}
             {step === 5 && (<>
+              <div className="bg-indigo-50 border border-indigo-200 rounded-xl px-4 py-3 flex gap-2">
+                <Info size={14} className="text-indigo-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-indigo-700">These details match the official membership form (फर्म दर्ता). All fields are optional but help keep the association records complete.</p>
+              </div>
+
+              {/* Firm registration */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Firm Reg. No. <span className="text-gray-400 font-normal text-xs">/ फर्म दर्ता नं.</span>
+                  </label>
+                  <div className="relative">
+                    <FileText size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type="text" value={form.firmRegNo} onChange={(e) => set("firmRegNo", e.target.value)}
+                      placeholder="e.g. 12345/078-79" className={`${inputCls} pl-9`} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Firm Type <span className="text-gray-400 font-normal text-xs">/ फर्मको किसिम</span>
+                  </label>
+                  <div className="relative">
+                    <select value={form.firmType} onChange={(e) => set("firmType", e.target.value)}
+                      className={`${inputCls} appearance-none cursor-pointer pr-8`}>
+                      <option value="">— Select / छान्नुहोस् —</option>
+                      <option value="Individual">Individual / व्यक्तिगत</option>
+                      <option value="Partnership">Partnership / साझेदारी</option>
+                      <option value="Private Limited">Private Limited / प्रा.लि.</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal names */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Owner Personal Info / फर्मधनीको व्यक्तिगत विवरण</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Owner / Director Name <span className="text-gray-400 font-normal text-xs">/ फर्मधनी/सञ्चालकको नाम</span>
+                    </label>
+                    <div className="relative">
+                      <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input type="text" value={form.ownerName ?? ""} onChange={(e) => set("ownerName", e.target.value)}
+                        placeholder="Full name" className={`${inputCls} pl-9`} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Father&apos;s Name <span className="text-gray-400 font-normal text-xs">/ पिताको नाम</span>
+                      </label>
+                      <div className="relative">
+                        <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="text" value={form.fatherName} onChange={(e) => set("fatherName", e.target.value)}
+                          placeholder="Father's full name" className={`${inputCls} pl-9`} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Grandfather&apos;s Name <span className="text-gray-400 font-normal text-xs">/ बाजेको नाम</span>
+                      </label>
+                      <div className="relative">
+                        <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="text" value={form.grandfatherName} onChange={(e) => set("grandfatherName", e.target.value)}
+                          placeholder="Grandfather's full name" className={`${inputCls} pl-9`} />
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Spouse Name (Husband/Wife) <span className="text-gray-400 font-normal text-xs">/ पति/पत्नी को नाम</span>
+                    </label>
+                    <div className="relative">
+                      <Heart size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input type="text" value={form.spouseName} onChange={(e) => set("spouseName", e.target.value)}
+                        placeholder="Spouse's full name (optional)" className={`${inputCls} pl-9`} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Permanent address */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  Permanent Address / स्थायी ठेगाना
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {([ { key: "permWard" as const, label: "Ward No.", ne: "वडा नं." }, { key: "permTole" as const, label: "Tole", ne: "टोल" }, { key: "permMunicipality" as const, label: "Municipality/VDC", ne: "न.पा./गा.वि.स." } ]).map(({ key, label, ne }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">{label} <span className="text-gray-400 font-normal">/ {ne}</span></label>
+                      <div className="relative">
+                        <Home size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="text" value={form[key]} onChange={(e) => set(key, e.target.value)} placeholder={label} className={`${inputCls} pl-8 text-xs`} />
+                      </div>
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Province <span className="text-gray-400 font-normal">/ प्रदेश</span></label>
+                    <div className="relative">
+                      <select value={form.permProvince} onChange={(e) => { set("permProvince", e.target.value); set("permDistrict", ""); }} className={`${inputCls} text-xs appearance-none cursor-pointer pr-8`}>
+                        <option value="">— Select Province —</option>
+                        {NEPAL_PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">District <span className="text-gray-400 font-normal">/ जिल्ला</span></label>
+                    <div className="relative">
+                      <select value={form.permDistrict} onChange={(e) => set("permDistrict", e.target.value)} className={`${inputCls} text-xs appearance-none cursor-pointer pr-8`}>
+                        <option value="">— Select District —</option>
+                        {getDistrictsByProvince(form.permProvince).map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Temporary address */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  Temporary Address / अस्थायी ठेगाना
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {([ { key: "tempWard" as const, label: "Ward No.", ne: "वडा नं." }, { key: "tempTole" as const, label: "Tole", ne: "टोल" }, { key: "tempMunicipality" as const, label: "Municipality/VDC", ne: "न.पा./गा.वि.स." } ]).map(({ key, label, ne }) => (
+                    <div key={key}>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">{label} <span className="text-gray-400 font-normal">/ {ne}</span></label>
+                      <div className="relative">
+                        <Home size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input type="text" value={form[key]} onChange={(e) => set(key, e.target.value)} placeholder={label} className={`${inputCls} pl-8 text-xs`} />
+                      </div>
+                    </div>
+                  ))}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">Province <span className="text-gray-400 font-normal">/ प्रदेश</span></label>
+                    <div className="relative">
+                      <select value={form.tempProvince} onChange={(e) => { set("tempProvince", e.target.value); set("tempDistrict", ""); }} className={`${inputCls} text-xs appearance-none cursor-pointer pr-8`}>
+                        <option value="">— Select Province —</option>
+                        {NEPAL_PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                      <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">District <span className="text-gray-400 font-normal">/ जिल्ला</span></label>
+                    <div className="relative">
+                      <select value={form.tempDistrict} onChange={(e) => set("tempDistrict", e.target.value)} className={`${inputCls} text-xs appearance-none cursor-pointer pr-8`}>
+                        <option value="">— Select District —</option>
+                        {getDistrictsByProvince(form.tempProvince).map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>)}
+
+            {/* ── STEP 6 ─────────────────────────────────────────────────────── */}
+            {step === 6 && (<>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Amenities & Features</label>
                 <p className="text-[11px] text-gray-400 mb-3">Tick everything this venue provides. This helps people find the right venue.</p>
@@ -743,16 +925,24 @@ export default function MemberForm({ member }: Props) {
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">Review Before Saving</p>
                 <div className="space-y-2">
                   {([
-                    ["Venue Name",  form.name],
-                    ["Area",        form.area],
-                    ["Capacity",    form.capacity ? `${form.capacity} guests` : "—"],
-                    ["Category",    Array.from(categories).join(", ") || "—"],
-                    ["Type",        Array.from(types).join(", ") || "—"],
-                    ["Phone(s)",    phones.filter(Boolean).join(", ") || "—"],
-                    ["Email",       form.email || "—"],
-                    ["Member Since",form.memberSince || "—"],
-                    ["Map Pin",     mapPreview ? `${mapPreview.lat.toFixed(4)}, ${mapPreview.lng.toFixed(4)}` : "Not set"],
-                    ["Amenities",   amenities.size ? `${amenities.size} selected` : "—"],
+                    ["Venue Name",   form.name],
+                    ["Area",         form.area],
+                    ["Capacity",     form.capacity ? `${form.capacity} guests` : "—"],
+                    ["Category",     Array.from(categories).join(", ") || "—"],
+                    ["Type",         Array.from(types).join(", ") || "—"],
+                    ["Phone(s)",     phones.filter(Boolean).join(", ") || "—"],
+                    ["Email",        form.email || "—"],
+                    ["Member Since", form.memberSince || "—"],
+                    ["Map Pin",      mapPreview ? `${mapPreview.lat.toFixed(4)}, ${mapPreview.lng.toFixed(4)}` : "Not set"],
+                    ["Amenities",    amenities.size ? `${amenities.size} selected` : "—"],
+                    ["Firm Reg. No.", form.firmRegNo || "—"],
+                    ["Firm Type",    form.firmType || "—"],
+                    ["Owner Name",   form.ownerName || "—"],
+                    ["Father",       form.fatherName || "—"],
+                    ["Grandfather",  form.grandfatherName || "—"],
+                    ["Spouse",       form.spouseName || "—"],
+                    ["Perm. Address", [form.permWard, form.permTole, form.permMunicipality, form.permDistrict, form.permProvince].filter(Boolean).join(", ") || "—"],
+                    ["Temp. Address", [form.tempWard, form.tempTole, form.tempMunicipality, form.tempDistrict, form.tempProvince].filter(Boolean).join(", ") || "—"],
                   ] as [string, string][]).map(([label, value]) => (
                     <div key={label} className="flex justify-between text-xs">
                       <span className="text-gray-400">{label}</span>
@@ -780,7 +970,7 @@ export default function MemberForm({ member }: Props) {
             <ChevronLeft size={15} /> Back
           </button>
           <span className="text-xs text-gray-400">{step}/{STEPS.length}</span>
-          {step < 5 ? (
+          {step < 6 ? (
             <button type="button" onClick={goNext}
               className="flex items-center gap-1.5 px-5 py-2 bg-[#0a1040] text-white text-sm font-medium rounded-lg hover:bg-[#0d1550] shadow-sm transition-colors">
               Continue <ChevronRight size={15} />

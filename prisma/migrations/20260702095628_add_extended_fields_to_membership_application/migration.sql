@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "MembershipApplication" ADD COLUMN     "fatherName" TEXT,
+ADD COLUMN     "firmRegNo" TEXT,
+ADD COLUMN     "firmType" TEXT,
+ADD COLUMN     "grandfatherName" TEXT,
+ADD COLUMN     "permDistrict" TEXT,
+ADD COLUMN     "permMunicipality" TEXT,
+ADD COLUMN     "permProvince" TEXT,
+ADD COLUMN     "permTole" TEXT,
+ADD COLUMN     "permWard" TEXT,
+ADD COLUMN     "spouseName" TEXT,
+ADD COLUMN     "tempDistrict" TEXT,
+ADD COLUMN     "tempMunicipality" TEXT,
+ADD COLUMN     "tempProvince" TEXT,
+ADD COLUMN     "tempTole" TEXT,
+ADD COLUMN     "tempWard" TEXT;

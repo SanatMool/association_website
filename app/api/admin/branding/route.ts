@@ -5,7 +5,19 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   const headersList = await headers();
   const hostname = headersList.get("x-hostname") ?? "";
-  const association = await prisma.association.findUnique({ where: { domain: hostname } });
+
+  const isLocalDev =
+    !hostname ||
+    hostname.startsWith("localhost") ||
+    hostname.startsWith("127.0.0.1") ||
+    hostname.startsWith("::1");
+
+  const association = isLocalDev
+    ? await prisma.association.findFirst({
+        where: { slug: process.env.DEV_ASSOCIATION_SLUG ?? "eva-nepal", active: true },
+      })
+    : await prisma.association.findUnique({ where: { domain: hostname } });
+
   if (!association) {
     return NextResponse.json({ success: false, error: "Association not found" }, { status: 404 });
   }

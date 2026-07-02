@@ -37,6 +37,7 @@ model Association {
   apiLogs                ApiLog[]
   membershipApplications MembershipApplication[]
   membershipCategories   MembershipCategory[]
+  associationFees        AssociationFee[]
   duesPayments           DuesPayment[]
   meetings               Meeting[]
   expenseVendors         ExpenseVendor[]
@@ -99,6 +100,22 @@ model Member {
   youtube      String?  // YouTube channel URL or handle
   latitude     Float?   // GPS latitude (decimal degrees) — from Nominatim geocoding
   longitude    Float?   // GPS longitude (decimal degrees) — from Nominatim geocoding
+  // Owner personal / legal registration details
+  firmRegNo        String?  // Firm Registration No. / फर्म दर्ता नं.
+  firmType         String?  // Individual | Partnership | Private Limited
+  fatherName       String?  // Father's Name / पिताको नाम
+  grandfatherName  String?  // Grandfather's Name / बाजेको नाम
+  spouseName       String?  // Spouse Name (Husband/Wife) / पति/पत्नी को नाम
+  permWard         String?  // Owner Permanent Address — Ward No.
+  permTole         String?
+  permMunicipality String?
+  permDistrict     String?
+  permProvince     String?
+  tempWard         String?  // Owner Temporary Address — Ward No.
+  tempTole         String?
+  tempMunicipality String?
+  tempDistrict     String?
+  tempProvince     String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -248,6 +265,22 @@ model MembershipApplication {
   location      String
   capacity      String?
   website       String?
+  // Extended fields (from physical membership form)
+  firmRegNo             String?  // Firm Registration No. / फर्म दर्ता नं.
+  firmType              String?  // Individual | Partnership | Private Limited
+  fatherName            String?  // Father's Name / पिताको नाम
+  grandfatherName       String?  // Grandfather's Name / बाजेको नाम
+  spouseName            String?  // Spouse Name (Husband/Wife) / पति/पत्नी को नाम
+  permWard              String?  // Permanent Address — Ward No.
+  permTole              String?  // Tole
+  permMunicipality      String?  // Municipality / VDC
+  permDistrict          String?  // District
+  permProvince          String?  // Province
+  tempWard              String?  // Temporary Address — Ward No.
+  tempTole              String?
+  tempMunicipality      String?
+  tempDistrict          String?
+  tempProvince          String?
   status        String   @default("pending") // pending | reviewed | accepted | rejected
   memberId      String?  // populated when accepted — links to the created Member record
   associationId String?
@@ -347,6 +380,7 @@ model MembershipCategory {
   id               String   @id @default(cuid())
   associationId    String
   name             String   // "Catering", "Venue", "Decorator", etc.
+  entryFee         Decimal  @default(0) @db.Decimal(10, 2)  // One-time entry/admission fee (प्रवेश शुल्क)
   monthlyFee       Decimal  @default(0) @db.Decimal(10, 2)
   annualRenewalFee Decimal  @default(0) @db.Decimal(10, 2)
   createdAt        DateTime @default(now())
@@ -355,6 +389,19 @@ model MembershipCategory {
   association  Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
   memberLinks  MemberAssociation[]
   duesPayments DuesPayment[]
+}
+
+// Custom additional fees defined by the association (e.g. ID Card, Insurance, etc.)
+model AssociationFee {
+  id            String   @id @default(cuid())
+  associationId String
+  name          String   // e.g. "ID Card Fee", "Insurance Fee"
+  amount        Decimal  @db.Decimal(10, 2)
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
 }
 
 // Each payment record — one row per payment (monthly, annual, or lump sum)
@@ -368,7 +415,8 @@ model DuesPayment {
   periodStart       DateTime  // start of period covered
   periodEnd         DateTime  // end of period covered
   method            String    @default("pending") // cash | transfer | pending
-  status            String    @default("pending") // paid | pending
+  status            String    @default("pending") // paid | partial | pending
+  dueAmount         Decimal?  @db.Decimal(10, 2)  // original obligation; when set, amount = what was paid
   receiptNumber     String?
   notes             String?
   paymentBreakdown  Json?     // [{method: string, amount: number}] — split payment lines

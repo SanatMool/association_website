@@ -16,6 +16,21 @@ export async function POST(req: NextRequest) {
       location: string;
       capacity?: string;
       website?: string;
+      firmRegNo?: string;
+      firmType?: string;
+      fatherName?: string;
+      grandfatherName?: string;
+      spouseName?: string;
+      permWard?: string;
+      permTole?: string;
+      permMunicipality?: string;
+      permDistrict?: string;
+      permProvince?: string;
+      tempWard?: string;
+      tempTole?: string;
+      tempMunicipality?: string;
+      tempDistrict?: string;
+      tempProvince?: string;
     };
 
     if (!body.venueName || !body.ownerName || !body.phone || !body.email || !body.location) {
@@ -33,6 +48,21 @@ export async function POST(req: NextRequest) {
         location: body.location,
         capacity: body.capacity || null,
         website: body.website || null,
+        firmRegNo: body.firmRegNo || null,
+        firmType: body.firmType || null,
+        fatherName: body.fatherName || null,
+        grandfatherName: body.grandfatherName || null,
+        spouseName: body.spouseName || null,
+        permWard: body.permWard || null,
+        permTole: body.permTole || null,
+        permMunicipality: body.permMunicipality || null,
+        permDistrict: body.permDistrict || null,
+        permProvince: body.permProvince || null,
+        tempWard: body.tempWard || null,
+        tempTole: body.tempTole || null,
+        tempMunicipality: body.tempMunicipality || null,
+        tempDistrict: body.tempDistrict || null,
+        tempProvince: body.tempProvince || null,
         associationId: association?.id ?? null,
       },
     });

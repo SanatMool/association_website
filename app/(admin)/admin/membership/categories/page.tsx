@@ -10,16 +10,19 @@ interface CategoryMember { id: string; name: string; area: string; category: str
 interface Category {
   id: string;
   name: string;
+  entryFee: string;
   monthlyFee: string;
   annualRenewalFee: string;
   _count: { memberLinks: number };
 }
 
-const empty = { name: "", monthlyFee: "", annualRenewalFee: "" };
+const empty = { name: "", entryFee: "", monthlyFee: "", annualRenewalFee: "" };
 
 function validateForm(form: typeof empty): Record<string, string> {
   const errs: Record<string, string> = {};
   if (!form.name.trim()) errs.name = "Category name is required.";
+  if (form.entryFee !== "" && (isNaN(Number(form.entryFee)) || Number(form.entryFee) < 0))
+    errs.entryFee = "Enter a valid amount (0 or more).";
   if (form.monthlyFee !== "" && (isNaN(Number(form.monthlyFee)) || Number(form.monthlyFee) < 0))
     errs.monthlyFee = "Enter a valid amount (0 or more).";
   if (form.annualRenewalFee !== "" && (isNaN(Number(form.annualRenewalFee)) || Number(form.annualRenewalFee) < 0))
@@ -73,7 +76,7 @@ export default function CategoriesPage() {
 
   function openEdit(cat: Category) {
     setEditing(cat.id);
-    setForm({ name: cat.name, monthlyFee: cat.monthlyFee, annualRenewalFee: cat.annualRenewalFee });
+    setForm({ name: cat.name, entryFee: cat.entryFee, monthlyFee: cat.monthlyFee, annualRenewalFee: cat.annualRenewalFee });
     setFieldErrors({}); setSaveError(null); setShowForm(true);
   }
 
@@ -93,6 +96,7 @@ export default function CategoriesPage() {
     try {
       const body = {
         name:             form.name.trim(),
+        entryFee:         parseFloat(form.entryFee)         || 0,
         monthlyFee:       parseFloat(form.monthlyFee)       || 0,
         annualRenewalFee: parseFloat(form.annualRenewalFee) || 0,
       };
@@ -114,9 +118,10 @@ export default function CategoriesPage() {
     await load();
   }
 
+  const entry    = parseFloat(form.entryFee)         || 0;
   const monthly  = parseFloat(form.monthlyFee)       || 0;
   const annual   = parseFloat(form.annualRenewalFee) || 0;
-  const hasPreview = (form.monthlyFee !== "" || form.annualRenewalFee !== "") && (monthly > 0 || annual > 0);
+  const hasPreview = (form.entryFee !== "" || form.monthlyFee !== "" || form.annualRenewalFee !== "") && (entry > 0 || monthly > 0 || annual > 0);
 
   const displayed = useMemo(() => {
     let list = categories.filter((c) =>
@@ -209,44 +214,47 @@ export default function CategoriesPage() {
               </div>
 
               {/* Fees */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Monthly Fee</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Entry / Admission Fee <span className="text-gray-400 font-normal text-xs">/ प्रवेश शुल्क</span></label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">Rs</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={form.monthlyFee}
-                      onChange={(e) => setField("monthlyFee", e.target.value)}
-                      placeholder="0"
-                      className={`${inputCls(fieldErrors.monthlyFee)} pl-9`}
-                    />
+                    <input type="number" min="0" step="1" value={form.entryFee}
+                      onChange={(e) => setField("entryFee", e.target.value)} placeholder="0"
+                      className={`${inputCls(fieldErrors.entryFee)} pl-9`} />
                   </div>
-                  {fieldErrors.monthlyFee
-                    ? <p className="text-[11px] text-red-500 mt-1">{fieldErrors.monthlyFee}</p>
-                    : <p className="text-[11px] text-gray-400 mt-1">Enter 0 if not billed monthly.</p>
+                  {fieldErrors.entryFee
+                    ? <p className="text-[11px] text-red-500 mt-1">{fieldErrors.entryFee}</p>
+                    : <p className="text-[11px] text-gray-400 mt-1">One-time fee paid when first joining the association.</p>
                   }
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Annual Renewal Fee</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">Rs</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={form.annualRenewalFee}
-                      onChange={(e) => setField("annualRenewalFee", e.target.value)}
-                      placeholder="0"
-                      className={`${inputCls(fieldErrors.annualRenewalFee)} pl-9`}
-                    />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Monthly Fee</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">Rs</span>
+                      <input type="number" min="0" step="1" value={form.monthlyFee}
+                        onChange={(e) => setField("monthlyFee", e.target.value)} placeholder="0"
+                        className={`${inputCls(fieldErrors.monthlyFee)} pl-9`} />
+                    </div>
+                    {fieldErrors.monthlyFee
+                      ? <p className="text-[11px] text-red-500 mt-1">{fieldErrors.monthlyFee}</p>
+                      : <p className="text-[11px] text-gray-400 mt-1">Enter 0 if not billed monthly.</p>
+                    }
                   </div>
-                  {fieldErrors.annualRenewalFee
-                    ? <p className="text-[11px] text-red-500 mt-1">{fieldErrors.annualRenewalFee}</p>
-                    : <p className="text-[11px] text-gray-400 mt-1">Charged once per year at renewal.</p>
-                  }
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Annual Renewal Fee</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">Rs</span>
+                      <input type="number" min="0" step="1" value={form.annualRenewalFee}
+                        onChange={(e) => setField("annualRenewalFee", e.target.value)} placeholder="0"
+                        className={`${inputCls(fieldErrors.annualRenewalFee)} pl-9`} />
+                    </div>
+                    {fieldErrors.annualRenewalFee
+                      ? <p className="text-[11px] text-red-500 mt-1">{fieldErrors.annualRenewalFee}</p>
+                      : <p className="text-[11px] text-gray-400 mt-1">Charged once per year at renewal.</p>
+                    }
+                  </div>
                 </div>
               </div>
 
@@ -260,7 +268,13 @@ export default function CategoriesPage() {
                     className="overflow-hidden">
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
                       <p className="text-xs font-semibold text-emerald-700 mb-2">Fee Preview</p>
-                      <div className="flex gap-6 text-sm">
+                      <div className="flex flex-wrap gap-4 text-sm">
+                        {entry > 0 && (
+                          <div>
+                            <span className="text-emerald-800 font-bold">Rs {entry.toLocaleString()}</span>
+                            <span className="text-emerald-600 text-xs ml-1">entry (one-time)</span>
+                          </div>
+                        )}
                         {monthly > 0 && (
                           <div>
                             <span className="text-emerald-800 font-bold">Rs {monthly.toLocaleString()}</span>
@@ -275,7 +289,7 @@ export default function CategoriesPage() {
                         )}
                         {monthly > 0 && annual > 0 && (
                           <div className="text-emerald-500 text-xs self-end pb-0.5">
-                            Total if billed both: Rs {(monthly * 12 + annual).toLocaleString()} / yr
+                            Total recurring: Rs {(monthly * 12 + annual).toLocaleString()} / yr
                           </div>
                         )}
                       </div>
@@ -387,7 +401,12 @@ export default function CategoriesPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">{cat.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {Number(cat.entryFee) > 0 && (
+                      <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full">
+                        Rs {Number(cat.entryFee).toLocaleString()} entry
+                      </span>
+                    )}
                     {Number(cat.monthlyFee) > 0 && (
                       <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">
                         Rs {Number(cat.monthlyFee).toLocaleString()} / mo
@@ -398,7 +417,7 @@ export default function CategoriesPage() {
                         Rs {Number(cat.annualRenewalFee).toLocaleString()} / yr
                       </span>
                     )}
-                    {Number(cat.monthlyFee) === 0 && Number(cat.annualRenewalFee) === 0 && (
+                    {Number(cat.entryFee) === 0 && Number(cat.monthlyFee) === 0 && Number(cat.annualRenewalFee) === 0 && (
                       <span className="text-xs text-gray-400">No fees set</span>
                     )}
                   </div>

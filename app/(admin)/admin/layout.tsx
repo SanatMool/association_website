@@ -8,7 +8,7 @@ import Image from "next/image";
 import {
   LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings,
   UserCog, CheckSquare, ClipboardList, Tag, CreditCard, CalendarDays,
-  KeyRound, BarChart2, ChevronLeft, ChevronRight, Menu, X, Bell, Activity,
+  KeyRound, BarChart2, ChevronLeft, ChevronRight, Menu, X, Bell, Activity, DollarSign,
 } from "lucide-react";
 import "../admin.css";
 
@@ -41,8 +41,9 @@ const NAV_GROUPS = [
   {
     label: "Financials",
     items: [
-      { href: "/admin/membership/categories", label: "Fee Categories",  icon: Tag },
-      { href: "/admin/membership/dues",       label: "Dues & Payments", icon: CreditCard },
+      { href: "/admin/membership/categories", label: "Fee Categories",    icon: Tag },
+      { href: "/admin/membership/fees",       label: "Additional Fees",  icon: DollarSign },
+      { href: "/admin/membership/dues",       label: "Dues & Payments",  icon: CreditCard },
     ],
   },
   {

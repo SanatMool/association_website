@@ -9,16 +9,39 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const existing = await prisma.duesPayment.findFirst({ where: { id: params.id, associationId: ctx.associationId } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json() as { status?: string; method?: string; receiptNumber?: string; notes?: string; paidAt?: string };
+  type BreakdownLine = { method: string; amount: number };
+  const body = await req.json() as {
+    status?: string; method?: string; receiptNumber?: string; notes?: string; paidAt?: string;
+    paymentBreakdown?: BreakdownLine[];
+    dueAmount?: number | null;
+  };
+
+  // Derive method + amount paid from breakdown when provided
+  const breakdown     = (body.paymentBreakdown ?? []).filter((l) => l.amount > 0);
+  const derivedMethod = breakdown.length > 1 ? "mixed" : breakdown.length === 1 ? breakdown[0].method : body.method;
+  const derivedPaid   = breakdown.length > 0 ? breakdown.reduce((s, l) => s + l.amount, 0) : undefined;
+
+  // dueAmount: explicit value, null to clear, or keep existing
+  const newDueAmount = body.dueAmount !== undefined ? (body.dueAmount ?? null) : undefined;
+
+  // Auto-derive status from paid vs due amounts
+  const effectiveDue  = newDueAmount !== undefined ? (newDueAmount ?? 0) : Number(existing.dueAmount ?? 0);
+  const effectivePaid = derivedPaid ?? Number(existing.amount);
+  const autoStatus    = effectiveDue > 0
+    ? (effectivePaid >= effectiveDue ? "paid" : effectivePaid > 0 ? "partial" : "pending")
+    : (body.status ?? existing.status);
 
   const payment = await prisma.duesPayment.update({
     where: { id: params.id },
     data: {
-      ...(body.status        ? { status: body.status } : {}),
-      ...(body.method        ? { method: body.method } : {}),
-      ...(body.receiptNumber !== undefined ? { receiptNumber: body.receiptNumber || null } : {}),
-      ...(body.notes         !== undefined ? { notes: body.notes || null } : {}),
-      paidAt: body.status === "paid" ? (body.paidAt ? new Date(body.paidAt) : new Date()) : existing.paidAt,
+      status:        autoStatus,
+      ...(derivedMethod                      ? { method: derivedMethod }        : {}),
+      ...(derivedPaid !== undefined          ? { amount: derivedPaid }          : {}),
+      ...(newDueAmount !== undefined         ? { dueAmount: newDueAmount }      : {}),
+      ...(breakdown.length > 0              ? { paymentBreakdown: breakdown }   : {}),
+      ...(body.receiptNumber !== undefined  ? { receiptNumber: body.receiptNumber || null } : {}),
+      ...(body.notes         !== undefined  ? { notes: body.notes || null }     : {}),
+      paidAt: (autoStatus === "paid" || autoStatus === "partial") ? (body.paidAt ? new Date(body.paidAt) : (existing.paidAt ?? new Date())) : existing.paidAt,
     },
     include: {
       member:         { select: { id: true, name: true } },

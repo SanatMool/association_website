@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     memberCategoryId?: string;
     type: string;
     amount?: number;
+    dueAmount?: number;
     periodStart: string;
     periodEnd: string;
     method?: string;
@@ -54,9 +55,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
   }
 
-  // Derive total and primary method from breakdown if provided
+  // Derive total paid and primary method from breakdown if provided
   const breakdown = (body.paymentBreakdown ?? []).filter((l) => l.amount > 0);
-  const totalAmount = breakdown.length > 0
+  const totalPaid = breakdown.length > 0
     ? breakdown.reduce((s, l) => s + l.amount, 0)
     : (body.amount ?? 0);
   const primaryMethod = breakdown.length > 1
@@ -65,9 +66,15 @@ export async function POST(req: NextRequest) {
       ? breakdown[0].method
       : (body.method ?? "pending");
 
-  if (!totalAmount || totalAmount <= 0) {
+  if (!totalPaid || totalPaid <= 0) {
     return NextResponse.json({ success: false, error: "Amount must be greater than 0" }, { status: 400 });
   }
+
+  // Auto-derive status from paid vs due amounts
+  const dueAmt = body.dueAmount ?? null;
+  const derivedStatus = dueAmt && dueAmt > 0
+    ? (totalPaid >= dueAmt ? "paid" : totalPaid > 0 ? "partial" : "pending")
+    : (body.status ?? "pending");
 
   // Verify member belongs to this association
   const link = await prisma.memberAssociation.findUnique({
@@ -89,15 +96,16 @@ export async function POST(req: NextRequest) {
       memberId:         body.memberId,
       memberCategoryId: body.memberCategoryId || link.memberCategoryId || null,
       type:             body.type,
-      amount:           totalAmount,
+      amount:           totalPaid,
+      dueAmount:        dueAmt,
       periodStart:      new Date(body.periodStart),
       periodEnd:        new Date(body.periodEnd),
       method:           primaryMethod,
-      status:           body.status,
+      status:           derivedStatus,
       receiptNumber:    body.receiptNumber || null,
       notes:            body.notes || null,
       paymentBreakdown: breakdown.length > 0 ? breakdown : undefined,
-      paidAt:           body.status === "paid" ? (body.paidAt ? new Date(body.paidAt) : new Date()) : null,
+      paidAt:           (derivedStatus === "paid" || derivedStatus === "partial") ? (body.paidAt ? new Date(body.paidAt) : new Date()) : null,
       recordedByAdminId: (ctx.session.user as { id?: string }).id ?? null,
     },
     include: {
@@ -110,7 +118,7 @@ export async function POST(req: NextRequest) {
     associationId: ctx.associationId,
     adminId:    (ctx.session.user as { id?: string }).id ?? null,
     adminName:  ctx.session.user?.name ?? null,
-    action:     body.status === "paid" ? "dues.record_paid" : "dues.record_pending",
+    action:     derivedStatus === "paid" ? "dues.record_paid" : derivedStatus === "partial" ? "dues.record_partial" : "dues.record_pending",
     entityType: "dues",
     entityId:   payment.id,
     entityName: payment.member.name,

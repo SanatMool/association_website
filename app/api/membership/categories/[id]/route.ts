@@ -28,10 +28,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   if (!await getOwned(params.id, ctx.associationId)) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const body = await req.json() as { name: string; monthlyFee: number; annualRenewalFee: number };
+  const body = await req.json() as { name: string; monthlyFee: number; annualRenewalFee: number; entryFee?: number };
   const category = await prisma.membershipCategory.update({
     where: { id: params.id },
-    data: { name: body.name.trim(), monthlyFee: body.monthlyFee, annualRenewalFee: body.annualRenewalFee },
+    data: { name: body.name.trim(), monthlyFee: body.monthlyFee, annualRenewalFee: body.annualRenewalFee, entryFee: body.entryFee ?? 0 },
   });
 
   return NextResponse.json({ success: true, data: category });

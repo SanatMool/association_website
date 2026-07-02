@@ -100,8 +100,13 @@ export async function middleware(request: NextRequest) {
     }
 
     // If the session belongs to a different association's domain, clear it and redirect to login
+    // Skip this check on localhost (dev environment)
+    const isLocalDev =
+      hostname.startsWith("localhost") ||
+      hostname.startsWith("127.0.0.1") ||
+      hostname.startsWith("::1");
     const tokenDomain = token.associationDomain as string | null;
-    if (tokenDomain && tokenDomain !== hostname) {
+    if (!isLocalDev && tokenDomain && tokenDomain !== hostname) {
       const loginUrl = new URL("/admin/login", request.url);
       const response = NextResponse.redirect(loginUrl);
       response.cookies.delete("__Secure-next-auth.session-token");

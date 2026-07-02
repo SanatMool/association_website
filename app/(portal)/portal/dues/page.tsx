@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, Clock, CreditCard } from "lucide-react";
+import { CheckCircle, Clock, CreditCard, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 interface Payment {
-  id: string; type: string; amount: string; periodStart: string; periodEnd: string;
+  id: string; type: string; amount: string; dueAmount: string | null;
+  periodStart: string; periodEnd: string;
   method: string; status: string; receiptNumber: string | null; paidAt: string | null;
   memberCategory: { name: string } | null;
 }
@@ -30,9 +31,15 @@ export default function PortalDuesPage() {
   }, []);
 
   const paid    = payments.filter((p) => p.status === "paid");
+  const partial = payments.filter((p) => p.status === "partial");
   const pending = payments.filter((p) => p.status === "pending");
-  const totalPaid    = paid.reduce((s, p) => s + Number(p.amount), 0);
-  const totalPending = pending.reduce((s, p) => s + Number(p.amount), 0);
+
+  const totalPaid = paid.reduce((s, p) => s + Number(p.amount), 0);
+  // Outstanding = fully unpaid pending amounts + remaining balance on partial records
+  const totalOutstanding =
+    pending.reduce((s, p) => s + (p.dueAmount ? Number(p.dueAmount) : Number(p.amount)), 0) +
+    partial.reduce((s, p) => s + (p.dueAmount ? Number(p.dueAmount) - Number(p.amount) : 0), 0);
+  const hasOutstanding = totalOutstanding > 0;
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Loading…</div>;
 
@@ -51,13 +58,30 @@ export default function PortalDuesPage() {
         </div>
         <div className="bg-green-50 rounded-xl border border-green-100 p-4">
           <div className="text-xl font-bold text-green-700">Rs {totalPaid.toLocaleString()}</div>
-          <div className="text-xs text-green-600 mt-0.5">{paid.length} payments made</div>
+          <div className="text-xs text-green-600 mt-0.5">{paid.length} paid</div>
         </div>
-        <div className={`${totalPending > 0 ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100"} rounded-xl border p-4`}>
-          <div className={`text-xl font-bold ${totalPending > 0 ? "text-amber-700" : "text-gray-400"}`}>Rs {totalPending.toLocaleString()}</div>
-          <div className={`text-xs mt-0.5 ${totalPending > 0 ? "text-amber-600" : "text-gray-400"}`}>{pending.length} pending</div>
+        <div className={`${hasOutstanding ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100"} rounded-xl border p-4`}>
+          <div className={`text-xl font-bold ${hasOutstanding ? "text-amber-700" : "text-gray-400"}`}>
+            Rs {totalOutstanding.toLocaleString()}
+          </div>
+          <div className={`text-xs mt-0.5 ${hasOutstanding ? "text-amber-600" : "text-gray-400"}`}>
+            {pending.length + partial.length > 0
+              ? `${pending.length} pending${partial.length > 0 ? `, ${partial.length} partial` : ""}`
+              : "No outstanding dues"}
+          </div>
         </div>
       </div>
+
+      {/* Partial payment alert */}
+      {partial.length > 0 && (
+        <div className="mb-4 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-start gap-3">
+          <AlertCircle size={16} className="text-orange-500 mt-0.5 shrink-0" />
+          <p className="text-sm text-orange-700">
+            You have {partial.length} partially paid {partial.length === 1 ? "record" : "records"}.
+            Please contact the association to settle the remaining balance.
+          </p>
+        </div>
+      )}
 
       {payments.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400">
@@ -65,42 +89,116 @@ export default function PortalDuesPage() {
           <p className="text-sm">No payment records yet.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Period</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Category</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Amount</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Paid On</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Receipt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {payments.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
-                      {p.type === "monthly" ? "Monthly" : "Annual"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-700">{periodLabel(p)}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{p.memberCategory?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">Rs {Number(p.amount).toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    {p.status === "paid"
-                      ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><CheckCircle size={11} />Paid</span>
-                      : <span className="inline-flex items-center gap-1 text-xs text-amber-600"><Clock size={11} />Pending</span>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{p.paidAt ? formatDate(p.paidAt) : "—"}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400">{p.receiptNumber ?? "—"}</td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Period</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Category</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Bill / Paid</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Paid On</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Receipt</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {payments.map((p) => {
+                  const dueAmt  = p.dueAmount ? Number(p.dueAmount) : null;
+                  const paidAmt = Number(p.amount);
+                  const remaining = dueAmt && p.status === "partial" ? dueAmt - paidAmt : 0;
+                  return (
+                    <tr key={p.id} className="hover:bg-gray-50/50">
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
+                          {p.type === "monthly" ? "Monthly" : "Annual"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700">{periodLabel(p)}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{p.memberCategory?.name ?? "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        {dueAmt ? (
+                          <div className="leading-tight">
+                            <div className="text-[10px] text-gray-400">
+                              Bill: <span className="font-semibold text-gray-600">Rs {dueAmt.toLocaleString()}</span>
+                            </div>
+                            <div className="text-xs font-bold text-gray-900">
+                              Paid: Rs {paidAmt.toLocaleString()}
+                            </div>
+                            {remaining > 0 && (
+                              <div className="text-[10px] text-orange-600 font-medium">
+                                Rs {remaining.toLocaleString()} remaining
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm font-semibold text-gray-900">Rs {paidAmt.toLocaleString()}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {p.status === "paid"
+                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle size={11} />Paid</span>
+                          : p.status === "partial"
+                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full"><Clock size={11} />Partial</span>
+                          : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"><Clock size={11} />Pending</span>}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-400">{p.paidAt ? formatDate(p.paidAt) : "—"}</td>
+                      <td className="px-4 py-3 text-xs text-gray-400">{p.receiptNumber ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {payments.map((p) => {
+              const dueAmt    = p.dueAmount ? Number(p.dueAmount) : null;
+              const paidAmt   = Number(p.amount);
+              const remaining = dueAmt && p.status === "partial" ? dueAmt - paidAmt : 0;
+              return (
+                <div key={p.id} className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
+                        {p.type === "monthly" ? "Monthly" : "Annual"}
+                      </span>
+                      <span className="text-sm font-medium text-gray-700">{periodLabel(p)}</span>
+                    </div>
+                    {p.status === "paid"
+                      ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle size={11} />Paid</span>
+                      : p.status === "partial"
+                      ? <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full"><Clock size={11} />Partial</span>
+                      : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"><Clock size={11} />Pending</span>}
+                  </div>
+                  {p.memberCategory && (
+                    <div className="text-xs text-gray-400">{p.memberCategory.name}</div>
+                  )}
+                  <div className="flex items-end justify-between pt-1 border-t border-gray-50">
+                    <div>
+                      {dueAmt ? (
+                        <div className="leading-snug">
+                          <div className="text-[11px] text-gray-400">Bill: <span className="font-semibold text-gray-600">Rs {dueAmt.toLocaleString()}</span></div>
+                          <div className="text-sm font-bold text-gray-900">Paid: Rs {paidAmt.toLocaleString()}</div>
+                          {remaining > 0 && <div className="text-[11px] text-orange-600 font-medium">Rs {remaining.toLocaleString()} remaining</div>}
+                        </div>
+                      ) : (
+                        <div className="text-sm font-bold text-gray-900">Rs {paidAmt.toLocaleString()}</div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {p.paidAt && <div className="text-xs text-gray-400">{formatDate(p.paidAt)}</div>}
+                      {p.receiptNumber && <div className="text-xs text-gray-400">#{p.receiptNumber}</div>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

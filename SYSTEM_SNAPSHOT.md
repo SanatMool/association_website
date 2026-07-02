@@ -253,6 +253,7 @@ Admin route: `/admin/applications` — list + status filter + detail panel + sta
 | 20260609000000_add_multi_tenancy_association_platform  | Full multi-tenancy: 5 new models, associationId on all content rows |
 | 20260609091232_add_membership_application              | MembershipApplication model                                         |
 | 20260609120537_add_phases_3_4_6_7                      | MembershipCategory, DuesPayment, Meeting, AgendaItem, MeetingMinutes, ExpenseVendor, Expense, MemberContribution, MemberAccount, MeetingRsvp, EventRsvp — memberCategoryId on MemberAssociation |
+| 20260702115537_add_due_amount_partial_status           | DuesPayment: dueAmount Decimal? added; status now supports "partial" (paid < dueAmount) |
 
 ---
 

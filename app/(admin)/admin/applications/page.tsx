@@ -26,6 +26,21 @@ interface Application {
   location: string;
   capacity: string | null;
   website: string | null;
+  firmRegNo: string | null;
+  firmType: string | null;
+  fatherName: string | null;
+  grandfatherName: string | null;
+  spouseName: string | null;
+  permWard: string | null;
+  permTole: string | null;
+  permMunicipality: string | null;
+  permDistrict: string | null;
+  permProvince: string | null;
+  tempWard: string | null;
+  tempTole: string | null;
+  tempMunicipality: string | null;
+  tempDistrict: string | null;
+  tempProvince: string | null;
   status: string;
   memberId: string | null;
   createdAt: string;
@@ -53,6 +68,7 @@ export default function ApplicationsPage() {
   const [selected, setSelected]         = useState<Application | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmAccept, setConfirmAccept]     = useState(false);
+  const [acceptIncludeFee, setAcceptIncludeFee] = useState(false);
   const [confirmReject, setConfirmReject]     = useState(false);
   const [confirmReopen, setConfirmReopen]     = useState(false);
   const [working, setWorking]           = useState(false);
@@ -64,24 +80,34 @@ export default function ApplicationsPage() {
 
   // ── Fee panel state ───────────────────────────────────────────────────────
   interface FeeCategory { id: string; name: string; monthlyFee: string; annualRenewalFee: string }
+  interface PaymentLine  { method: string; amount: string }
   const [feeMode, setFeeMode]           = useState<"prompt" | "form" | "done">("prompt");
   const [feePayStatus, setFeePayStatus] = useState<"paid" | "pending">("paid");
   const [feeDueType, setFeeDueType]     = useState<"monthly" | "annual">("annual");
-  const [feeAmount, setFeeAmount]       = useState("");
-  const [feeMethod, setFeeMethod]       = useState("cash");
+  const [feeAmount, setFeeAmount]       = useState("");       // used for pending dues only
   const [feeReceipt, setFeeReceipt]     = useState("");
   const [feePeriodStart, setFeePeriodStart] = useState("");
   const [feePeriodEnd, setFeePeriodEnd]     = useState("");
   const [feeCategoryId, setFeeCategoryId]   = useState("");
   const [feeCategories, setFeeCategories]   = useState<FeeCategory[]>([]);
   const [feeSaving, setFeeSaving]       = useState(false);
+  const [breakdown, setBreakdown]       = useState<PaymentLine[]>([{ method: "cash", amount: "" }]);
 
   const FEE_METHODS = [
     { value: "cash",         label: "Cash" },
     { value: "cheque",       label: "Cheque" },
     { value: "bank_transfer",label: "Bank Transfer" },
-    { value: "online",       label: "Online / eSewa / Khalti" },
+    { value: "qr",           label: "QR Code" },
+    { value: "online",       label: "eSewa / Khalti / Online" },
   ];
+
+  const breakdownTotal = breakdown.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+
+  function addLine()             { setBreakdown((p) => [...p, { method: "cash", amount: "" }]); }
+  function removeLine(i: number) { setBreakdown((p) => p.filter((_, idx) => idx !== i)); }
+  function setLine(i: number, field: keyof PaymentLine, val: string) {
+    setBreakdown((p) => p.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+  }
 
   const currentYear = new Date().getFullYear();
   const YEARS = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i);
@@ -97,6 +123,19 @@ export default function ApplicationsPage() {
     setConfirmReject(false);
     setConfirmReopen(false);
     setConfirmDeleteId(null);
+    setAcceptIncludeFee(false);
+  }
+
+  function getDefaultPeriod(type: "monthly" | "annual"): { start: string; end: string } {
+    const now = new Date();
+    const year = now.getFullYear();
+    if (type === "annual") {
+      return { start: `${year}-01-01`, end: `${year}-12-31` };
+    }
+    const month = now.getMonth();
+    const start = new Date(year, month, 1);
+    const end   = new Date(year, month + 1, 0);
+    return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
   }
 
   useEffect(() => {
@@ -121,11 +160,12 @@ export default function ApplicationsPage() {
     setFeePayStatus("paid");
     setFeeDueType("annual");
     setFeeAmount("");
-    setFeeMethod("cash");
     setFeeReceipt("");
     setFeePeriodStart("");
     setFeePeriodEnd("");
     setFeeCategoryId("");
+    setBreakdown([{ method: "cash", amount: "" }]);
+    setAcceptIncludeFee(false);
   }, [selected?.id]);
 
   function selectApp(app: Application) {
@@ -164,6 +204,56 @@ export default function ApplicationsPage() {
     setApplications((prev) => prev.map((a) => a.id === selected.id ? updated : a));
     setSelected(updated);
     showToast("Application accepted — member profile created!", true);
+  }
+
+  async function acceptAndRecordFee() {
+    if (!selected || working) return;
+    setWorking(true); setConfirmAccept(false);
+
+    // Step 1 — accept application & create member
+    const res  = await fetch(`/api/membership-applications/${selected.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "accepted" }),
+    });
+    const json = await res.json() as { success: boolean; error?: string; memberId?: string };
+    if (!json.success) { setWorking(false); showToast(json.error ?? "Failed to accept", false); return; }
+
+    const memberId = json.memberId ?? null;
+    const updated  = { ...selected, status: "accepted", memberId };
+    setApplications((prev) => prev.map((a) => a.id === selected.id ? updated : a));
+    setSelected(updated);
+
+    // Step 2 — record fee if opted in
+    if (acceptIncludeFee && memberId) {
+      const { start, end } = getDefaultPeriod(feeDueType);
+      const lines = breakdown.filter((l) => parseFloat(l.amount) > 0).map((l) => ({ method: l.method, amount: parseFloat(l.amount) }));
+      const pendingAmt = parseFloat(feeAmount) || 0;
+      if (lines.length > 0 || pendingAmt > 0) {
+        await fetch("/api/membership/dues", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            memberId,
+            memberCategoryId:  feeCategoryId || undefined,
+            type:              feeDueType,
+            periodStart:       feePeriodStart || start,
+            periodEnd:         feePeriodEnd   || end,
+            status:            feePayStatus,
+            receiptNumber:     feeReceipt || undefined,
+            ...(feePayStatus === "paid"
+              ? { paymentBreakdown: lines }
+              : { amount: pendingAmt, method: "pending" }),
+          }),
+        });
+        setFeeMode("done");
+        showToast("Accepted & fee recorded!", true);
+      } else {
+        showToast("Application accepted — member profile created!", true);
+      }
+    } else {
+      showToast("Application accepted — member profile created!", true);
+    }
+    setWorking(false);
   }
 
   async function rejectApplication() {
@@ -246,23 +336,32 @@ export default function ApplicationsPage() {
 
   async function saveFeePayment() {
     if (!selected?.memberId || feeSaving) return;
-    if (!feeAmount || !feePeriodStart || !feePeriodEnd) {
-      showToast("Please fill in amount and period.", false); return;
+    if (!feePeriodStart || !feePeriodEnd) {
+      showToast("Please select the fee period.", false); return;
+    }
+    const lines      = breakdown.filter((l) => parseFloat(l.amount) > 0).map((l) => ({ method: l.method, amount: parseFloat(l.amount) }));
+    const pendingAmt = parseFloat(feeAmount) || 0;
+    if (feePayStatus === "paid" && lines.length === 0) {
+      showToast("Please enter at least one payment amount.", false); return;
+    }
+    if (feePayStatus === "pending" && pendingAmt <= 0) {
+      showToast("Please enter the due amount.", false); return;
     }
     setFeeSaving(true);
     const res = await fetch("/api/membership/dues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        memberId:        selected.memberId,
+        memberId:         selected.memberId,
         memberCategoryId: feeCategoryId || undefined,
-        type:            feeDueType,
-        amount:          parseFloat(feeAmount),
-        periodStart:     feePeriodStart,
-        periodEnd:       feePeriodEnd,
-        method:          feePayStatus === "paid" ? feeMethod : "pending",
-        status:          feePayStatus,
-        receiptNumber:   feeReceipt || undefined,
+        type:             feeDueType,
+        periodStart:      feePeriodStart,
+        periodEnd:        feePeriodEnd,
+        status:           feePayStatus,
+        receiptNumber:    feeReceipt || undefined,
+        ...(feePayStatus === "paid"
+          ? { paymentBreakdown: lines }
+          : { amount: pendingAmt, method: "pending" }),
       }),
     });
     const json = await res.json() as { success: boolean; error?: string };
@@ -323,13 +422,23 @@ export default function ApplicationsPage() {
     const StatusIcon = STATUS_ICON[selected.status] ?? Clock;
     const cfg = STATUS_CONFIG[selected.status] ?? STATUS_CONFIG.pending;
 
+    const permAddr = [selected.permWard, selected.permTole, selected.permMunicipality, selected.permDistrict, selected.permProvince].filter(Boolean).join(", ");
+    const tempAddr = [selected.tempWard, selected.tempTole, selected.tempMunicipality, selected.tempDistrict, selected.tempProvince].filter(Boolean).join(", ");
+
     const fields: { icon: React.ElementType; label: string; value: string }[] = [
-      { icon: User,   label: "Owner",    value: selected.ownerName },
-      { icon: Phone,  label: "Phone",    value: selected.phone },
-      { icon: Mail,   label: "Email",    value: selected.email },
-      { icon: MapPin, label: "Location", value: selected.location },
-      { icon: Users,  label: "Capacity", value: selected.capacity ?? "—" },
-      { icon: Globe,  label: "Website",  value: selected.website ?? "—" },
+      { icon: User,        label: "Owner / फर्मधनी",          value: selected.ownerName },
+      { icon: Phone,       label: "Phone / फोन",              value: selected.phone },
+      { icon: Mail,        label: "Email / इमेल",             value: selected.email },
+      { icon: MapPin,      label: "Location / ठेगाना",        value: selected.location },
+      { icon: Users,       label: "Capacity / क्षमता",        value: selected.capacity ?? "—" },
+      { icon: Globe,       label: "Website / वेबसाइट",        value: selected.website ?? "—" },
+      { icon: Building2,   label: "Firm Reg. No. / फर्म दर्ता नं.", value: selected.firmRegNo ?? "—" },
+      { icon: ClipboardList, label: "Firm Type / फर्मको किसिम", value: selected.firmType ?? "—" },
+      { icon: User,        label: "Father / पिताको नाम",      value: selected.fatherName ?? "—" },
+      { icon: User,        label: "Grandfather / बाजेको नाम", value: selected.grandfatherName ?? "—" },
+      { icon: User,        label: "Spouse / पति/पत्नी",       value: selected.spouseName ?? "—" },
+      { icon: MapPin,      label: "Permanent Address / स्थायी ठेगाना", value: permAddr || "—" },
+      { icon: MapPin,      label: "Temporary Address / अस्थायी ठेगाना", value: tempAddr || "—" },
     ];
 
     return (
@@ -356,22 +465,8 @@ export default function ApplicationsPage() {
           </div>
         </div>
 
-        {/* Fields */}
-        <div className="space-y-3 mb-5">
-          {fields.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="flex items-start gap-3">
-              <div className="w-7 h-7 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center flex-shrink-0">
-                <Icon size={13} className="text-gray-400" />
-              </div>
-              <div className="min-w-0 pt-0.5">
-                <div className="text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">{label}</div>
-                <div className="text-sm text-gray-700 font-medium break-all">{value}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-t border-gray-100 pt-4 space-y-2.5">
+        {/* Action buttons — shown first for quick access */}
+        <div className="border-b border-gray-100 pb-4 mb-4 space-y-2.5">
 
           {/* ── ACCEPTED ─── */}
           {selected.status === "accepted" && (
@@ -505,36 +600,58 @@ export default function ApplicationsPage() {
                     </div>
                   </div>
 
-                  {/* Amount */}
-                  <div>
-                    <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Amount (Rs)</label>
-                    <input type="number" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)}
-                      placeholder="0"
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30" />
-                  </div>
+                  {/* Payment breakdown (paid) or expected amount (pending) */}
+                  {feePayStatus === "paid" ? (
+                    <div>
+                      <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1.5">Payment breakdown</label>
+                      <div className="space-y-1.5">
+                        {breakdown.map((line, i) => (
+                          <div key={i} className="flex gap-1.5 items-center">
+                            <select value={line.method} onChange={(e) => setLine(i, "method", e.target.value)}
+                              className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30 flex-shrink-0">
+                              {FEE_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </select>
+                            <input type="number" value={line.amount} onChange={(e) => setLine(i, "amount", e.target.value)}
+                              placeholder="Rs 0"
+                              className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30" />
+                            {breakdown.length > 1 && (
+                              <button type="button" onClick={() => removeLine(i)} className="text-gray-300 hover:text-red-400 flex-shrink-0"><X size={12} /></button>
+                            )}
+                          </div>
+                        ))}
+                        <button type="button" onClick={addLine}
+                          className="text-[11px] text-[#0a1040] hover:text-[#0d1550] font-medium flex items-center gap-1 mt-0.5">
+                          <PlusCircle size={11} /> Add payment line
+                        </button>
+                        {breakdownTotal > 0 && (
+                          <div className="text-[11px] font-semibold text-gray-700 text-right border-t border-gray-100 pt-1 mt-1">
+                            Total: Rs {breakdownTotal.toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Expected amount (Rs)</label>
+                      <input type="number" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)}
+                        placeholder="0"
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30" />
+                    </div>
+                  )}
 
-                  {/* Method + receipt (paid only) */}
+                  {/* Receipt (paid only) */}
                   {feePayStatus === "paid" && (
-                    <>
-                      <div>
-                        <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Payment method</label>
-                        <select value={feeMethod} onChange={(e) => setFeeMethod(e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30">
-                          {FEE_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                        </select>
+                    <div>
+                      <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">
+                        Receipt no. <span className="normal-case text-gray-300">(optional)</span>
+                      </label>
+                      <div className="relative">
+                        <Receipt size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
+                        <input type="text" value={feeReceipt} onChange={(e) => setFeeReceipt(e.target.value)}
+                          placeholder="e.g. REC-001"
+                          className="w-full pl-8 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30" />
                       </div>
-                      <div>
-                        <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">
-                          Receipt no. <span className="normal-case text-gray-300">(optional)</span>
-                        </label>
-                        <div className="relative">
-                          <Receipt size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-                          <input type="text" value={feeReceipt} onChange={(e) => setFeeReceipt(e.target.value)}
-                            placeholder="e.g. REC-001"
-                            className="w-full pl-8 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#0a1040]/30" />
-                        </div>
-                      </div>
-                    </>
+                    </div>
                   )}
 
                   <button onClick={saveFeePayment} disabled={feeSaving}
@@ -599,19 +716,107 @@ export default function ApplicationsPage() {
               )}
 
               {confirmAccept ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                  <div className="flex items-center gap-1.5 text-emerald-800 font-semibold text-xs mb-2">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-1.5 text-emerald-800 font-semibold text-xs">
                     <UserPlus size={12} /> Accept this application?
                   </div>
-                  <ul className="text-xs text-emerald-700 space-y-1 mb-3 list-disc list-inside">
-                    <li>Member profile created for <strong>{selected.venueName}</strong></li>
-                    <li>Added to the member directory</li>
-                    <li>You can complete their profile afterwards</li>
-                  </ul>
+
+                  {/* Inline fee section */}
+                  <div className="bg-white border border-emerald-200 rounded-xl p-3 space-y-2.5">
+                    <p className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                      <Banknote size={12} className="text-emerald-600" /> Membership fee
+                    </p>
+
+                    {feeCategories.length > 0 ? (
+                      <select value={feeCategoryId} onChange={(e) => {
+                        const id = e.target.value;
+                        setFeeCategoryId(id);
+                        const cat = feeCategories.find((c) => c.id === id);
+                        if (cat) setFeeAmount(feeDueType === "monthly" ? cat.monthlyFee : cat.annualRenewalFee);
+                        setAcceptIncludeFee(!!id);
+                      }} className="w-full border border-gray-200 rounded-lg px-2 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400 bg-white">
+                        <option value="">No fee — skip for now</option>
+                        {feeCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    ) : (
+                      <p className="text-[11px] text-gray-400">No fee categories set up. You can add a due later from Financials.</p>
+                    )}
+
+                    {acceptIncludeFee && (
+                      <>
+                        <div className="flex gap-1.5">
+                          {(["monthly", "annual"] as const).map((t) => (
+                            <button key={t} type="button" onClick={() => {
+                              setFeeDueType(t);
+                              const cat = feeCategories.find((c) => c.id === feeCategoryId);
+                              if (cat) setFeeAmount(t === "monthly" ? cat.monthlyFee : cat.annualRenewalFee);
+                            }} className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors ${feeDueType === t ? "bg-[#0a1040] text-white border-[#0a1040]" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}>
+                              {t === "monthly" ? "Monthly" : "Annual"}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-1.5">
+                          {(["paid", "pending"] as const).map((m) => (
+                            <button key={m} type="button" onClick={() => setFeePayStatus(m)}
+                              className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                                feePayStatus === m
+                                  ? m === "paid" ? "bg-emerald-600 text-white border-emerald-600" : "bg-amber-500 text-white border-amber-500"
+                                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                              }`}>
+                              {m === "paid" ? "✓ Already paid" : "⏳ Pending due"}
+                            </button>
+                          ))}
+                        </div>
+
+                        {feePayStatus === "paid" ? (
+                          <div className="space-y-1.5">
+                            <label className="block text-[10px] text-gray-400 uppercase tracking-wide">Payment breakdown</label>
+                            {breakdown.map((line, i) => (
+                              <div key={i} className="flex gap-1.5 items-center">
+                                <select value={line.method} onChange={(e) => setLine(i, "method", e.target.value)}
+                                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400 flex-shrink-0">
+                                  {FEE_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                </select>
+                                <input type="number" value={line.amount} onChange={(e) => setLine(i, "amount", e.target.value)}
+                                  placeholder="Rs 0"
+                                  className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+                                {breakdown.length > 1 && (
+                                  <button type="button" onClick={() => removeLine(i)} className="text-gray-300 hover:text-red-400 flex-shrink-0"><X size={12} /></button>
+                                )}
+                              </div>
+                            ))}
+                            <button type="button" onClick={addLine}
+                              className="text-[11px] text-emerald-700 hover:text-emerald-900 font-medium flex items-center gap-1">
+                              <PlusCircle size={11} /> Add payment line
+                            </button>
+                            {breakdownTotal > 0 && (
+                              <div className="text-[11px] font-semibold text-gray-700 text-right">
+                                Total: Rs {breakdownTotal.toLocaleString()}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-[10px] text-gray-400 uppercase tracking-wide mb-1">Expected amount (Rs)</label>
+                            <input type="number" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)}
+                              placeholder="0"
+                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400" />
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   <div className="flex gap-2">
-                    <button onClick={acceptApplication} disabled={working}
+                    <button onClick={acceptAndRecordFee} disabled={working}
                       className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-                      {working ? "Creating…" : <><CheckCircle size={11} /> Yes, Accept &amp; Create Member</>}
+                      {working
+                        ? "Creating…"
+                        : acceptIncludeFee
+                          ? <><CheckCircle size={11} /> Accept &amp; Record Fee</>
+                          : <><CheckCircle size={11} /> Accept (no fee)</>
+                      }
                     </button>
                     <button onClick={() => setConfirmAccept(false)}
                       className="px-3 py-2.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -679,6 +884,16 @@ export default function ApplicationsPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* Application details — compact 2-col grid */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+          {fields.map(({ label, value }) => (
+            <div key={label} className="min-w-0">
+              <div className="text-[9px] text-gray-400 uppercase tracking-wide leading-none mb-0.5 truncate">{label}</div>
+              <div className="text-xs text-gray-700 font-medium break-all leading-tight">{value}</div>
+            </div>
+          ))}
         </div>
       </>
     );
