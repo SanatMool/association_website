@@ -718,6 +718,42 @@ platform panel — this capability didn't exist at all before (no DELETE route, 
 
 ---
 
+## Feature — Reset Data (per-module, platform panel) ✓ COMPLETE (2026-08-28)
+
+Follow-up to Delete Association — user wanted a lighter-weight option: clear specific *content*
+(events, news, members, dues, etc.) from an association per their own selection, while keeping the
+association itself, its domain/branding/settings, and admin logins intact. Built alongside Delete
+Association on the same platform detail page ("Reset Data" section, amber, vs. "Danger Zone" red).
+
+- **`POST /api/platform/associations/[id]/reset`**: takes `{ modules: string[], confirmSlug }` — same
+  server-side slug-match confirmation as Delete Association. 12 independently-selectable modules:
+  Members, Applications, Events, News, Committee, Timeline, Meetings, Tasks, Dues & Payments,
+  Financial Ledger, Activity Log, Portal Accounts. Deliberately excludes Designations/Settings/
+  AdminUsers — those are configuration/access, not content, and clearing them would risk locking the
+  admin out of their own account.
+- **`members` module is the tricky one** — `Member` is never deleted directly (shared multi-tenant
+  entity, same rule as Delete Association). It unlinks `MemberAssociation` for this association, then
+  deletes any `Member` row left with **zero remaining references anywhere** — checked across
+  `MemberAssociation`, `CommitteeMember.memberId`, and `MembershipApplication.memberId` (the only two
+  non-cascading FKs to Member, per the cascade map in [[database-patterns]]). A member still linked to
+  another association, or still referenced by a `CommitteeMember`/`MembershipApplication` row the admin
+  chose NOT to clear this run, survives untouched. This handler always runs **last** among selected
+  modules in execution order, so it naturally sees the post-deletion state of everything else picked
+  in the same request.
+- **`financial` module ordering**: `JournalEntry`/`Expense` reference `FinancialAccount`/
+  `ExpenseVendor` without a cascade, so those go first, then `FinancialYear`/`FinancialAccount`.
+- **Verified end-to-end** on a second disposable test association (never a real one): (1) selective
+  test — reset only `news`+`activity`, confirmed those went to zero while `TimelineEntry`, `AdminUser`,
+  and `SiteSettings` were completely untouched; (2) the members orphan-safety test — created one
+  "orphan" member (no other references) and one "referenced" member (linked to a `CommitteeMember` row
+  deliberately NOT selected for clearing), ran `members`-only reset, confirmed the orphan was fully
+  deleted, the referenced member survived, and the kept `CommitteeMember` row was untouched. Cleaned up
+  all test data afterward (deleted the test association + the one orphan-safety Member row that Delete
+  Association doesn't touch by design) — final state confirmed as only the 3 real associations, zero
+  leftover test rows anywhere.
+
+---
+
 ## Fix — Admin sidebar showed wrong association's branding ✓ COMPLETE (2026-08-28)
 
 Found by user testing locally: logged into `namoAdmin` (Namo Udyam), sidebar showed EVA Nepal's logo

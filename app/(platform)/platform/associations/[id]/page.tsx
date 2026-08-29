@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle, XCircle, Users, Calendar, Newspaper, Award, Clock, ExternalLink, Pencil } from "lucide-react";
 import AiQuotaManager from "./AiQuotaManager";
 import DeleteAssociationButton from "./DeleteAssociationButton";
+import ResetDataButton from "./ResetDataButton";
 import PanelCard from "@/components/ui/panel/PanelCard";
 import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
 import Badge from "@/components/ui/panel/Badge";
@@ -220,7 +221,8 @@ export default async function AssociationDetailPage({ params }: Props) {
         </PanelTable>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 space-y-4">
+        <ResetDataButton associationId={association.id} associationSlug={association.slug} />
         <DeleteAssociationButton
           associationId={association.id}
           associationName={association.name}
