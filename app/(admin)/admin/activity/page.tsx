@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Activity, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableRow } from "@/components/ui/panel/PanelTable";
 
 interface LogRow {
   id: string;
@@ -99,7 +101,7 @@ export default function ActivityPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="bg-white border border-gray-100 rounded-xl p-4 mb-4 flex flex-wrap items-center gap-3">
+      <PanelCard className="p-4 mb-4 flex flex-wrap items-center gap-3" hover={false}>
         <Filter size={14} className="text-gray-400 flex-shrink-0" />
         <select
           value={entityType}
@@ -137,10 +139,10 @@ export default function ActivityPage() {
             Clear filters
           </button>
         )}
-      </div>
+      </PanelCard>
 
       {/* Log table */}
-      <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+      <PanelTable>
         {loading ? (
           <div className="py-16 text-center">
             <div className="w-6 h-6 border-2 border-[#0a1040] border-t-transparent rounded-full animate-spin mx-auto" />
@@ -165,8 +167,8 @@ export default function ActivityPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
+                  {logs.map((log, i) => (
+                    <PanelTableRow key={log.id} index={i}>
                       <td className="px-4 py-3">
                         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${actionColor(log.action)}`}>
                           {actionLabel(log.action)}
@@ -182,7 +184,7 @@ export default function ActivityPage() {
                       </td>
                       <td className="px-4 py-3 text-gray-600 text-sm">{log.adminName ?? <span className="text-gray-300 italic">system</span>}</td>
                       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDT(log.createdAt)}</td>
-                    </tr>
+                    </PanelTableRow>
                   ))}
                 </tbody>
               </table>
@@ -230,7 +232,7 @@ export default function ActivityPage() {
             )}
           </>
         )}
-      </div>
+      </PanelTable>
     </div>
   );
 }

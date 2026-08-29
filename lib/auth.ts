@@ -33,6 +33,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          systemRole: user.systemRole,
           associationId: user.associationId ?? null,
           associationSlug: user.association?.slug ?? null,
           associationDomain: user.association?.domain ?? null,
@@ -45,6 +46,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+        token.systemRole = (user as { systemRole?: string }).systemRole ?? "admin";
         token.associationId = (user as { associationId?: string | null }).associationId ?? null;
         token.associationSlug = (user as { associationSlug?: string | null }).associationSlug ?? null;
         token.associationDomain = (user as { associationDomain?: string | null }).associationDomain ?? null;
@@ -56,11 +58,13 @@ export const authOptions: NextAuthOptions = {
         const u = session.user as {
           id?: string;
           role?: string;
+          systemRole?: string;
           associationId?: string | null;
           associationSlug?: string | null;
         };
         u.id = token.id as string;
         u.role = token.role as string;
+        u.systemRole = (token.systemRole as string | undefined) ?? "admin";
         u.associationId = token.associationId as string | null;
         u.associationSlug = token.associationSlug as string | null;
       }

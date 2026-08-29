@@ -8,6 +8,7 @@ import {
   ArrowUpRight, ExternalLink,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { autoArchivePastEvents } from "@/lib/eventStatus";
 import DescriptionSection from "./DescriptionSection";
 import TicketSection from "./TicketSection";
 
@@ -52,6 +53,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default async function EventDetailPage({ params }: Props) {
   const association = await getAssociationOrThrow();
+  await autoArchivePastEvents(association.id);
   const event = await prisma.event.findFirst({
     where: { slug: params.slug, associationId: association.id },
     include: {

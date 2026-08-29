@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { journalForDues } from "@/lib/autoJournal";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const ctx = await getAdminContext();
@@ -48,6 +49,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       memberCategory: { select: { id: true, name: true } },
     },
   });
+
+  // Auto-journal when payment is collected
+  if ((autoStatus === "paid" || autoStatus === "partial") && (derivedPaid ?? 0) > 0) {
+    const prevStatus = existing.status;
+    if (prevStatus !== "paid" && prevStatus !== "partial") {
+      journalForDues({
+        associationId: ctx.associationId,
+        duesId:        params.id,
+        description:   `Dues payment — ${payment.member.name}`,
+        amount:        Number(payment.amount),
+        method:        payment.method,
+        receiptNumber: payment.receiptNumber,
+        date:          payment.paidAt ?? new Date(),
+        adminId:       (ctx.session.user as { id?: string }).id ?? null,
+      });
+    }
+  }
 
   return NextResponse.json({ success: true, data: payment });
 }

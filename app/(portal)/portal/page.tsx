@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Users2, CreditCard, Clock } from "lucide-react";
+import { Calendar, Users2, CreditCard, Clock, UserCheck } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import StatCard from "@/components/ui/panel/StatCard";
+import PanelCard from "@/components/ui/panel/PanelCard";
 
 interface PortalData {
   user: { name: string; email: string };
   member: { name: string; area: string; image: string | null };
   association: { name: string; logo: string | null };
 }
-interface Meeting { id: string; title: string; type: string; scheduledAt: string; venue: string | null; status: string; agendaItems: { title: string }[] }
+interface Meeting { id: string; title: string; type: string; scheduledAt: string; venue: string | null; status: string; attended: boolean; agendaItems: { title: string }[] }
 interface Event   { id: string; title: string; date: string; location: string; type: string; status: string }
 interface Payment { status: string; amount: string }
 
@@ -36,9 +38,11 @@ export default function PortalHomePage() {
     });
   }, []);
 
-  const nextMeeting     = meetings.find((m) => m.status === "scheduled");
-  const upcomingEvents  = events.filter((e) => e.status === "upcoming").slice(0, 3);
-  const pendingDues     = dues.filter((d) => d.status === "pending").length;
+  const nextMeeting      = meetings.find((m) => m.status === "scheduled");
+  const upcomingEvents   = events.filter((e) => e.status === "upcoming").slice(0, 3);
+  const pendingDues      = dues.filter((d) => d.status === "pending").length;
+  const attendedCount    = meetings.filter((m) => m.attended).length;
+  const totalMeetings    = meetings.filter((m) => m.status !== "scheduled").length;
 
   return (
     <div>
@@ -48,30 +52,29 @@ export default function PortalHomePage() {
       </div>
 
       {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        <Link href="/portal/meetings" className="bg-white rounded-xl border border-gray-100 p-4 hover:border-indigo-200 transition-colors">
-          <Users2 size={18} className="text-indigo-600 mb-2" />
-          <div className="text-xl font-bold text-gray-900">{meetings.filter((m) => m.status === "scheduled").length}</div>
-          <div className="text-xs text-gray-400">Upcoming Meetings</div>
-        </Link>
-        <Link href="/portal/events" className="bg-white rounded-xl border border-gray-100 p-4 hover:border-indigo-200 transition-colors">
-          <Calendar size={18} className="text-green-600 mb-2" />
-          <div className="text-xl font-bold text-gray-900">{upcomingEvents.length}</div>
-          <div className="text-xs text-gray-400">Upcoming Events</div>
-        </Link>
-        <Link href="/portal/dues" className="bg-white rounded-xl border border-gray-100 p-4 hover:border-indigo-200 transition-colors">
-          <CreditCard size={18} className="text-amber-600 mb-2" />
-          <div className="text-xl font-bold text-gray-900">{pendingDues}</div>
-          <div className="text-xs text-gray-400">Pending Dues</div>
-        </Link>
+      <div className="relative bg-mesh-navy rounded-3xl p-5 sm:p-6 mb-8 overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
+          <Link href="/portal/meetings">
+            <StatCard label="Upcoming Meetings" value={meetings.filter((m) => m.status === "scheduled").length} icon={Users2} accent="gold" />
+          </Link>
+          <Link href="/portal/meetings">
+            <StatCard label="Meetings Attended" value={attendedCount} sublabel={totalMeetings > 0 ? `of ${totalMeetings}` : undefined} icon={UserCheck} accent="gold" />
+          </Link>
+          <Link href="/portal/events">
+            <StatCard label="Upcoming Events" value={upcomingEvents.length} icon={Calendar} accent="gold" />
+          </Link>
+          <Link href="/portal/dues">
+            <StatCard label="Pending Dues" value={pendingDues} icon={CreditCard} accent="gold" />
+          </Link>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Next meeting */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <PanelCard className="overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Next Meeting</h2>
-            <Link href="/portal/meetings" className="text-xs text-indigo-600 hover:text-indigo-700">View all →</Link>
+            <Link href="/portal/meetings" className="text-xs text-amber-600 hover:text-amber-700">View all →</Link>
           </div>
           {nextMeeting ? (
             <div className="p-5">
@@ -100,13 +103,13 @@ export default function PortalHomePage() {
           ) : (
             <div className="p-5 text-center text-gray-400 text-sm py-10"><Clock size={20} className="mx-auto mb-2 opacity-30" />No upcoming meetings</div>
           )}
-        </div>
+        </PanelCard>
 
         {/* Upcoming events */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <PanelCard className="overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Upcoming Events</h2>
-            <Link href="/portal/events" className="text-xs text-indigo-600 hover:text-indigo-700">View all →</Link>
+            <Link href="/portal/events" className="text-xs text-amber-600 hover:text-amber-700">View all →</Link>
           </div>
           {upcomingEvents.length === 0 ? (
             <div className="p-5 text-center text-gray-400 text-sm py-10"><Calendar size={20} className="mx-auto mb-2 opacity-30" />No upcoming events</div>
@@ -123,7 +126,7 @@ export default function PortalHomePage() {
               ))}
             </div>
           )}
-        </div>
+        </PanelCard>
       </div>
     </div>
   );

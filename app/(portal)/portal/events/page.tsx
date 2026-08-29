@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Calendar, CheckCircle, Users, ChevronDown } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 interface Rsvp  { id: string; status: string; guestCount: number; note: string | null }
 interface Event { id: string; title: string; date: string; endDate: string | null; location: string; type: string; status: string; description: string; _count: { rsvps: number }; rsvps: Rsvp[] }
@@ -108,14 +110,14 @@ export default function PortalEventsPage() {
         <p className="text-sm text-gray-400 mt-0.5">RSVP to upcoming events and view past ones.</p>
       </div>
 
-      {events.length === 0 && <div className="text-center py-16 text-gray-400 text-sm">No events found.</div>}
+      {events.length === 0 && <EmptyState icon={Calendar} title="No events found." />}
 
       {upcoming.length > 0 && (
         <div className="mb-8">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Upcoming</h2>
           <div className="space-y-3">
             {upcoming.map((ev) => (
-              <div key={ev.id} className="bg-white rounded-xl border border-gray-100 p-5">
+              <PanelCard key={ev.id} className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="font-semibold text-gray-900">{ev.title}</h3>
@@ -125,7 +127,7 @@ export default function PortalEventsPage() {
                   <div className="p-2 bg-green-50 rounded-lg flex-shrink-0"><Calendar size={16} className="text-green-600" /></div>
                 </div>
                 <RsvpPanel ev={ev} />
-              </div>
+              </PanelCard>
             ))}
           </div>
         </div>
@@ -136,7 +138,7 @@ export default function PortalEventsPage() {
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Past</h2>
           <div className="space-y-2">
             {past.map((ev) => (
-              <div key={ev.id} className="bg-white rounded-xl border border-gray-100 p-4 opacity-70">
+              <PanelCard key={ev.id} className="p-4 opacity-70">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="font-medium text-sm text-gray-700">{ev.title}</span>
@@ -144,7 +146,7 @@ export default function PortalEventsPage() {
                   </div>
                   <span className="text-xs text-gray-400 flex items-center gap-1"><Users size={11} />{ev._count.rsvps}</span>
                 </div>
-              </div>
+              </PanelCard>
             ))}
           </div>
         </div>

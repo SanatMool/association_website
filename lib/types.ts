@@ -10,7 +10,9 @@ export interface MemberType {
   location?: string | null;
   area: string;
   capacity?: number | null;  // nullable — some associations don't track capacity
-  phone?: string | null;
+  phones?: string[];          // array of phone numbers (Phase B); shown only if showPhone=true
+  phone?: string | null;      // LEGACY — kept for backward compat; prefer phones
+  email?: string | null;      // shown only if showEmail=true
   website?: string | null;
   category?: string | null;
   type?: string | null;

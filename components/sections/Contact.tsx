@@ -19,14 +19,14 @@ interface ContactSettings {
 export default function Contact({ settings, name = "EVA Nepal" }: { settings?: ContactSettings; name?: string }) {
   const { t } = useLocale();
 
-  const phone   = settings?.phone   ?? "+977-1-XXXXXXX";
-  const email   = settings?.email   ?? "info@evanepal.org";
-  const address = settings?.address ?? "Maitidevi, Kathmandu, Nepal";
-  const hours   = settings?.hours   ?? "Sun–Fri: 10am – 5pm";
-  const mapUrl  = settings?.mapUrl  ?? "https://maps.google.com";
-  const facebook  = settings?.facebook  ?? "https://facebook.com";
-  const instagram = settings?.instagram ?? "https://instagram.com";
-  const youtube   = settings?.youtube   ?? "https://youtube.com";
+  const phone   = settings?.phone   || "+977-1-XXXXXXX";
+  const email   = settings?.email   || "info@example.org";
+  const address = settings?.address || "Kathmandu, Nepal";
+  const hours   = settings?.hours   || "Sun–Fri: 10am – 5pm";
+  const mapUrl  = settings?.mapUrl  || "https://maps.google.com";
+  const facebook  = settings?.facebook  || "https://facebook.com";
+  const instagram = settings?.instagram || "https://instagram.com";
+  const youtube   = settings?.youtube   || "https://youtube.com";
 
   const cards = [
     {

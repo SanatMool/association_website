@@ -33,7 +33,14 @@ export default function TicketSection({ eventId, ticketTypes }: { eventId: strin
     const res = await fetch(`/api/events/${eventId}/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketTypeId: selected, quantity: qty, ...form }),
+      body: JSON.stringify({
+        ticketTypeId: selected,
+        quantity: qty,
+        buyerName: form.name,
+        buyerEmail: form.email,
+        buyerPhone: form.phone,
+        notes: form.notes,
+      }),
     }).then((r) => r.json()) as { success?: boolean; error?: string };
     if (res.success) { setDone(true); }
     else setError(res.error ?? "Registration failed. Please try again.");

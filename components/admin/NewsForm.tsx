@@ -405,7 +405,7 @@ export default function NewsForm({ article }: Props) {
                 <input
                   value={form.title}
                   onChange={(e) => set("title", e.target.value)}
-                  placeholder="e.g. EVA Nepal Hosts Annual Member Summit 2081"
+                  placeholder="e.g. Association Hosts Annual Member Summit 2081"
                   className={inputCls}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">Shown as the main headline on the news card and article page.</p>
@@ -501,7 +501,7 @@ export default function NewsForm({ article }: Props) {
                   <input
                     value={aiKeywords}
                     onChange={(e) => setAiKeywords(e.target.value)}
-                    placeholder="e.g. annual meeting, 150 venues, training workshop, Kathmandu"
+                    placeholder="e.g. annual meeting, membership drive, training workshop, Kathmandu"
                     className="w-full px-3 py-2 border border-violet-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400"
                   />
                   <p className="text-[11px] text-violet-500 mt-1">The AI will weave these into the article naturally.</p>
@@ -597,7 +597,7 @@ export default function NewsForm({ article }: Props) {
                   <User size={13} className="text-gray-400" /> Author *
                 </label>
                 <input value={form.author} onChange={(e) => set("author", e.target.value)}
-                  placeholder="e.g. EVA Nepal Secretariat"
+                  placeholder="e.g. Association Secretariat"
                   className={inputCls} />
                 <p className="text-[11px] text-gray-400 mt-1">
                   Use &ldquo;EVA Nepal Secretariat&rdquo; for official communications.

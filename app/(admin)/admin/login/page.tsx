@@ -125,7 +125,7 @@ export default function LoginPage() {
             className="relative z-10 flex justify-center"
           >
             <Image
-              src={logoUrl ?? "/eva/evanepal2_transparent.png"}
+              src={logoUrl ?? "/default-logo.png"}
               alt={assocName}
               width={280}
               height={180}
@@ -216,7 +216,7 @@ export default function LoginPage() {
             {/* Mobile logo */}
             <div className="lg:hidden flex justify-center mb-8">
               <Image
-                src={logoUrl ?? "/eva/evanepal2_transparent.png"}
+                src={logoUrl ?? "/default-logo.png"}
                 alt={assocName}
                 width={180}
                 height={116}
@@ -266,7 +266,7 @@ export default function LoginPage() {
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          placeholder="admin@evanepal.org"
+                          placeholder="admin@example.com"
                           className="w-full pl-10 pr-3 py-3 rounded-xl text-sm text-white placeholder-white/20 transition-all focus:outline-none"
                           style={{
                             background: "rgba(255,255,255,0.06)",

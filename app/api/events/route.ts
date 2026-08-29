@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { logActivity } from "@/lib/activityLogger";
+import { hasPermission } from "@/lib/permissions";
+import { autoArchivePastEvents } from "@/lib/eventStatus";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
   const associationId = ctx?.associationId ?? null;
+  await autoArchivePastEvents(associationId);
 
   const events = await prisma.event.findMany({
     where: { associationId },
@@ -17,6 +20,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(ctx, "events.manage")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { publishTime, ...data } = await req.json();
   void publishTime;

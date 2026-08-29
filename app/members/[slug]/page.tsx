@@ -37,14 +37,38 @@ export default async function MemberProfilePage({ params }: Props) {
   const association = await getAssociationOrThrow();
 
   // Verify the member belongs to this association and is visible
-  const member = await prisma.member.findFirst({
+  const memberWithLink = await prisma.member.findFirst({
     where: {
       slug: params.slug,
       associations: { some: { associationId: association.id, visible: true } },
     },
+    include: {
+      associations: {
+        where: { associationId: association.id },
+        select: { showPhone: true, showEmail: true },
+      },
+    },
   });
 
-  if (!member) notFound();
+  if (!memberWithLink) notFound();
+
+  const assocLink = memberWithLink.associations[0];
+  const showPhone = assocLink?.showPhone ?? false;
+  const showEmail = assocLink?.showEmail ?? false;
+
+  // Resolve phones: phones[] array first, fall back to legacy phone string
+  const phones = memberWithLink.phones.length > 0
+    ? memberWithLink.phones
+    : (memberWithLink.phone ? memberWithLink.phone.split(",").map((p) => p.trim()).filter(Boolean) : []);
+
+  const member = {
+    ...memberWithLink,
+    // Apply visibility rules
+    phones: showPhone ? phones : [],
+    email: showEmail ? memberWithLink.email : null,
+  };
+
+  // notFound is called above after memberWithLink check
 
   const relatedMembers = await prisma.member.findMany({
     where: {
@@ -120,7 +144,7 @@ export default async function MemberProfilePage({ params }: Props) {
                       Up to {member.capacity.toLocaleString()} guests
                     </div>
                   )}
-                  {member.phone && member.phone.split(",").map((p) => p.trim()).filter(Boolean).map((p, i) => (
+                  {member.phones.map((p, i) => (
                     <div key={i} className="flex items-center gap-3 text-sm text-slate-600">
                       <Phone size={15} className="text-gold-500 flex-shrink-0" />
                       <a href={`tel:${p}`} className="hover:text-navy-700">{p}</a>
@@ -169,8 +193,8 @@ export default async function MemberProfilePage({ params }: Props) {
                 </div>
 
                 <div className="mt-6 pt-5 border-t border-slate-100">
-                  {member.phone && (
-                    <a href={`tel:${member.phone.split(",")[0].trim()}`} className="block w-full bg-navy-900 hover:bg-navy-800 text-white font-semibold py-3 rounded-xl text-sm text-center transition-colors mb-2">
+                  {member.phones.length > 0 && (
+                    <a href={`tel:${member.phones[0]}`} className="block w-full bg-navy-900 hover:bg-navy-800 text-white font-semibold py-3 rounded-xl text-sm text-center transition-colors mb-2">
                       Call Now
                     </a>
                   )}
@@ -238,7 +262,7 @@ export default async function MemberProfilePage({ params }: Props) {
                   { label: "Area", value: member.area },
                   member.location ? { label: "Full Address", value: member.location } : null,
                   member.memberSince ? { label: "Member Since", value: member.memberSince } : null,
-                  member.phone ? { label: "Contact", value: member.phone } : null,
+                  member.phones.length > 0 ? { label: "Contact", value: member.phones.join(", ") } : null,
                 ]
                   .filter((x): x is { label: string; value: string | null } => x !== null)
                   .map(({ label, value }) => (

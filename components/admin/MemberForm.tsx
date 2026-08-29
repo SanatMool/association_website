@@ -102,9 +102,13 @@ interface CategoryOption {
 type BillingOption = "pending" | "paid" | "none";
 
 type MemberExt = Member;
-interface Props { member?: MemberExt }
+interface Props {
+  member?: MemberExt;
+  showPhone?: boolean;  // from MemberAssociation — editable per-association visibility flag
+  showEmail?: boolean;
+}
 
-export default function MemberForm({ member }: Props) {
+export default function MemberForm({ member, showPhone: initialShowPhone = false, showEmail: initialShowEmail = false }: Props) {
   const router = useRouter();
   const [step,      setStep]      = useState(1);
   const [dir,       setDir]       = useState(1);
@@ -177,7 +181,15 @@ export default function MemberForm({ member }: Props) {
     tempProvince:     member?.tempProvince     ?? "",
   });
 
-  const [phones,      setPhones]      = useState<string[]>(parseMulti(member?.phone).length ? parseMulti(member?.phone) : [""]);
+  const [showPhone,   setShowPhone]   = useState(initialShowPhone);
+  const [showEmail,   setShowEmail]   = useState(initialShowEmail);
+
+  const [phones,      setPhones]      = useState<string[]>(() => {
+    // Use phones array if available, fall back to splitting legacy phone string
+    if (member?.phones && member.phones.length > 0) return member.phones;
+    const fromPhone = parseMulti(member?.phone);
+    return fromPhone.length ? fromPhone : [""];
+  });
   const [phoneErrors, setPhoneErrors] = useState<boolean[]>(phones.map(() => false));
   const [categories,  setCategories]  = useState<Set<string>>(new Set(parseMulti(member?.category)));
   const [types,       setTypes]       = useState<Set<string>>(new Set(parseMulti(member?.type)));
@@ -266,6 +278,7 @@ export default function MemberForm({ member }: Props) {
     if (err) { setError(err); return; }
     setSaving(true); setError("");
 
+    const validPhones = phones.filter((p) => p.trim());
     const body = {
       ...form,
       // Normalize to lowercase for consistent storage
@@ -274,7 +287,10 @@ export default function MemberForm({ member }: Props) {
       capacity:  form.capacity ? Number(form.capacity) : null,
       latitude:  form.latitude  ? parseFloat(form.latitude)  : null,
       longitude: form.longitude ? parseFloat(form.longitude) : null,
-      phone:     phones.filter((p) => p.trim()).join(", "),
+      phones:    validPhones,                    // new phones array
+      phone:     validPhones.join(", "),         // legacy field for backward compat
+      showPhone,
+      showEmail,
       category:  Array.from(categories).map(lc).join(", "),
       type:      Array.from(types).map(lc).join(", "),
       amenities: Array.from(amenities).map(lc),
@@ -410,7 +426,7 @@ export default function MemberForm({ member }: Props) {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Venue Name *</label>
-                <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Hotel Annapurna Banquet" required className={inputCls} />
+                <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Grand Palace Banquet" required className={inputCls} />
               </div>
 
               <div>
@@ -653,6 +669,30 @@ export default function MemberForm({ member }: Props) {
                     placeholder="www.venuename.com.np" className={`${inputCls} pl-9`} />
                 </div>
               </div>
+
+              {/* Public visibility toggles — only meaningful in edit mode */}
+              {member && (
+                <div className="pt-2 border-t border-gray-100">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">Public Visibility</p>
+                  <p className="text-[11px] text-gray-400 mb-3">Control what contact info appears on the public member profile.</p>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-amber-300 transition-colors">
+                      <input type="checkbox" checked={showPhone} onChange={(e) => setShowPhone(e.target.checked)} className="w-4 h-4 rounded" />
+                      <div>
+                        <div className="text-sm font-semibold text-gray-700">Show phone number publicly</div>
+                        <p className="text-[11px] text-gray-400">Visitors can see and call the phone number on the public profile</p>
+                      </div>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-amber-300 transition-colors">
+                      <input type="checkbox" checked={showEmail} onChange={(e) => setShowEmail(e.target.checked)} className="w-4 h-4 rounded" />
+                      <div>
+                        <div className="text-sm font-semibold text-gray-700">Show email address publicly</div>
+                        <p className="text-[11px] text-gray-400">Visitors can see the email address on the public profile</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* Social media */}
               <div className="pt-2 border-t border-gray-100">

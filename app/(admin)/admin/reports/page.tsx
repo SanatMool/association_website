@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp, CreditCard, Receipt, Users, Wallet, BarChart2,
-  ArrowUpRight, ArrowDownRight, CalendarDays, KeyRound,
+  ArrowUpRight, ArrowDownRight, CalendarDays, KeyRound, Ticket, Landmark,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -13,8 +13,10 @@ import { formatDate } from "@/lib/utils";
 interface Summary {
   totalDuesPaid: number; totalDuesPending: number;
   totalExpenses: number; totalContributions: number;
+  totalTicketRevenue: number;
   netBalance: number; totalMembers: number; activePortalAccounts: number;
 }
+interface TicketEvent { title: string; date: string; tickets: number; revenue: number }
 interface DuesMonth       { month: string; paid: number; pending: number }
 interface DuesCategory    { name: string; paid: number; pending: number; count: number }
 interface ExpenseMeeting  { title: string; scheduledAt: string; total: number }
@@ -22,6 +24,16 @@ interface ContribMember   { name: string; total: number }
 interface MeetingStat     { id: string; title: string; scheduledAt: string; type: string; status: string; attending: number }
 interface EventAttendance { id: string; title: string; date: string; attending: number }
 interface MemberMonth     { month: string; count: number }
+interface LedgerMonth     { month: string; income: number; expense: number }
+interface AccountBreakdown { name: string; total: number }
+interface LedgerData {
+  totalIncome: number; totalExpense: number; netBalance: number; openingBalance: number;
+  activeYear: { label: string; startDateAD: string; endDateAD: string } | null;
+  byMonth:          LedgerMonth[];
+  byIncomeAccount:  AccountBreakdown[];
+  byExpenseAccount: AccountBreakdown[];
+  entryCount: number;
+}
 
 interface ReportData {
   year: number | null;
@@ -34,9 +46,11 @@ interface ReportData {
   meetingStats: MeetingStat[];
   eventAttendance: EventAttendance[];
   membersByMonth: MemberMonth[];
+  ticketsByEvent: TicketEvent[];
+  ledger: LedgerData;
 }
 
-type Tab = "overview" | "finances" | "attendance" | "members";
+type Tab = "overview" | "finances" | "attendance" | "members" | "ledger";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -190,6 +204,7 @@ function Empty({ msg }: { msg: string }) {
 const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "overview",   label: "Overview",   icon: BarChart2 },
   { key: "finances",   label: "Finances",   icon: CreditCard },
+  { key: "ledger",     label: "Ledger",     icon: Landmark },
   { key: "attendance", label: "Attendance", icon: CalendarDays },
   { key: "members",    label: "Members",    icon: Users },
 ];
@@ -222,10 +237,13 @@ export default function ReportsPage() {
   const {
     summary, duesByMonth, duesByCategory, expensesByMeeting,
     contributionsByMember, meetingStats, eventAttendance, membersByMonth,
+    ticketsByEvent, ledger,
   } = data;
 
-  const maxCat  = Math.max(...duesByCategory.map((c) => c.paid + c.pending), 1);
+  const maxCat     = Math.max(...duesByCategory.map((c) => c.paid + c.pending), 1);
   const maxContrib = contributionsByMember[0]?.total ?? 1;
+  const maxLedgerInc = ledger.byIncomeAccount[0]?.total ?? 1;
+  const maxLedgerExp = ledger.byExpenseAccount[0]?.total ?? 1;
 
   const tabVariants = {
     initial: { opacity: 0, y: 6 },
@@ -336,8 +354,16 @@ export default function ReportsPage() {
               </div>
 
               {/* Secondary stat cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <StatCard icon={Users}    iconBg="bg-gray-100" label="Total Members"    value={String(summary.totalMembers)} />
+                <StatCard
+                  icon={Ticket}
+                  iconBg="bg-blue-50"
+                  label="Ticket Revenue"
+                  value={fmt(summary.totalTicketRevenue)}
+                  sub={`${ticketsByEvent.length} event${ticketsByEvent.length !== 1 ? "s" : ""} with sales`}
+                  subColor="text-blue-500"
+                />
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="p-1.5 bg-violet-50 rounded-lg"><KeyRound size={14} className="text-violet-600" /></div>
@@ -370,9 +396,10 @@ export default function ReportsPage() {
                 <SectionHeader title="Income vs Expenses" sub="All-time summary" />
                 <div className="px-5 py-4 space-y-3">
                   {([
-                    { label: "Dues Paid",      value: summary.totalDuesPaid,      color: "bg-green-500",  total: summary.totalDuesPaid + summary.totalContributions + summary.totalExpenses },
-                    { label: "Contributions",  value: summary.totalContributions, color: "bg-indigo-500", total: summary.totalDuesPaid + summary.totalContributions + summary.totalExpenses },
-                    { label: "Expenses",       value: summary.totalExpenses,      color: "bg-red-400",    total: summary.totalDuesPaid + summary.totalContributions + summary.totalExpenses },
+                    { label: "Dues Paid",       value: summary.totalDuesPaid,         color: "bg-green-500",  total: summary.totalDuesPaid + summary.totalContributions + summary.totalTicketRevenue + summary.totalExpenses },
+                    { label: "Ticket Revenue",  value: summary.totalTicketRevenue,    color: "bg-blue-500",   total: summary.totalDuesPaid + summary.totalContributions + summary.totalTicketRevenue + summary.totalExpenses },
+                    { label: "Contributions",   value: summary.totalContributions,    color: "bg-indigo-500", total: summary.totalDuesPaid + summary.totalContributions + summary.totalTicketRevenue + summary.totalExpenses },
+                    { label: "Expenses",        value: summary.totalExpenses,         color: "bg-red-400",    total: summary.totalDuesPaid + summary.totalContributions + summary.totalTicketRevenue + summary.totalExpenses },
                   ]).map(({ label, value, color, total }) => (
                     <div key={label}>
                       <div className="flex items-center justify-between text-xs mb-1">
@@ -395,6 +422,16 @@ export default function ReportsPage() {
           {/* ── FINANCES ──────────────────────────────────────────────────── */}
           {tab === "finances" && (
             <div className="space-y-6">
+              {/* Export row */}
+              <div className="flex items-center gap-3 justify-end">
+                <a
+                  href="/api/membership/dues/export"
+                  download
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  ↓ Export Dues CSV
+                </a>
+              </div>
               {/* Dues by month — vertical bar chart */}
               <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
                 <SectionHeader title="Dues by Period" sub="Paid vs pending per month (last 12 months)" />
@@ -482,6 +519,169 @@ export default function ReportsPage() {
                   )}
                 </div>
               </div>
+
+              {/* Ticket Sales by Event */}
+              <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                <SectionHeader title="Ticket Sales by Event" sub="Paid registrations only" />
+                {ticketsByEvent.length === 0 ? (
+                  <Empty msg="No ticket sales recorded." />
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-100">
+                      <tr>
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Event</th>
+                        <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Date</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Tickets</th>
+                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {ticketsByEvent.map((t) => (
+                        <tr key={t.title + t.date} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-medium text-gray-800">{t.title}</td>
+                          <td className="px-4 py-3 text-xs text-gray-400 hidden sm:table-cell">{formatDate(t.date)}</td>
+                          <td className="px-4 py-3 text-right text-sm text-gray-600">{t.tickets}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-blue-600">{fmt(t.revenue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t border-gray-100 bg-gray-50">
+                      <tr>
+                        <td className="px-4 py-2.5 text-xs font-semibold text-gray-500" colSpan={2}>Total</td>
+                        <td className="px-4 py-2.5 text-right text-xs font-semibold text-gray-600">
+                          {ticketsByEvent.reduce((s, t) => s + t.tickets, 0)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-xs font-bold text-blue-600">
+                          {fmt(summary.totalTicketRevenue)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── LEDGER ────────────────────────────────────────────────────── */}
+          {tab === "ledger" && (
+            <div className="space-y-6">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard
+                  icon={ArrowUpRight}
+                  iconBg="bg-green-50"
+                  label="Total Income"
+                  value={fmt(ledger.totalIncome)}
+                  sub={ledger.activeYear?.label ?? "All time"}
+                  subColor="text-gray-400"
+                />
+                <StatCard
+                  icon={ArrowDownRight}
+                  iconBg="bg-red-50"
+                  label="Total Expenses"
+                  value={fmt(ledger.totalExpense)}
+                  sub={`Opening: ${fmt(ledger.openingBalance)}`}
+                  subColor="text-gray-400"
+                />
+                <div className={`rounded-xl border p-4 col-span-2 ${ledger.netBalance >= 0 ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100"}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`p-1.5 rounded-lg ${ledger.netBalance >= 0 ? "bg-green-100" : "bg-red-100"}`}>
+                      <Landmark size={14} className={ledger.netBalance >= 0 ? "text-green-600" : "text-red-500"} />
+                    </div>
+                    <span className="text-xs text-gray-500">Ledger Net Balance</span>
+                    {ledger.activeYear && (
+                      <span className="ml-auto text-[11px] text-gray-400 bg-white/60 px-2 py-0.5 rounded-full">
+                        {ledger.activeYear.label} · {ledger.entryCount} entries
+                      </span>
+                    )}
+                  </div>
+                  <div className={`text-2xl font-bold ${ledger.netBalance >= 0 ? "text-green-700" : "text-red-600"}`}>
+                    {fmt(Math.abs(ledger.netBalance))}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-0.5">
+                    {ledger.netBalance >= 0 ? "Opening + income exceeds expenses" : "Expenses exceed opening + income"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Cash flow chart */}
+              {ledger.byMonth.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                  <SectionHeader title="Monthly Cash Flow" sub="Income vs expenses from journal entries" />
+                  <div className="px-5 py-4">
+                    <div className="flex items-end gap-1 h-36 bg-gray-50 rounded-xl px-3 pt-3 pb-0">
+                      {ledger.byMonth.slice(-12).map((d) => {
+                        const max = Math.max(...ledger.byMonth.slice(-12).map((x) => Math.max(x.income, x.expense)), 1);
+                        return (
+                          <div key={d.month} className="flex-1 flex items-end gap-0.5 min-w-0" title={`${monthLabel(d.month)}: In ${fmt(d.income)} / Out ${fmt(d.expense)}`}>
+                            <div className="flex-1 bg-green-500 rounded-t-sm" style={{ height: `${(d.income / max) * 100}%`, minHeight: d.income > 0 ? "3px" : "0" }} />
+                            <div className="flex-1 bg-red-400 rounded-t-sm"   style={{ height: `${(d.expense / max) * 100}%`, minHeight: d.expense > 0 ? "3px" : "0" }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-1 mt-1.5 px-3">
+                      {ledger.byMonth.slice(-12).map((d) => (
+                        <span key={d.month} className="flex-1 text-[8px] text-gray-400 text-center truncate min-w-0">{monthLabel(d.month)}</span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-5 mt-3 px-3">
+                      <span className="flex items-center gap-1.5 text-[11px] text-gray-500"><span className="inline-block w-3 h-3 bg-green-500 rounded-sm" /> Income</span>
+                      <span className="flex items-center gap-1.5 text-[11px] text-gray-500"><span className="inline-block w-3 h-3 bg-red-400 rounded-sm" /> Expense</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid lg:grid-cols-2 gap-4">
+                {/* Income by account */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                  <SectionHeader title="Income by Account" sub="From credit entries in the ledger" />
+                  {ledger.byIncomeAccount.length === 0 ? (
+                    <Empty msg="No income entries recorded yet." />
+                  ) : (
+                    <div className="p-4 space-y-3">
+                      {ledger.byIncomeAccount.map((a) => (
+                        <div key={a.name}>
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="font-medium text-gray-700">{a.name}</span>
+                            <span className="text-green-700 font-semibold">{fmt(a.total)}</span>
+                          </div>
+                          <HBar value={a.total} max={maxLedgerInc} color="bg-green-500" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Expense by account */}
+                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                  <SectionHeader title="Expenses by Account" sub="From debit entries in the ledger" />
+                  {ledger.byExpenseAccount.length === 0 ? (
+                    <Empty msg="No expense entries recorded yet." />
+                  ) : (
+                    <div className="p-4 space-y-3">
+                      {ledger.byExpenseAccount.map((a) => (
+                        <div key={a.name}>
+                          <div className="flex items-center justify-between text-sm mb-1">
+                            <span className="font-medium text-gray-700">{a.name}</span>
+                            <span className="text-red-600 font-semibold">{fmt(a.total)}</span>
+                          </div>
+                          <HBar value={a.total} max={maxLedgerExp} color="bg-red-400" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {ledger.entryCount === 0 && (
+                <div className="bg-white rounded-xl border border-gray-100 text-center py-16">
+                  <Landmark size={28} className="text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">No journal entries recorded yet.</p>
+                  <p className="text-xs text-gray-300 mt-1">Entries are created automatically when dues, expenses, contributions or tickets are recorded.</p>
+                </div>
+              )}
             </div>
           )}
 

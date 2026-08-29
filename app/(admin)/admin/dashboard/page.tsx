@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { autoArchivePastEvents } from "@/lib/eventStatus";
 import DashboardClient from "@/components/admin/DashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -7,11 +8,12 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const ctx = await getAdminContext();
   const associationId = ctx?.associationId ?? null;
+  await autoArchivePastEvents(associationId);
 
   const now     = new Date();
   const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [memberCount, eventCount, newsCount, committeeCount, recentMembers, recentNews, recentEvents, settings, pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount, activityLogs] =
+  const [memberCount, eventCount, newsCount, committeeCount, recentMembers, recentNews, recentEvents, settings, pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount, activityLogs, ledgerSummary] =
     await Promise.all([
       prisma.memberAssociation.count({ where: { associationId: associationId ?? undefined, visible: true } }),
       prisma.event.count({ where: { associationId: associationId ?? undefined } }),
@@ -62,6 +64,28 @@ export default async function DashboardPage() {
         orderBy: { createdAt: "desc" },
         take: 20,
       }),
+      // Phase D — financial year net balance for dashboard stat
+      (async () => {
+        const activeYear = await prisma.financialYear.findFirst({
+          where: { associationId: associationId ?? undefined, status: "active" },
+          select: { id: true, label: true, openingBalance: true },
+        });
+        if (!activeYear) return null;
+        const [incomeAgg, expenseAgg] = await Promise.all([
+          prisma.journalEntry.findMany({
+            where: { associationId: associationId ?? undefined, financialYearId: activeYear.id },
+            select: { amount: true, creditAccount: { select: { type: true } } },
+          }),
+          prisma.journalEntry.findMany({
+            where: { associationId: associationId ?? undefined, financialYearId: activeYear.id },
+            select: { amount: true, debitAccount: { select: { type: true } } },
+          }),
+        ]);
+        const totalIncome  = incomeAgg.filter((e) => e.creditAccount.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+        const totalExpense = expenseAgg.filter((e) => e.debitAccount.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+        const netBalance   = Number(activeYear.openingBalance) + totalIncome - totalExpense;
+        return { label: activeYear.label, totalIncome, totalExpense, netBalance };
+      })(),
     ]);
 
   const settingsMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
@@ -95,6 +119,7 @@ export default async function DashboardPage() {
       upcomingMeetings={upcomingMeetings.map((m) => ({ ...m, scheduledAt: m.scheduledAt.toISOString() }))}
       pendingDuesCount={pendingDuesCount}
       activityLogs={activityLogs.map((l) => ({ ...l, createdAt: l.createdAt.toISOString(), meta: l.meta as Record<string, unknown> | null }))}
+      ledgerSummary={ledgerSummary}
     />
   );
 }

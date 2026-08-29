@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { Plus, Building2 } from "lucide-react";
+import { Plus, Building2, Users } from "lucide-react";
 import { getAdminContext } from "@/lib/adminAuth";
 import MembersClient, { type MemberRow } from "./MembersClient";
 
@@ -10,24 +10,29 @@ function checkIncomplete(m: {
   phone: string | null; email: string | null; ownerName: string | null;
   description: string | null; image: string | null; category: string | null;
   capacity: number | null; location: string | null;
-}): string[] {
-  return [
+}, memberMode: "venue" | "person"): string[] {
+  const checks = [
     (!m.phone     || !m.phone.trim())       && "Phone",
     (!m.email     || !m.email.trim())       && "Email",
-    (!m.ownerName || !m.ownerName.trim())   && "Owner name",
     (!m.description || !m.description.trim()) && "Description",
     !m.image                                && "Photo",
-    (!m.category  || !m.category.trim())    && "Category",
-    !m.capacity                             && "Capacity",
-    (!m.location  || !m.location.trim())    && "Address",
-  ].filter(Boolean) as string[];
+    (!m.category  || !m.category.trim())    && (memberMode === "person" ? "Profession" : "Category"),
+  ];
+  if (memberMode === "venue") {
+    checks.push(
+      (!m.ownerName || !m.ownerName.trim())   && "Owner name",
+      !m.capacity                             && "Capacity",
+      (!m.location  || !m.location.trim())    && "Address",
+    );
+  }
+  return checks.filter(Boolean) as string[];
 }
 
 export default async function MembersPage() {
   const ctx = await getAdminContext();
   const associationId = ctx?.associationId ?? null;
 
-  const [links, pendingGroups] = await Promise.all([
+  const [links, pendingGroups, memberModeSetting] = await Promise.all([
     prisma.memberAssociation.findMany({
       where: { associationId: associationId ?? undefined },
       include: {
@@ -49,7 +54,12 @@ export default async function MembersPage() {
       where: { associationId: associationId ?? undefined, status: "pending" },
       _sum: { amount: true },
     }),
+    prisma.siteSettings.findUnique({
+      where: { key_associationId: { key: "member_mode", associationId: associationId ?? "" } },
+    }),
   ]);
+
+  const memberMode = memberModeSetting?.value === "person" ? "person" : "venue";
 
   const pendingMap = new Map(
     pendingGroups.map((p) => [p.memberId, Number(p._sum.amount ?? 0)])
@@ -67,7 +77,7 @@ export default async function MembersPage() {
     email:           m.email,
     featured:        m.featured,
     visible,
-    missingFields:   checkIncomplete(m),
+    missingFields:   checkIncomplete(m, memberMode),
     pendingDues:     pendingMap.get(m.id) ?? 0,
   }));
 
@@ -76,10 +86,12 @@ export default async function MembersPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <Building2 size={22} className="text-indigo-500" />
+            {memberMode === "person" ? <Users size={22} className="text-indigo-500" /> : <Building2 size={22} className="text-indigo-500" />}
             Members
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage venue members for this association.</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {memberMode === "person" ? "Manage members for this association." : "Manage venue members for this association."}
+          </p>
         </div>
         <Link
           href="/admin/members/new"
@@ -90,7 +102,7 @@ export default async function MembersPage() {
         </Link>
       </div>
 
-      <MembersClient rows={rows} totalCount={rows.length} />
+      <MembersClient rows={rows} totalCount={rows.length} memberMode={memberMode} />
     </div>
   );
 }

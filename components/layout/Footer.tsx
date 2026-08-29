@@ -24,15 +24,15 @@ interface FooterSettings {
 export default function Footer({ settings }: { settings?: FooterSettings }) {
   const { t } = useLocale();
 
-  const logo        = settings?.logo        ?? "/eva/evanepal_transparent.png";
+  const logo        = settings?.logo        ?? "/default-logo.png";
   const logoInvert  = settings?.logoInvert  ?? logo.includes("_transparent");
   const foundedYear = settings?.foundedYear ?? 2011;
-  const hqLocation  = settings?.hqLocation  ?? "Maitidevi, Kathmandu";
+  const hqLocation  = settings?.hqLocation  || "Kathmandu";
   const memberCount = settings?.memberCount ?? 150;
   const tagline     = settings?.tagline     ?? "";
-  const phone       = settings?.phone       ?? "+977-1-XXXXXXX";
-  const email       = settings?.email       ?? "info@evanepal.org";
-  const address     = settings?.address     ?? "Maitidevi, Kathmandu\nNepal";
+  const phone       = settings?.phone       || "+977-1-XXXXXXX";
+  const email       = settings?.email       || "info@example.org";
+  const address     = settings?.address     || "Kathmandu, Nepal";
   const facebook    = settings?.facebook    ?? "https://facebook.com";
   const instagram   = settings?.instagram   ?? "https://instagram.com";
   const youtube     = settings?.youtube     ?? "https://youtube.com";

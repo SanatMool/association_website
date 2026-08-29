@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Search, ArrowUpDown, Pencil, Users, Star, Building2, X } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 export interface CommitteeRow {
   id: string;
@@ -84,21 +86,20 @@ export default function CommitteeListClient({ members }: { members: CommitteeRow
       </div>
 
       {members.length === 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400">
-          <Users size={28} className="mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No committee members yet.</p>
-        </div>
+        <PanelTable>
+          <EmptyState icon={Users} title="No committee members yet." />
+        </PanelTable>
       )}
 
       {filtered.length === 0 && members.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 text-center py-10 text-gray-400 text-sm">
-          No members match your search.
-        </div>
+        <PanelTable>
+          <div className="text-center py-10 text-gray-400 text-sm">No members match your search.</div>
+        </PanelTable>
       )}
 
       {/* ── Mobile cards ── */}
       {filtered.length > 0 && (
-        <div className="md:hidden bg-white rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+        <PanelTable className="md:hidden divide-y divide-gray-50">
           {filtered.map((m) => (
             <div key={m.id} className="px-4 py-4">
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -126,14 +127,14 @@ export default function CommitteeListClient({ members }: { members: CommitteeRow
               </div>
             </div>
           ))}
-        </div>
+        </PanelTable>
       )}
 
       {/* ── Desktop table ── */}
       {filtered.length > 0 && (
-        <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <PanelTable className="hidden md:block">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <PanelTableHead>
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-10">
                   <SortBtn col="order" label="#" />
@@ -149,10 +150,10 @@ export default function CommitteeListClient({ members }: { members: CommitteeRow
                 </th>
                 <th className="px-4 py-3" />
               </tr>
-            </thead>
+            </PanelTableHead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((m) => (
-                <tr key={m.id} className="hover:bg-gray-50/50">
+              {filtered.map((m, i) => (
+                <PanelTableRow key={m.id} index={i}>
                   <td className="px-4 py-3 text-gray-400 text-xs font-mono">{m.order}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">
                     <div className="flex items-center gap-1.5">
@@ -172,11 +173,11 @@ export default function CommitteeListClient({ members }: { members: CommitteeRow
                       <DeleteButton id={m.id} entity="committee" redirectTo="/admin/committee" />
                     </div>
                   </td>
-                </tr>
+                </PanelTableRow>
               ))}
             </tbody>
           </table>
-        </div>
+        </PanelTable>
       )}
     </div>
   );

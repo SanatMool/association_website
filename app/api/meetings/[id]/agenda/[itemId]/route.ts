@@ -6,13 +6,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string; 
   const ctx = await getAdminContext();
   if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json() as { title?: string; description?: string; outcome?: string };
+  const body = await req.json() as { title?: string; description?: string; outcome?: string; resolved?: boolean };
   const item = await prisma.agendaItem.update({
     where: { id: params.itemId },
     data: {
-      ...(body.title       !== undefined ? { title: body.title }             : {}),
-      ...(body.description !== undefined ? { description: body.description || null } : {}),
-      ...(body.outcome     !== undefined ? { outcome: body.outcome || null } : {}),
+      ...(body.title       !== undefined ? { title: body.title }                    : {}),
+      ...(body.description !== undefined ? { description: body.description || null }: {}),
+      ...(body.outcome     !== undefined ? { outcome: body.outcome || null }         : {}),
+      ...(body.resolved    !== undefined ? { resolved: body.resolved }               : {}),
     },
   });
 

@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { EventType } from "@/lib/types";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
+import { autoArchivePastEvents } from "@/lib/eventStatus";
 import EventsClient from "./EventsClient";
 
 export const revalidate = 3600;
 
 export default async function EventsPage() {
   const association = await getAssociationOrThrow();
+  await autoArchivePastEvents(association.id);
 
   const dbEvents = await prisma.event.findMany({
     where: { associationId: association.id },

@@ -13,6 +13,7 @@ import Timeline from "@/components/sections/Timeline";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/settings";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
+import { autoArchivePastEvents } from "@/lib/eventStatus";
 import { MemberType, EventType, NewsType, CommitteeType, TimelineType } from "@/lib/types";
 
 // Page-level metadata is handled by generateMetadata() in app/layout.tsx
@@ -22,6 +23,7 @@ export const revalidate = 3600;
 export default async function Home() {
   const association = await getAssociationOrThrow();
   const associationId = association.id;
+  await autoArchivePastEvents(associationId);
 
   const [dbMembers, dbEvents, dbNews, dbCommittee, memberCount, dbTimeline, siteSettings] = await Promise.all([
     prisma.member.findMany({
@@ -54,14 +56,18 @@ export default async function Home() {
   const shortName = association.name.split(" ")[0];
   const hqLocation = siteSettings.contact_address?.split("\n")[0] ?? "Kathmandu";
 
+  const memberMode = siteSettings.member_mode ?? "venue";
+
   const members: MemberType[] = dbMembers.map((m) => ({
     id: m.id,
     slug: m.slug,
     name: m.name,
     location: m.location,
     area: m.area,
-    capacity: m.capacity,
-    phone: m.phone,
+    capacity: memberMode === "venue" ? m.capacity : null,
+    // On homepage, don't expose phone/email — visibility controlled on /members page
+    phones: [],
+    email: null,
     website: m.website,
     category: m.category ?? m.type,
     type: m.type,
@@ -138,7 +144,7 @@ export default async function Home() {
         foundedYear={foundedYear}
         memberCount={memberCount}
         yearsActive={yearsActive}
-        heroImage={siteSettings.hero_image ?? null}
+        heroImage={siteSettings.hero_image || null}
       />
       <StatsSection
         memberCount={memberCount}
@@ -146,6 +152,7 @@ export default async function Home() {
         yearsActive={yearsActive}
         foundedYear={foundedYear}
         shortName={shortName}
+        memberMode={memberMode}
       />
       <About
         foundedYear={foundedYear}

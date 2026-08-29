@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Save, CheckCircle, Phone, Share2, BarChart2, AlignLeft,
-  Image as ImageIcon, Layout, Settings,
+  Image as ImageIcon, Layout, Settings, SlidersHorizontal,
 } from "lucide-react";
 
 interface Setting {
@@ -15,6 +15,7 @@ interface Setting {
 }
 
 const GROUP_CONFIG: { key: string; label: string; icon: React.ElementType; description: string }[] = [
+  { key: "general", label: "General",  icon: SlidersHorizontal, description: "Core platform settings: member mode and other association-wide preferences." },
   { key: "contact", label: "Contact",  icon: Phone,      description: "Phone, email, address, and map URL shown on the public contact section." },
   { key: "social",  label: "Social",   icon: Share2,     description: "Facebook, Instagram, YouTube and other social media links." },
   { key: "stats",   label: "Stats",    icon: BarChart2,  description: "Statistics shown on the public homepage (member count, years active, etc.)." },
@@ -23,12 +24,20 @@ const GROUP_CONFIG: { key: string; label: string; icon: React.ElementType; descr
   { key: "assets",  label: "Assets",   icon: ImageIcon,  description: "Logo URLs, favicon, and other asset references used across the site." },
 ];
 
+// Settings that use a select dropdown instead of a text input
+const SELECT_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  member_mode: [
+    { value: "venue", label: "Venue Mode — members are event venues (banquet halls, resorts, etc.)" },
+    { value: "person", label: "Person Mode — members are individual people or professionals" },
+  ],
+};
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Setting[]>([]);
   const [values,   setValues]   = useState<Record<string, string>>({});
   const [saving,   setSaving]   = useState<Record<string, boolean>>({});
   const [saved,    setSaved]    = useState<Record<string, boolean>>({});
-  const [activeTab, setActiveTab] = useState("contact");
+  const [activeTab, setActiveTab] = useState("general");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -123,7 +132,17 @@ export default function SettingsPage() {
                   <p className="text-xs text-gray-300 font-mono font-normal mt-0.5">{s.key}</p>
                 </label>
                 <div className="flex-1">
-                  {(values[s.key] ?? "").length > 80 || s.key.includes("tagline") || s.key.includes("address") || s.key.includes("description") || s.key.includes("bio") ? (
+                  {SELECT_OPTIONS[s.key] ? (
+                    <select
+                      value={values[s.key] ?? ""}
+                      onChange={(e) => setValues((p) => ({ ...p, [s.key]: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                    >
+                      {SELECT_OPTIONS[s.key].map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  ) : (values[s.key] ?? "").length > 80 || s.key.includes("tagline") || s.key.includes("address") || s.key.includes("description") || s.key.includes("bio") ? (
                     <textarea
                       value={values[s.key] ?? ""}
                       onChange={(e) => setValues((p) => ({ ...p, [s.key]: e.target.value }))}

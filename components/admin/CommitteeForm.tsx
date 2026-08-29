@@ -65,10 +65,23 @@ const STEPS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-interface MemberOption { id: string; name: string; nameNe: string | null; area: string; }
-interface Props { member?: CommitteeMember; members?: MemberOption[]; }
+interface MemberOption {
+  id: string; name: string; nameNe: string | null; area: string;
+  image: string | null; phone: string | null; email: string | null; description: string | null;
+}
+interface DesignationOption { id: string; name: string; }
+interface Props { member?: CommitteeMember; members?: MemberOption[]; designations?: DesignationOption[]; memberMode?: "venue" | "person"; }
 
-export default function CommitteeForm({ member, members = [] }: Props) {
+// Maps a Designation's free-text name onto the fixed i18n translation keys the public
+// Committee page uses (t.committee[roleKey]) — falls back to "member" (generic, always
+// translated) for any custom designation name that doesn't match one of the known titles.
+function deriveRoleKey(designationName: string): string {
+  const match = ROLE_KEYS.find((r) => r.label.toLowerCase() === designationName.trim().toLowerCase());
+  return match?.key ?? "member";
+}
+
+export default function CommitteeForm({ member, members = [], designations = [], memberMode = "venue" }: Props) {
+  const isPersonMode = memberMode === "person";
   const router = useRouter();
   const [step,   setStep]   = useState(1);
   const [dir,    setDir]    = useState(1);
@@ -90,10 +103,21 @@ export default function CommitteeForm({ member, members = [] }: Props) {
   const orgNeManualRef   = useRef(!!(member?.organizationNe));
   const bioNeManualRef   = useRef(!!(member?.bioNe));
 
-  // Member picker state
+  // Member picker state — venue/organization this person represents (venue mode)
   const [memberSearch,   setMemberSearch]   = useState("");
   const [pickedMemberId, setPickedMemberId] = useState<string | null>(null);
   const pickedMember = members.find((m) => m.id === pickedMemberId) ?? null;
+
+  // Identity link state — links this committee record to an existing Member
+  // (snapshot-at-link-time: auto-fills name/photo/bio once, doesn't stay live-synced)
+  const [identitySearch,   setIdentitySearch]   = useState("");
+  const [identityMemberId, setIdentityMemberId] = useState<string | null>(member?.memberId ?? null);
+  const identityMember = members.find((m) => m.id === identityMemberId) ?? null;
+
+  // Designation link — this person's role in the association's own role vocabulary
+  // (per-association, admin-editable at /admin/designations — falls back to the fixed
+  // ROLE_KEYS grid only if the association has no designations set up yet)
+  const [designationId, setDesignationId] = useState<string | null>(member?.designationId ?? null);
 
   const [form, setForm] = useState({
     name:           member?.name           ?? "",
@@ -234,6 +258,30 @@ export default function CommitteeForm({ member, members = [] }: Props) {
     setForm((p) => ({ ...p, venue: "", venueNe: "" }));
   }
 
+  function pickIdentityMember(m: MemberOption) {
+    setIdentityMemberId(m.id);
+    setIdentitySearch("");
+    nameNeManualRef.current = true; // came from member record, don't auto-overwrite
+    bioNeManualRef.current  = true;
+    setForm((p) => ({
+      ...p,
+      name:   m.name,
+      nameNe: m.nameNe ?? p.nameNe,
+      image:  m.image ?? p.image,
+      bio:    p.bio.trim() ? p.bio : (m.description ?? p.bio),
+    }));
+  }
+
+  function clearIdentityMember() {
+    setIdentityMemberId(null);
+  }
+
+  function pickDesignation(d: DesignationOption) {
+    setDesignationId(d.id);
+    roleNeManualRef.current = false; // allow auto-translate of the new role title
+    setForm((p) => ({ ...p, role: d.name, roleKey: deriveRoleKey(d.name) }));
+  }
+
   // ── AI Bio Generate ──────────────────────────────────────────────────────────
   async function generateBio() {
     setBioLoading(true); setBioAiError("");
@@ -301,6 +349,8 @@ export default function CommitteeForm({ member, members = [] }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
+        memberId:      identityMemberId,
+        designationId,
         order:       Number(form.order),
         termYearBS:  form.termYearBS  ? Number(form.termYearBS)  : null,
         termMonthBS: form.termMonthBS ? Number(form.termMonthBS) : null,
@@ -323,6 +373,11 @@ export default function CommitteeForm({ member, members = [] }: Props) {
 
   // ── Styles ───────────────────────────────────────────────────────────────────
   const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition";
+
+  function stepHint(s: number): string {
+    if (s === 2 && isPersonMode) return "Organization and display order";
+    return STEPS[s - 1].hint;
+  }
 
   const stepVariants = {
     enter:  (d: number) => ({ x: d > 0 ? 60 : -60, opacity: 0 }),
@@ -372,7 +427,7 @@ export default function CommitteeForm({ member, members = [] }: Props) {
           })}
         </div>
         <p className="text-xs text-gray-400 text-center">
-          Step {step} of {STEPS.length} — {STEPS[step - 1].hint}
+          Step {step} of {STEPS.length} — {stepHint(step)}
         </p>
       </div>
 
@@ -387,7 +442,7 @@ export default function CommitteeForm({ member, members = [] }: Props) {
           })()}
           <div>
             <h2 className="font-bold text-gray-900">{STEPS[step - 1].label}</h2>
-            <p className="text-xs text-gray-400">{STEPS[step - 1].hint}</p>
+            <p className="text-xs text-gray-400">{stepHint(step)}</p>
           </div>
         </div>
 
@@ -406,6 +461,66 @@ export default function CommitteeForm({ member, members = [] }: Props) {
 
             {/* ── STEP 1 — Identity ────────────────────────────────────────────── */}
             {step === 1 && (<>
+              {/* ── Link to an existing member ──────────────────────────────────── */}
+              {members.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                    <User size={13} className="text-gray-400" />
+                    Link to an existing member
+                    <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  </label>
+                  <p className="text-[11px] text-gray-400 mb-2">
+                    If this committee member is already registered as a member, link their record to auto-fill name, photo, and bio below — everything stays editable after linking.
+                  </p>
+
+                  {identityMember ? (
+                    <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                        <User size={14} className="text-emerald-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{identityMember.name}</p>
+                        <p className="text-xs text-gray-400">{identityMember.area}</p>
+                      </div>
+                      <button type="button" onClick={clearIdentityMember}
+                        className="p-1 rounded-lg hover:bg-emerald-100 text-emerald-500 hover:text-emerald-800 transition-colors flex-shrink-0"
+                        title="Unlink">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        value={identitySearch}
+                        onChange={(e) => setIdentitySearch(e.target.value)}
+                        placeholder="Search members by name or area…"
+                        className="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                      />
+                      {identitySearch.trim() && (() => {
+                        const q = identitySearch.toLowerCase();
+                        const results = members.filter(
+                          (m) => m.name.toLowerCase().includes(q) || m.area.toLowerCase().includes(q)
+                        ).slice(0, 8);
+                        return (
+                          <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                            {results.length === 0 ? (
+                              <p className="px-4 py-3 text-xs text-gray-400">No members found matching &quot;{identitySearch}&quot;</p>
+                            ) : results.map((m) => (
+                              <button key={m.id} type="button" onClick={() => pickIdentityMember(m)}
+                                className="w-full text-left px-4 py-2.5 hover:bg-amber-50 border-b border-gray-50 last:border-0 transition-colors">
+                                <p className="text-sm font-medium text-gray-900">{m.name}</p>
+                                <p className="text-xs text-gray-400">{m.area}</p>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex gap-2">
                 <Info size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
@@ -478,35 +593,60 @@ export default function CommitteeForm({ member, members = [] }: Props) {
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Role Category *</label>
                 <p className="text-[11px] text-gray-400 mb-2">
-                  Used for sorting and grouping. Choose the closest match — this controls how the member is ranked in the committee list.
+                  {designations.length > 0
+                    ? "Picking a role auto-fills the role title above. Manage this list at Admin → Designations."
+                    : "Used for sorting and grouping. Choose the closest match — this controls how the member is ranked in the committee list."}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {ROLE_KEYS.map(({ key, label, desc }) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => set("roleKey", key)}
-                      className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-sm transition-all text-left
-                        ${form.roleKey === key
-                          ? "bg-amber-50 border-amber-400 text-amber-800 shadow-sm"
-                          : "bg-white border-gray-200 text-gray-600 hover:border-amber-300"}`}
-                    >
-                      <span className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-colors
-                        ${form.roleKey === key ? "bg-amber-500 border-amber-500" : "border-gray-300"}`}>
-                        {form.roleKey === key && <Check size={9} className="text-white" strokeWidth={3} />}
-                      </span>
-                      <div>
-                        <div className={`font-semibold text-sm leading-tight ${form.roleKey === key ? "text-amber-800" : "text-gray-700"}`}>{label}</div>
-                        <div className="text-[11px] text-gray-400">{desc}</div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {designations.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {designations.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => pickDesignation(d)}
+                        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm transition-all text-left
+                          ${designationId === d.id
+                            ? "bg-amber-50 border-amber-400 text-amber-800 shadow-sm"
+                            : "bg-white border-gray-200 text-gray-600 hover:border-amber-300"}`}
+                      >
+                        <span className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-colors
+                          ${designationId === d.id ? "bg-amber-500 border-amber-500" : "border-gray-300"}`}>
+                          {designationId === d.id && <Check size={9} className="text-white" strokeWidth={3} />}
+                        </span>
+                        <span className={`font-semibold text-sm leading-tight ${designationId === d.id ? "text-amber-800" : "text-gray-700"}`}>{d.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {ROLE_KEYS.map(({ key, label, desc }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => set("roleKey", key)}
+                        className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-sm transition-all text-left
+                          ${form.roleKey === key
+                            ? "bg-amber-50 border-amber-400 text-amber-800 shadow-sm"
+                            : "bg-white border-gray-200 text-gray-600 hover:border-amber-300"}`}
+                      >
+                        <span className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-colors
+                          ${form.roleKey === key ? "bg-amber-500 border-amber-500" : "border-gray-300"}`}>
+                          {form.roleKey === key && <Check size={9} className="text-white" strokeWidth={3} />}
+                        </span>
+                        <div>
+                          <div className={`font-semibold text-sm leading-tight ${form.roleKey === key ? "text-amber-800" : "text-gray-700"}`}>{label}</div>
+                          <div className="text-[11px] text-gray-400">{desc}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </>)}
 
             {/* ── STEP 2 — Affiliation ─────────────────────────────────────────── */}
             {step === 2 && (<>
+              {!isPersonMode && (<>
               <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex gap-2">
                 <Info size={14} className="text-blue-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-700">
@@ -585,10 +725,10 @@ export default function CommitteeForm({ member, members = [] }: Props) {
                   <input
                     value={form.venue}
                     onChange={(e) => { venueNeManualRef.current = false; set("venue", e.target.value); }}
-                    placeholder="e.g. Hotel Annapurna Banquet"
+                    placeholder="e.g. Grand Palace Banquet"
                     className={inputCls}
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">The venue this person represents in EVA Nepal.</p>
+                  <p className="text-[11px] text-gray-400 mt-1">The venue this person represents in the association.</p>
                 </div>
                 <div>
                   <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
@@ -603,6 +743,7 @@ export default function CommitteeForm({ member, members = [] }: Props) {
                   />
                 </div>
               </div>
+              </>)}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -612,7 +753,7 @@ export default function CommitteeForm({ member, members = [] }: Props) {
                   <input
                     value={form.organization}
                     onChange={(e) => set("organization", e.target.value)}
-                    placeholder="e.g. Hotel Annapurna Pvt. Ltd."
+                    placeholder="e.g. Grand Palace Pvt. Ltd."
                     className={inputCls}
                   />
                   <p className="text-[11px] text-gray-400 mt-1">Legal entity name. Leave blank if same as venue.</p>

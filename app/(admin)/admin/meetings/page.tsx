@@ -15,7 +15,7 @@ export default async function MeetingsPage() {
     select: {
       id: true, title: true, type: true, scheduledAt: true,
       venue: true, status: true,
-      _count: { select: { agendaItems: true, expenses: true } },
+      _count: { select: { agendaItems: true, expenses: true, attendance: true } },
     },
   });
 
@@ -26,8 +26,9 @@ export default async function MeetingsPage() {
     scheduledAt:  m.scheduledAt.toISOString(),
     venue:        m.venue,
     status:       m.status,
-    agendaCount:  m._count.agendaItems,
-    expenseCount: m._count.expenses,
+    agendaCount:     m._count.agendaItems,
+    expenseCount:    m._count.expenses,
+    attendanceCount: m._count.attendance,
   }));
 
   return <MeetingsListClient meetings={rows} />;

@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 type TaskStatus = "todo" | "in_progress" | "done";
 type TaskPriority = "low" | "medium" | "high";
@@ -337,7 +339,7 @@ export default function TasksPage() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden mb-6"
           >
-            <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+            <PanelCard className="p-5" hover={false}>
               <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                 <Plus size={14} className="text-[#0a1040]" />
                 New Task
@@ -405,7 +407,7 @@ export default function TasksPage() {
                   </button>
                 </div>
               </form>
-            </div>
+            </PanelCard>
           </motion.div>
         )}
       </AnimatePresence>
@@ -456,13 +458,17 @@ export default function TasksPage() {
       {loading ? (
         <div className="text-center py-12 text-gray-400 text-sm">Loading tasks…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-          <CheckCircle2 size={32} className="text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">No tasks here.</p>
-          <button onClick={() => setShowForm(true)} className="mt-3 text-sm text-amber-600 hover:text-amber-700 font-medium">
-            Create one →
-          </button>
-        </div>
+        <PanelCard className="py-16" hover={false}>
+          <EmptyState
+            icon={CheckCircle2}
+            title="No tasks here."
+            action={
+              <button onClick={() => setShowForm(true)} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
+                Create one →
+              </button>
+            }
+          />
+        </PanelCard>
       ) : (
         <div className="space-y-2">
           {filtered.map((task) => {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { journalForContribution } from "@/lib/autoJournal";
 
 type PaymentLine = { method: string; amount: number };
 
@@ -34,6 +35,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     },
     include: { member: { select: { id: true, name: true } } },
   });
+
+  // Auto-journal when contribution is collected
+  if (body.status === "paid" && (totalAmount ?? 0) > 0) {
+    journalForContribution({
+      associationId:  ctx.associationId,
+      contributionId: params.contribId,
+      description:    `Member contribution — ${contribution.member.name}`,
+      amount:         Number(contribution.amount),
+      method:         contribution.method,
+      date:           contribution.paidAt ?? new Date(),
+      adminId:        (ctx.session.user as { id?: string }).id ?? null,
+    });
+  }
 
   return NextResponse.json({ success: true, data: contribution });
 }

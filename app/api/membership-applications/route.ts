@@ -4,6 +4,7 @@ import { getAssociation } from "@/lib/getAssociation";
 import { getAdminContext } from "@/lib/adminAuth";
 import { logApiCall } from "@/lib/apiLogger";
 import { sendMail } from "@/lib/mailer";
+import { recordEmailResult } from "@/lib/emailFailureTracking";
 
 export async function POST(req: NextRequest) {
   const start = Date.now();
@@ -80,7 +81,11 @@ export async function POST(req: NextRequest) {
     if (association?.id) {
       notifyAdmins(association.id, association.name, body).catch(console.error);
     }
-    confirmApplicant(body, association?.name ?? "the association").catch(console.error);
+    const flagApplicantEmail = (err: unknown) =>
+      recordEmailResult((data) => prisma.membershipApplication.update({ where: { id: application.id }, data }), err);
+    confirmApplicant(body, association?.name ?? "the association")
+      .then(() => flagApplicantEmail(null))
+      .catch((err) => { console.error(err); flagApplicantEmail(err); });
 
     return NextResponse.json({ success: true, data: application });
   } catch (err) {

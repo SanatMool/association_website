@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { logActivity } from "@/lib/activityLogger";
+import { hasPermission } from "@/lib/permissions";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
   if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(ctx, "finances.view")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const memberId = searchParams.get("memberId");
@@ -20,7 +24,7 @@ export async function GET(req: NextRequest) {
       ...(type     ? { type }     : {}),
     },
     include: {
-      member:         { select: { id: true, name: true, area: true } },
+      member:         { select: { id: true, name: true, area: true, emailFailedAt: true, emailError: true } },
       memberCategory: { select: { id: true, name: true } },
     },
     orderBy: [{ periodStart: "desc" }, { createdAt: "desc" }],
@@ -34,6 +38,9 @@ type PaymentLine = { method: string; amount: number };
 export async function POST(req: NextRequest) {
   const ctx = await getAdminContext();
   if (!ctx || !ctx.associationId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(ctx, "finances.edit")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const body = await req.json() as {
     memberId: string;
@@ -109,7 +116,7 @@ export async function POST(req: NextRequest) {
       recordedByAdminId: (ctx.session.user as { id?: string }).id ?? null,
     },
     include: {
-      member:         { select: { id: true, name: true, area: true } },
+      member:         { select: { id: true, name: true, area: true, emailFailedAt: true, emailError: true } },
       memberCategory: { select: { id: true, name: true } },
     },
   });

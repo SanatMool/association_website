@@ -12,6 +12,10 @@ interface FormState {
   foundedYear: string;
   description: string;
   plan: string;
+  memberMode: string;
+  adminName: string;
+  adminEmail: string;
+  adminPassword: string;
 }
 
 export default function NewAssociationPage() {
@@ -23,6 +27,10 @@ export default function NewAssociationPage() {
     foundedYear: "",
     description: "",
     plan: "basic",
+    memberMode: "venue",
+    adminName: "",
+    adminEmail: "",
+    adminPassword: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +98,45 @@ export default function NewAssociationPage() {
             />
           </div>
         ))}
+
+        <div className="pt-2 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-700 mb-3">Initial Admin Login</p>
+          <div className="space-y-4">
+            {[
+              { key: "adminName",     label: "Admin Name",     placeholder: "Namoudyam Admin",          type: "text" },
+              { key: "adminEmail",    label: "Admin Email",    placeholder: "admin@namoudyam.org",       type: "email" },
+              { key: "adminPassword", label: "Admin Password", placeholder: "At least 8 characters",     type: "password" },
+            ].map(({ key, label, placeholder, type }) => (
+              <div key={key}>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  {label} <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type={type}
+                  value={form[key as keyof FormState]}
+                  onChange={(e) => set(key as keyof FormState, e.target.value)}
+                  placeholder={placeholder}
+                  required
+                  minLength={key === "adminPassword" ? 8 : undefined}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Member Mode</label>
+          <select
+            value={form.memberMode}
+            onChange={(e) => set("memberMode", e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+          >
+            <option value="venue">Venue — members are physical venues/businesses</option>
+            <option value="person">Person — members are individuals</option>
+          </select>
+          <p className="text-[11px] text-gray-400 mt-1.5">Controls member form fields, card display, and stats labels. Can be changed later in Admin Settings.</p>
+        </div>
 
         <div>
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Plan</label>

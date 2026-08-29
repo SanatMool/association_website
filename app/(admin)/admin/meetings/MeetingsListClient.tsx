@@ -2,8 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, Calendar, CheckCircle, Clock, XCircle, Search, ArrowUpDown, MapPin, ListChecks, Receipt, X } from "lucide-react";
+import { Plus, Calendar, CheckCircle, Clock, XCircle, Search, ArrowUpDown, MapPin, ListChecks, Receipt, X, UserCheck } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import Badge from "@/components/ui/panel/Badge";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 export interface MeetingRow {
   id: string;
@@ -14,6 +18,7 @@ export interface MeetingRow {
   status: string;
   agendaCount: number;
   expenseCount: number;
+  attendanceCount: number;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -91,7 +96,7 @@ export default function MeetingsListClient({ meetings }: { meetings: MeetingRow[
       </div>
 
       {/* Search + filters */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
+      <PanelCard className="p-4 mb-4 space-y-3" hover={false}>
         <div className="relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -132,19 +137,18 @@ export default function MeetingsListClient({ meetings }: { meetings: MeetingRow[
             </button>
           )}
         </div>
-      </div>
+      </PanelCard>
 
       {meetings.length === 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400">
-          <Calendar size={28} className="mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No meetings scheduled yet.</p>
-        </div>
+        <PanelTable>
+          <EmptyState icon={Calendar} title="No meetings scheduled yet." />
+        </PanelTable>
       )}
 
       {filtered.length === 0 && meetings.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 text-center py-10 text-gray-400 text-sm">
-          No meetings match your search or filters.
-        </div>
+        <PanelTable>
+          <div className="text-center py-10 text-gray-400 text-sm">No meetings match your search or filters.</div>
+        </PanelTable>
       )}
 
       {upcoming.length > 0 && (
@@ -165,9 +169,9 @@ export default function MeetingsListClient({ meetings }: { meetings: MeetingRow[
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === "scheduled")  return <span className="inline-flex items-center gap-1 text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full"><Clock size={10} />Scheduled</span>;
-  if (status === "completed")  return <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 border border-green-100 px-2 py-0.5 rounded-full"><CheckCircle size={10} />Completed</span>;
-  if (status === "cancelled")  return <span className="inline-flex items-center gap-1 text-xs text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full"><XCircle size={10} />Cancelled</span>;
+  if (status === "scheduled")  return <Badge tone="info" icon={<Clock size={10} />}>Scheduled</Badge>;
+  if (status === "completed")  return <Badge tone="success" icon={<CheckCircle size={10} />}>Completed</Badge>;
+  if (status === "cancelled")  return <Badge tone="danger" icon={<XCircle size={10} />}>Cancelled</Badge>;
   return null;
 }
 
@@ -181,7 +185,7 @@ function MeetingTable({
   return (
     <>
       {/* Mobile cards */}
-      <div className="md:hidden bg-white rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+      <PanelTable className="md:hidden divide-y divide-gray-50">
         {meetings.map((m) => (
           <div key={m.id} className="px-4 py-4">
             <div className="flex items-start justify-between gap-2 mb-2">
@@ -197,6 +201,7 @@ function MeetingTable({
                   <span className="flex items-center gap-1"><Calendar size={10} />{formatDate(m.scheduledAt)}</span>
                   {m.venue && <span className="flex items-center gap-1"><MapPin size={10} />{m.venue}</span>}
                   {m.agendaCount > 0 && <span className="flex items-center gap-1"><ListChecks size={10} />{m.agendaCount} agenda</span>}
+                  {m.attendanceCount > 0 && <span className="flex items-center gap-1"><UserCheck size={10} />{m.attendanceCount} attended</span>}
                   {m.expenseCount > 0 && <span className="flex items-center gap-1"><Receipt size={10} />{m.expenseCount} expenses</span>}
                 </div>
               </div>
@@ -207,12 +212,12 @@ function MeetingTable({
             </div>
           </div>
         ))}
-      </div>
+      </PanelTable>
 
       {/* Desktop table */}
-      <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable className="hidden md:block">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <PanelTableHead>
             <tr>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 <SortBtn col="title" label="Meeting" />
@@ -227,6 +232,9 @@ function MeetingTable({
                 <ListChecks size={11} className="inline mr-1" />Agenda
               </th>
               <th className="text-center px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <UserCheck size={11} className="inline mr-1" />Attended
+              </th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 <Receipt size={11} className="inline mr-1" />Expenses
               </th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -234,10 +242,10 @@ function MeetingTable({
               </th>
               <th className="px-4 py-3" />
             </tr>
-          </thead>
+          </PanelTableHead>
           <tbody className="divide-y divide-gray-50">
-            {meetings.map((m) => (
-              <tr key={m.id} className="hover:bg-gray-50/50">
+            {meetings.map((m, i) => (
+              <PanelTableRow key={m.id} index={i}>
                 <td className="px-4 py-3">
                   <div className="font-medium text-gray-900">{m.title}</div>
                   <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${TYPE_COLORS[m.type] ?? "bg-gray-100 text-gray-600"}`}>
@@ -247,6 +255,7 @@ function MeetingTable({
                 <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{formatDate(m.scheduledAt)}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{m.venue ?? "—"}</td>
                 <td className="px-4 py-3 text-center text-gray-500 text-xs">{m.agendaCount}</td>
+                <td className="px-4 py-3 text-center text-gray-500 text-xs">{m.attendanceCount}</td>
                 <td className="px-4 py-3 text-center text-gray-500 text-xs">{m.expenseCount}</td>
                 <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
                 <td className="px-4 py-3">
@@ -254,11 +263,11 @@ function MeetingTable({
                     Manage →
                   </Link>
                 </td>
-              </tr>
+              </PanelTableRow>
             ))}
           </tbody>
         </table>
-      </div>
+      </PanelTable>
     </>
   );
 }

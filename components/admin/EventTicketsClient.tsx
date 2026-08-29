@@ -17,6 +17,7 @@ interface Registration {
   amount: string | null; paymentMethod: string | null; receiptNumber: string | null;
   cancelReason: string | null; checkedIn: boolean; checkedInAt: string | null;
   createdAt: string;
+  emailFailedAt: string | null; emailError: string | null;
   ticketType: { id: string; name: string; section: string | null };
 }
 
@@ -326,7 +327,14 @@ export default function EventTicketsClient({ eventId }: { eventId: string }) {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400">{r.buyerEmail} · {r.buyerPhone}</p>
+                      <p className="text-xs text-gray-400 flex items-center gap-1">
+                        {r.buyerEmail} · {r.buyerPhone}
+                        {r.emailFailedAt && (
+                          <span title={`Email failed: ${r.emailError ?? "unknown error"}`} className="inline-flex items-center gap-0.5 text-amber-600 font-medium">
+                            <AlertTriangle size={10} /> email issue
+                          </span>
+                        )}
+                      </p>
                       <div className="flex flex-wrap gap-3 mt-1 text-xs text-gray-500">
                         <span><Ticket size={10} className="inline mr-1" />{r.ticketType.name} × {r.quantity}</span>
                         {r.ticketType.section && <span>{r.ticketType.section}</span>}

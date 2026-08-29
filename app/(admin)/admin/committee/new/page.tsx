@@ -10,11 +10,22 @@ export default async function NewCommitteeMemberPage() {
   const ctx = await getAdminContext();
   const associationId = ctx?.associationId ?? null;
 
-  const members = await prisma.member.findMany({
-    where: { associations: { some: { associationId: associationId ?? undefined } } },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, nameNe: true, area: true },
-  });
+  const [members, designations, memberModeSetting] = await Promise.all([
+    prisma.member.findMany({
+      where: { associations: { some: { associationId: associationId ?? undefined } } },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, nameNe: true, area: true, image: true, phone: true, email: true, description: true },
+    }),
+    prisma.designation.findMany({
+      where: { associationId: associationId ?? undefined },
+      orderBy: { order: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.siteSettings.findUnique({
+      where: { key_associationId: { key: "member_mode", associationId: associationId ?? "" } },
+    }),
+  ]);
+  const memberMode = memberModeSetting?.value === "person" ? "person" : "venue";
 
   return (
     <div>
@@ -24,7 +35,7 @@ export default async function NewCommitteeMemberPage() {
       </Link>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Add Committee Member</h1>
       <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <CommitteeForm members={members} />
+        <CommitteeForm members={members} designations={designations} memberMode={memberMode} />
       </div>
     </div>
   );

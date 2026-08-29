@@ -21,7 +21,11 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
         include: { member: { select: { id: true, name: true, area: true } } },
         orderBy: { createdAt: "asc" },
       },
-      _count: { select: { rsvps: true } },
+      attendance: {
+        include: { member: { select: { id: true, name: true, area: true, image: true } } },
+        orderBy: { createdAt: "asc" },
+      },
+      _count: { select: { rsvps: true, attendance: true } },
     },
   });
 

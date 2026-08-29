@@ -34,6 +34,7 @@ export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
     { href: "/members",  label: t.nav.members },
     { href: "/events",   label: t.nav.events },
     { href: "/news",     label: t.nav.news },
+    { href: "/meetings", label: "Minutes" },
     { href: "/#committee", label: t.nav.committee },
     { href: "/#contact", label: t.nav.contact },
   ];

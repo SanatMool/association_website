@@ -5,10 +5,12 @@ import Link from "next/link";
 import {
   Users, Calendar, Newspaper, Award, Settings, CheckCircle, AlertCircle,
   UserCog, CheckSquare, Circle, Clock, AlertTriangle, Bell, LayoutDashboard,
-  Activity, ArrowRight, TrendingUp, Plus, Tag, CreditCard, CalendarDays,
+  Activity, ArrowRight, TrendingUp, Plus, Tag, CreditCard, CalendarDays, Landmark, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import StatCard from "@/components/ui/panel/StatCard";
+import PanelCard from "@/components/ui/panel/PanelCard";
 
 interface ChecklistItem { label: string; done: boolean; href: string }
 interface RecentMember  { id: string; name: string; area: string; createdAt: string }
@@ -37,6 +39,7 @@ interface Props {
   upcomingMeetings: UpcomingMtg[];
   pendingDuesCount: number;
   activityLogs:     ActivityLogRow[];
+  ledgerSummary:    { label: string; totalIncome: number; totalExpense: number; netBalance: number } | null;
 }
 
 const TABS = [
@@ -109,17 +112,17 @@ export default function DashboardClient({
   memberCount, eventCount, newsCount, committeeCount,
   recentMembers, recentNews, recentEvents,
   checklist, completedCount,
-  pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount, activityLogs,
+  pendingTasks, overdueTasks, upcomingMeetings, pendingDuesCount, activityLogs, ledgerSummary,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
   const reminderCount = overdueTasks.length + upcomingMeetings.length + (pendingDuesCount > 0 ? 1 : 0);
 
   const entityStats = [
-    { label: "Members",        count: memberCount,    href: "/admin/members",   icon: Users,     color: "text-blue-600",   bg: "bg-blue-50",   ring: "group-hover:ring-blue-200" },
-    { label: "Events",         count: eventCount,     href: "/admin/events",    icon: Calendar,  color: "text-green-600",  bg: "bg-green-50",  ring: "group-hover:ring-green-200" },
-    { label: "News Articles",  count: newsCount,      href: "/admin/news",      icon: Newspaper, color: "text-amber-600",  bg: "bg-amber-50",  ring: "group-hover:ring-amber-200" },
-    { label: "Committee",      count: committeeCount, href: "/admin/committee", icon: Award,     color: "text-purple-600", bg: "bg-purple-50", ring: "group-hover:ring-purple-200" },
+    { label: "Members",        count: memberCount,    href: "/admin/members",   icon: Users },
+    { label: "Events",         count: eventCount,     href: "/admin/events",    icon: Calendar },
+    { label: "News Articles",  count: newsCount,      href: "/admin/news",      icon: Newspaper },
+    { label: "Committee",      count: committeeCount, href: "/admin/committee", icon: Award },
   ];
 
   const quickActions = [
@@ -144,22 +147,53 @@ export default function DashboardClient({
         <p className="text-gray-500 text-sm mt-0.5">Content management overview</p>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {entityStats.map(({ label, count, href, icon: Icon, color, bg, ring }) => (
-          <Link
-            key={label}
-            href={href}
-            className={`group bg-white rounded-xl border border-gray-100 p-4 sm:p-5 hover:shadow-md hover:ring-2 ring-transparent ${ring} transition-all`}
-          >
-            <div className={`inline-flex p-2.5 rounded-xl ${bg} mb-3`}>
-              <Icon size={16} className={color} />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-0.5 tabular-nums">{count}</div>
-            <div className="text-xs sm:text-sm text-gray-500 group-hover:text-gray-700 transition-colors leading-tight">{label}</div>
-          </Link>
-        ))}
+      {/* Stats banner */}
+      <div className="relative bg-mesh-navy rounded-3xl p-5 sm:p-6 mb-6 overflow-hidden">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 relative z-10">
+          {entityStats.map(({ label, count, href, icon: Icon }) => (
+            <Link key={label} href={href}>
+              <StatCard label={label} value={count} icon={Icon} accent="gold" />
+            </Link>
+          ))}
+        </div>
       </div>
+
+      {/* Financial year summary (Phase D) */}
+      {ledgerSummary && (
+        <div className="mb-6">
+          <Link href="/admin/finances"
+            className="flex items-center gap-2 text-xs text-gray-400 font-medium mb-2 hover:text-gray-600 transition-colors">
+            <Landmark size={12} /> {ledgerSummary.label} — Financial Ledger
+            <ArrowRight size={11} className="ml-auto" />
+          </Link>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-green-50 border border-green-100 rounded-xl p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] text-green-600 mb-1.5">
+                <ArrowUpRight size={11} /> Income
+              </div>
+              <div className="text-lg font-bold text-green-700">
+                Rs {Math.round(ledgerSummary.totalIncome).toLocaleString()}
+              </div>
+            </div>
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3.5">
+              <div className="flex items-center gap-1.5 text-[11px] text-red-500 mb-1.5">
+                <ArrowDownRight size={11} /> Expenses
+              </div>
+              <div className="text-lg font-bold text-red-600">
+                Rs {Math.round(ledgerSummary.totalExpense).toLocaleString()}
+              </div>
+            </div>
+            <div className={`${ledgerSummary.netBalance >= 0 ? "bg-indigo-50 border-indigo-100" : "bg-amber-50 border-amber-100"} border rounded-xl p-3.5`}>
+              <div className={`flex items-center gap-1.5 text-[11px] mb-1.5 ${ledgerSummary.netBalance >= 0 ? "text-indigo-600" : "text-amber-600"}`}>
+                <Landmark size={11} /> Net Balance
+              </div>
+              <div className={`text-lg font-bold ${ledgerSummary.netBalance >= 0 ? "text-indigo-700" : "text-amber-700"}`}>
+                Rs {Math.round(Math.abs(ledgerSummary.netBalance)).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab bar — scrollable on mobile */}
       <div className="overflow-x-auto -mx-1 px-1 mb-6">
@@ -203,7 +237,7 @@ export default function DashboardClient({
           {activeTab === "overview" && (
             <div className="grid lg:grid-cols-3 gap-6">
               {/* Setup Checklist */}
-              <div className="lg:col-span-1 bg-white rounded-xl border border-gray-100 p-5">
+              <PanelCard className="lg:col-span-1 p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="font-semibold text-gray-900 text-sm">Setup Checklist</h2>
                   <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
@@ -233,10 +267,10 @@ export default function DashboardClient({
                     </li>
                   ))}
                 </ul>
-              </div>
+              </PanelCard>
 
               {/* Quick Actions */}
-              <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 p-5">
+              <PanelCard className="lg:col-span-2 p-5">
                 <h2 className="font-semibold text-gray-900 text-sm mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {quickActions.map(({ href, label, icon: Icon, color }) => (
@@ -271,13 +305,13 @@ export default function DashboardClient({
                     <ArrowRight size={14} className="text-amber-500 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
                   </Link>
                 )}
-              </div>
+              </PanelCard>
             </div>
           )}
 
           {/* ── TASKS ── */}
           {activeTab === "tasks" && (
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <PanelCard className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-gray-900 text-sm">Pending Tasks</h2>
@@ -342,7 +376,7 @@ export default function DashboardClient({
                   })}
                 </div>
               )}
-            </div>
+            </PanelCard>
           )}
 
           {/* ── REMINDERS ── */}
@@ -420,7 +454,7 @@ export default function DashboardClient({
 
           {/* ── ACTIVITY ── */}
           {activeTab === "activity" && (
-            <div className="bg-white rounded-xl border border-gray-100 p-5">
+            <PanelCard className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-gray-900 text-sm flex items-center gap-1.5">
                   <Activity size={14} className="text-gray-400" />
@@ -456,7 +490,7 @@ export default function DashboardClient({
                   ))}
                 </div>
               )}
-            </div>
+            </PanelCard>
           )}
         </motion.div>
       </AnimatePresence>

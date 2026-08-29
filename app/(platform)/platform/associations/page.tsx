@@ -2,7 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { getPlatformUser } from "@/lib/platformAuth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, XCircle, ExternalLink, Plus } from "lucide-react";
+import { CheckCircle, XCircle, ExternalLink, Plus, Building2 } from "lucide-react";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import Badge from "@/components/ui/panel/Badge";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +45,9 @@ export default async function PlatformAssociationsPage() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <PanelTableHead>
             <tr>
               <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Association</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Domain</th>
@@ -57,10 +60,10 @@ export default async function PlatformAssociationsPage() {
               <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
               <th className="px-5 py-3" />
             </tr>
-          </thead>
+          </PanelTableHead>
           <tbody className="divide-y divide-gray-50">
-            {associations.map((a) => (
-              <tr key={a.id} className="hover:bg-indigo-50/30 transition-colors">
+            {associations.map((a, i) => (
+              <PanelTableRow key={a.id} index={i}>
                 <td className="px-5 py-3.5">
                   <div className="font-semibold text-gray-900">{a.name}</div>
                   {a.nameNe && <div className="text-xs text-gray-400">{a.nameNe}</div>}
@@ -78,9 +81,7 @@ export default async function PlatformAssociationsPage() {
                   </a>
                 </td>
                 <td className="px-5 py-3.5">
-                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full capitalize">
-                    {a.plan}
-                  </span>
+                  <Badge tone="info" className="capitalize">{a.plan}</Badge>
                 </td>
                 <td className="px-5 py-3.5 text-right font-semibold text-gray-900">{a._count.memberLinks}</td>
                 <td className="px-5 py-3.5 text-right text-gray-500">{a._count.events}</td>
@@ -89,13 +90,9 @@ export default async function PlatformAssociationsPage() {
                 <td className="px-5 py-3.5 text-right text-gray-500">{a._count.admins}</td>
                 <td className="px-5 py-3.5">
                   {a.active ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-green-700">
-                      <CheckCircle size={12} /> Active
-                    </span>
+                    <Badge tone="success" icon={<CheckCircle size={12} />}>Active</Badge>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-red-500">
-                      <XCircle size={12} /> Inactive
-                    </span>
+                    <Badge tone="danger" icon={<XCircle size={12} />}>Inactive</Badge>
                   )}
                 </td>
                 <td className="px-5 py-3.5">
@@ -106,17 +103,15 @@ export default async function PlatformAssociationsPage() {
                     Details →
                   </Link>
                 </td>
-              </tr>
+              </PanelTableRow>
             ))}
           </tbody>
         </table>
 
         {associations.length === 0 && (
-          <div className="text-center py-16 text-gray-400">
-            <p className="text-sm">No associations registered yet.</p>
-          </div>
+          <EmptyState icon={Building2} title="No associations registered yet." />
         )}
-      </div>
+      </PanelTable>
     </div>
   );
 }

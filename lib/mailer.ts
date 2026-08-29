@@ -10,6 +10,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// RFC 2606 reserved domains + common placeholder/test domains — never real recipients.
+// Prevents bounce-backs from test data (e.g. "qa-test@example.com") reaching the sending inbox.
+const PLACEHOLDER_DOMAINS = new Set([
+  "example.com", "example.net", "example.org", "example.edu",
+  "test.com", "sample.com", "domain.com", "yourdomain.com", "email.com",
+]);
+const PLACEHOLDER_TLD_SUFFIXES = [".test", ".invalid", ".example", ".localhost"];
+
+function isPlaceholderEmail(email: string): boolean {
+  const domain = email.split("@")[1]?.trim().toLowerCase();
+  if (!domain) return true; // malformed address — treat as unsendable
+  if (PLACEHOLDER_DOMAINS.has(domain)) return true;
+  return PLACEHOLDER_TLD_SUFFIXES.some((suffix) => domain.endsWith(suffix));
+}
+
 export async function sendMail({
   to,
   subject,
@@ -25,10 +40,23 @@ export async function sendMail({
     console.warn("[mailer] SMTP_USER or SMTP_PASS not set — skipping email");
     return;
   }
+
+  const recipients = (Array.isArray(to) ? to : [to]).filter((address) => {
+    if (isPlaceholderEmail(address)) {
+      console.warn(`[mailer] skipping placeholder/test email address: ${address}`);
+      return false;
+    }
+    return true;
+  });
+  if (recipients.length === 0) {
+    console.warn(`[mailer] no real recipients after filtering — email not sent ("${subject}")`);
+    return;
+  }
+
   const name = fromName ?? process.env.SMTP_FROM_NAME ?? "Admin Panel";
   await transporter.sendMail({
     from: `"${name}" <${process.env.SMTP_USER}>`,
-    to: Array.isArray(to) ? to.join(", ") : to,
+    to: recipients.join(", "),
     subject,
     html,
   });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { journalForExpense } from "@/lib/autoJournal";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const ctx = await getAdminContext();
@@ -38,6 +39,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       amount:        body.amount,
     },
     include: { vendor: true },
+  });
+
+  journalForExpense({
+    associationId: ctx.associationId,
+    expenseId:     expense.id,
+    description:   expense.description,
+    amount:        Number(expense.amount),
+    date:          expense.createdAt,
+    adminId:       (ctx.session.user as { id?: string }).id ?? null,
   });
 
   return NextResponse.json({ success: true, data: expense });

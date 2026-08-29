@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getPlatformUser } from "@/lib/platformAuth";
 import { redirect } from "next/navigation";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +29,12 @@ export default async function PlatformLogsPage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable>
         {logs.length === 0 ? (
           <div className="text-center py-16 text-gray-400 text-sm">No API logs recorded yet.</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <PanelTableHead>
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Path</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Method</th>
@@ -43,12 +44,13 @@ export default async function PlatformLogsPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Error</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">When</th>
               </tr>
-            </thead>
+            </PanelTableHead>
             <tbody className="divide-y divide-gray-50">
-              {logs.map((log) => (
-                <tr
+              {logs.map((log, i) => (
+                <PanelTableRow
                   key={log.id}
-                  className={`hover:bg-gray-50/50 ${log.statusCode >= 500 ? "bg-red-50/30" : log.statusCode >= 400 ? "bg-amber-50/20" : ""}`}
+                  index={i}
+                  className={log.statusCode >= 500 ? "bg-red-50/30" : log.statusCode >= 400 ? "bg-amber-50/20" : ""}
                 >
                   <td className="px-4 py-2.5 font-mono text-gray-700 text-xs max-w-[240px] truncate">{log.path}</td>
                   <td className="px-4 py-2.5">
@@ -71,12 +73,12 @@ export default async function PlatformLogsPage() {
                       hour: "2-digit", minute: "2-digit", second: "2-digit",
                     })}
                   </td>
-                </tr>
+                </PanelTableRow>
               ))}
             </tbody>
           </table>
         )}
-      </div>
+      </PanelTable>
     </div>
   );
 }

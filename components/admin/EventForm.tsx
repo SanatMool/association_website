@@ -424,7 +424,7 @@ export default function EventForm({ event }: Props) {
                   <HelperTip text="The official name of the event, as it will appear on the public website." />
                 </label>
                 <input value={form.title} onChange={(e) => set("title", e.target.value)}
-                  placeholder="e.g. EVA Nepal Annual General Meeting 2082" required className={inputCls} />
+                  placeholder="e.g. Annual General Meeting 2082" required className={inputCls} />
               </div>
 
               {/* Nepali title with auto-translate */}

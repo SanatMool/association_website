@@ -75,7 +75,7 @@ export default function AssociationEditForm({ association }: { association: Asso
     { key: "nameNe",        label: "Association Name (NE)",    placeholder: "इभेन्ट एन्ड भेन्यू एसोसिएसन नेपाल" },
     { key: "slug",          label: "Slug",                     placeholder: "eva-nepal" },
     { key: "domain",        label: "Domain",                   placeholder: "eva.nibjar.com" },
-    { key: "logo",          label: "Logo Path (/public/...)",  placeholder: "/eva/evanepal_transparent.png" },
+    { key: "logo",          label: "Logo Path (/public/...)",  placeholder: "/uploads/association-logo.png" },
     { key: "foundedYear",   label: "Founded Year (AD)",        placeholder: "2011", type: "number" },
     { key: "description",   label: "Description (EN)",         placeholder: "Short description" },
     { key: "descriptionNe", label: "Description (NE)",         placeholder: "छोटो विवरण" },

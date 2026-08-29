@@ -10,6 +10,10 @@ import {
 } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import Badge from "@/components/ui/panel/Badge";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 export interface NewsRow {
   id: string;
@@ -37,12 +41,12 @@ type SortKey = "date" | "title" | "author" | "category";
 function statusBadge(row: NewsRow) {
   const isFuture = new Date(row.publishedAt) > new Date();
   if (row.status === "draft") {
-    return <span className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-full border bg-gray-50 text-gray-500 border-gray-200"><FileEdit size={9} /> Draft</span>;
+    return <Badge tone="neutral" icon={<FileEdit size={9} />}>Draft</Badge>;
   }
   if (row.status === "scheduled" || isFuture) {
-    return <span className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-full border bg-indigo-50 text-indigo-600 border-indigo-200"><Clock size={9} /> Scheduled</span>;
+    return <Badge tone="info" icon={<Clock size={9} />}>Scheduled</Badge>;
   }
-  return <span className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-full border bg-green-50 text-green-700 border-green-200"><CheckCircle2 size={9} /> Published</span>;
+  return <Badge tone="success" icon={<CheckCircle2 size={9} />}>Published</Badge>;
 }
 
 function SortIcon({ col, sortKey, sortAsc }: { col: SortKey; sortKey: SortKey; sortAsc: boolean }) {
@@ -119,7 +123,7 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
+      <PanelCard className="p-4 mb-4 space-y-3" hover={false}>
         {/* Search */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -175,7 +179,7 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
             </button>
           )}
         </div>
-      </div>
+      </PanelCard>
 
       {anyFilter && (
         <p className="text-xs text-gray-400 mb-3">
@@ -184,14 +188,13 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
       )}
 
       {/* ── Mobile cards (hidden md+) ── */}
-      <div className="md:hidden bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable className="md:hidden">
         {filtered.length === 0 ? (
-          <div className="py-16 text-center">
-            <Newspaper size={28} className="text-gray-200 mx-auto mb-2" />
-            <p className="text-gray-400 text-sm">
-              {articles.length === 0 ? "No articles yet. Tap \"Add article\" to create one." : "No articles match your filters."}
-            </p>
-          </div>
+          <EmptyState
+            icon={Newspaper}
+            title={articles.length === 0 ? "No articles yet." : "No articles match your filters."}
+            description={articles.length === 0 ? "Tap \"Add article\" to create one." : undefined}
+          />
         ) : (
           <div className="divide-y divide-gray-50">
             {filtered.map((a) => (
@@ -225,7 +228,7 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`px-2 py-0.5 text-[11px] rounded-full border capitalize ${CATEGORY_STYLES[a.category] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                      <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full border capitalize ${CATEGORY_STYLES[a.category] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
                         {a.category}
                       </span>
                       <div className="ml-auto flex items-center gap-1.5">
@@ -242,25 +245,25 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
             ))}
           </div>
         )}
-      </div>
+      </PanelTable>
 
       {/* ── Desktop table (hidden below md) ── */}
-      <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable className="hidden md:block">
         {articles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-              <Newspaper size={22} className="text-gray-400" />
-            </div>
-            <p className="text-sm font-medium text-gray-600 mb-1">No articles yet</p>
-            <p className="text-xs text-gray-400 mb-4">Add your first news article to get started.</p>
-            <Link href="/admin/news/new"
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#0a1040] text-white text-xs rounded-lg hover:bg-[#0d1550] transition-colors">
-              <Plus size={12} /> Add article
-            </Link>
-          </div>
+          <EmptyState
+            icon={Newspaper}
+            title="No articles yet"
+            description="Add your first news article to get started."
+            action={
+              <Link href="/admin/news/new"
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#0a1040] text-white text-xs rounded-lg hover:bg-[#0d1550] transition-colors">
+                <Plus size={12} /> Add article
+              </Link>
+            }
+          />
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <PanelTableHead>
               <tr>
                 <th className="text-left px-4 py-3 w-10" />
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">
@@ -286,7 +289,7 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">Status</th>
                 <th className="px-4 py-3" />
               </tr>
-            </thead>
+            </PanelTableHead>
             <tbody className="divide-y divide-gray-50">
               {filtered.length === 0 && (
                 <tr>
@@ -295,8 +298,8 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
                   </td>
                 </tr>
               )}
-              {filtered.map((a) => (
-                <tr key={a.id} className="hover:bg-gray-50/50">
+              {filtered.map((a, i) => (
+                <PanelTableRow key={a.id} index={i}>
                   <td className="px-4 py-3">
                     <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                       {a.image ? (
@@ -315,7 +318,7 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 text-xs border rounded-full capitalize ${CATEGORY_STYLES[a.category] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                    <span className={`px-2 py-0.5 text-xs font-medium border rounded-full capitalize ${CATEGORY_STYLES[a.category] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
                       {a.category}
                     </span>
                   </td>
@@ -335,12 +338,12 @@ export default function NewsClient({ articles }: { articles: NewsRow[] }) {
                       <DeleteButton id={a.id} entity="news" redirectTo="/admin/news" />
                     </div>
                   </td>
-                </tr>
+                </PanelTableRow>
               ))}
             </tbody>
           </table>
         )}
-      </div>
+      </PanelTable>
     </div>
   );
 }

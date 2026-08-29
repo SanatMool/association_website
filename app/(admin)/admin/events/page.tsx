@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
+import { autoArchivePastEvents } from "@/lib/eventStatus";
 import EventsClient from "./EventsClient";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function EventsPage() {
   const ctx = await getAdminContext();
   const associationId = ctx?.associationId ?? null;
+  await autoArchivePastEvents(associationId);
 
   const events = await prisma.event.findMany({
     where: { associationId },

@@ -11,7 +11,7 @@ export default async function FooterWrapper() {
     ? await prisma.memberAssociation.count({ where: { associationId: association.id, visible: true } })
     : 0;
 
-  const logo = association?.logo ?? "/eva/evanepal_transparent.png";
+  const logo = association?.logo ?? "/default-logo.png";
 
   return (
     <Footer
@@ -20,7 +20,7 @@ export default async function FooterWrapper() {
         name:        association?.name ?? undefined,
         logoInvert:  false,
         foundedYear: association?.foundedYear ?? 2011,
-        hqLocation:  s.contact_address?.split("\n")[0] ?? "Kathmandu",
+        hqLocation:  s.contact_address?.split("\n")[0] || "Kathmandu",
         memberCount,
         tagline:     s.footer_tagline,
         phone:       s.contact_phone,

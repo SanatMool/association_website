@@ -48,22 +48,33 @@ model Association {
   activityLogs           ActivityLog[]
   ticketTypes            TicketType[]
   ticketRegistrations    TicketRegistration[]
+  designations           Designation[]
+  memberGroups           MemberGroup[]
+  meetingAttendance      MeetingAttendance[]
+  financialYears         FinancialYear[]
+  financialAccounts      FinancialAccount[]
+  journalEntries         JournalEntry[]
 }
 
 // Join table — a venue can belong to multiple associations
 // Each association admin controls visibility only for their own listing
 model MemberAssociation {
-  id            String   @id @default(cuid())
+  id               String   @id @default(cuid())
   memberId         String
   associationId    String
   memberCategoryId String?
+  designationId    String?   // FK → Designation — member's role in this association (Phase B)
   visible          Boolean  @default(true)
   primary          Boolean  @default(true)
   joinedAt         DateTime @default(now())
 
+  showPhone      Boolean  @default(false)  // whether phone is visible on public profile
+  showEmail      Boolean  @default(false)  // whether email is visible on public profile
+
   member         Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
   association    Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
   memberCategory MembershipCategory? @relation(fields: [memberCategoryId], references: [id])
+  designation    Designation?        @relation(fields: [designationId], references: [id])
 
   @@unique([memberId, associationId])
 }
@@ -82,8 +93,11 @@ model Member {
   capacity     Int?     // nullable — some associations don't track capacity
   type         String?  // nullable — some associations don't categorise by type
   category     String?
-  phone        String?
+  phones       String[] @default([])     // array of phone numbers (Phase B)
+  phone        String?                    // LEGACY — kept for backward compat; use phones
   email        String?
+  emailFailedAt DateTime? // set when a dues-reminder email to `email` bounces/fails; cleared on next success
+  emailError    String?   // last email failure reason, shown to admin as a tooltip
   website      String?
   description  String?
   amenities    String[]
@@ -124,6 +138,9 @@ model Member {
   contributions          MemberContribution[]
   portalAccounts         MemberAccount[]
   membershipApplications MembershipApplication[]
+  committeeMemberships   CommitteeMember[]
+  memberGroupLinks       MemberGroupLink[]
+  meetingAttendance      MeetingAttendance[]
 }
 
 model Event {
@@ -199,11 +216,15 @@ model CommitteeMember {
   termMonthAD   Int?     // AD month 1-12 (e.g. 7 = July)
   termYearBS    Int?     // BS year of election (e.g. 2082)
   termMonthBS   Int?     // BS month 1-12 (e.g. 3 = Ashadh)
+  memberId      String?  // optional FK → Member (links committee member to registered member record)
+  designationId String?  // optional FK → Designation (this person's role in the association's role vocabulary)
   associationId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   association Association? @relation(fields: [associationId], references: [id])
+  member      Member?      @relation(fields: [memberId], references: [id])
+  designation Designation? @relation(fields: [designationId], references: [id])
 }
 
 // Per-association history milestones — section hidden if empty
@@ -229,16 +250,78 @@ model TimelineEntry {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model AdminUser {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  password         String?
+  role             String    @default("admin")    // LEGACY — kept for JWT compat; use systemRole
+  systemRole       String    @default("admin")    // "admin" | "editor" | "member"
+  designationId    String?                         // FK → Designation
+  extraPermissions String[]  @default([])          // permission overrides beyond designation
+  deletedAt        DateTime?                       // soft delete — never hard-delete admin users
+  associationId    String?   // null only during migration — every admin belongs to one association
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  association Association?  @relation(fields: [associationId], references: [id])
+  designation Designation?  @relation(fields: [designationId], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ROLES & DESIGNATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Per-association role definitions — e.g. President (admin), Secretary (editor), General Member (member)
+model Designation {
   id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  password      String?
-  role          String   @default("admin")
-  associationId String?  // null only during migration — every admin belongs to one association
+  associationId String
+  name          String   // "President", "Secretary", "Treasurer", "General Member"
+  systemRole    String   // "admin" | "editor" | "member"
+  permissions   String[] // permission keys — only meaningful for "editor" systemRole
+  isDefault     Boolean  @default(false)
+  order         Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  association Association? @relation(fields: [associationId], references: [id])
+  association        Association         @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  adminUsers         AdminUser[]
+  memberAssociations MemberAssociation[]
+  committeeMembers   CommitteeMember[]
+
+  @@index([associationId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MEMBER GROUPS (Phase B — person-mode: professions / interest groups)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Per-association group definitions — e.g. "Caterers", "Decorators", "Musicians"
+model MemberGroup {
+  id            String   @id @default(cuid())
+  associationId String
+  name          String
+  nameNe        String?
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association Association       @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  members     MemberGroupLink[]
+
+  @@index([associationId])
+}
+
+// Join table — many members can belong to many groups
+model MemberGroupLink {
+  id            String   @id @default(cuid())
+  memberId      String
+  memberGroupId String
+  createdAt     DateTime @default(now())
+
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberGroup MemberGroup @relation(fields: [memberGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, memberGroupId])
 }
 
 // Key/value store scoped per association — unique per (key, associationId) pair
@@ -262,6 +345,8 @@ model MembershipApplication {
   ownerName     String
   phone         String
   email         String
+  emailFailedAt DateTime? // set when the applicant confirmation email bounces/fails; cleared on next success
+  emailError    String?   // last email failure reason, shown to admin as a tooltip
   location      String
   capacity      String?
   website       String?
@@ -456,6 +541,25 @@ model Meeting {
   expenses      Expense[]
   contributions MemberContribution[]
   rsvps         MeetingRsvp[]
+  attendance    MeetingAttendance[]
+}
+
+// Per-meeting attendance record — admin marks which members were physically present
+model MeetingAttendance {
+  id                String   @id @default(cuid())
+  meetingId         String
+  memberId          String
+  associationId     String
+  note              String?  // optional note (e.g. "arrived late")
+  recordedByAdminId String?
+  createdAt         DateTime @default(now())
+
+  meeting     Meeting     @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  member      Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  association Association @relation(fields: [associationId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, memberId])
+  @@index([meetingId])
 }
 
 model AgendaItem {
@@ -465,6 +569,7 @@ model AgendaItem {
   title       String
   description String?
   outcome     String?
+  resolved    Boolean  @default(false)  // Phase C — item marked as resolved with outcome
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -475,6 +580,7 @@ model MeetingMinutes {
   id          String    @id @default(cuid())
   meetingId   String    @unique
   content     String
+  contentNe   String?   // Phase C — Nepali translation of minutes
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -547,6 +653,8 @@ model MemberAccount {
   memberId      String
   associationId String
   email         String
+  emailFailedAt DateTime? // set when a notification email to `email` bounces/fails; cleared on next success
+  emailError    String?   // last email failure reason, shown to admin as a tooltip
   passwordHash  String
   lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
@@ -669,6 +777,8 @@ model TicketRegistration {
   // Buyer
   buyerName      String
   buyerEmail     String
+  emailFailedAt  DateTime? // set when a confirmation/payment email to buyerEmail bounces/fails; cleared on next success
+  emailError     String?   // last email failure reason, shown to admin as a tooltip
   buyerPhone     String
   notes          String?
   quantity       Int      @default(1)
@@ -703,4 +813,74 @@ model TicketRegistration {
   @@index([eventId])
   @@index([associationId])
   @@index([checkInToken])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE D — FINANCIAL LEDGER
+// ─────────────────────────────────────────────────────────────────────────────
+
+// One fiscal year per association (or multiple years side-by-side)
+model FinancialYear {
+  id             String    @id @default(cuid())
+  associationId  String
+  label          String    // "FY 2081-82" | "FY 2024-25"
+  startDateAD    DateTime
+  endDateAD      DateTime
+  openingBalance Decimal   @default(0) @db.Decimal(10, 2)
+  status         String    @default("active") // "active" | "closed"
+  closedAt       DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  association    Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  journalEntries JournalEntry[]
+
+  @@index([associationId])
+}
+
+// Chart of accounts — 10 preset defaults seeded per association, plus custom
+model FinancialAccount {
+  id            String   @id @default(cuid())
+  associationId String
+  code          String   // "1001"
+  name          String   // "Cash in Hand"
+  type          String   // "asset" | "income" | "expense" | "liability"
+  isDefault     Boolean  @default(false)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  association   Association    @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  debitEntries  JournalEntry[] @relation("DebitAccount")
+  creditEntries JournalEntry[] @relation("CreditAccount")
+
+  @@unique([associationId, code])
+  @@index([associationId])
+}
+
+// Double-entry ledger — one entry per transaction
+// Treasurer sees simple in/out view; double-entry is internal
+model JournalEntry {
+  id               String   @id @default(cuid())
+  associationId    String
+  financialYearId  String
+  date             DateTime
+  description      String
+  debitAccountId   String
+  creditAccountId  String
+  amount           Decimal  @db.Decimal(10, 2)
+  reference        String?  // receipt / voucher number
+  entityType       String?  // "dues" | "expense" | "contribution" | "ticket" | "manual"
+  entityId         String?  // FK to source record (DuesPayment, Expense, etc.)
+  createdByAdminId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  association   Association      @relation(fields: [associationId], references: [id], onDelete: Cascade)
+  financialYear FinancialYear    @relation(fields: [financialYearId], references: [id], onDelete: Cascade)
+  debitAccount  FinancialAccount @relation("DebitAccount",  fields: [debitAccountId],  references: [id])
+  creditAccount FinancialAccount @relation("CreditAccount", fields: [creditAccountId], references: [id])
+
+  @@index([associationId, financialYearId, date])
+  @@index([entityType, entityId])
 }

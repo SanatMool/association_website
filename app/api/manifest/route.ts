@@ -22,7 +22,7 @@ export async function GET() {
   const shortName = name.split(" ")[0];
   const description = association?.description ?? `${name} — official association of event venues.`;
   const themeColor = association?.themeColor ?? "#0a1040";
-  const logo = association?.logo ?? "/eva/evanepal_transparent.png";
+  const logo = association?.logo ?? "/default-logo.png";
 
   const manifest = {
     name,

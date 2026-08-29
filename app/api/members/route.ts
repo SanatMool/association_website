@@ -4,6 +4,7 @@ import { getAdminContext } from "@/lib/adminAuth";
 import { slugify } from "@/lib/utils";
 import { logApiCall } from "@/lib/apiLogger";
 import { logActivity } from "@/lib/activityLogger";
+import { hasPermission } from "@/lib/permissions";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
@@ -44,13 +45,17 @@ export async function POST(req: NextRequest) {
   const start = Date.now();
   const ctx = await getAdminContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(ctx, "members.create")) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { associationId } = ctx;
 
   const rawData = await req.json() as Record<string, unknown>;
 
-  // Extract billing fields — not Member model fields
+  // Extract billing + visibility fields — not Member model fields
+  // (showPhone/showEmail live on MemberAssociation, not Member)
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const { memberCategoryId, billingOption, ...memberData } = rawData;
+  const { memberCategoryId, billingOption, showPhone, showEmail, ...memberData } = rawData;
 
   // Generate slug if not provided
   if (!memberData.slug && memberData.name) {
@@ -69,6 +74,8 @@ export async function POST(req: NextRequest) {
             memberId:         m.id,
             associationId,
             memberCategoryId: (memberCategoryId as string | undefined) || null,
+            showPhone:        (showPhone as boolean | undefined) ?? false,
+            showEmail:        (showEmail as boolean | undefined) ?? false,
           },
         });
       }

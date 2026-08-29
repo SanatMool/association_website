@@ -4,6 +4,10 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle, XCircle, Users, Calendar, Newspaper, Award, Clock, ExternalLink, Pencil } from "lucide-react";
 import AiQuotaManager from "./AiQuotaManager";
+import DeleteAssociationButton from "./DeleteAssociationButton";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import Badge from "@/components/ui/panel/Badge";
 
 export const dynamic = "force-dynamic";
 
@@ -77,19 +81,15 @@ export default async function AssociationDetailPage({ params }: Props) {
       </Link>
 
       {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+      <PanelCard className="p-6 mb-6" hover={false}>
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl font-bold text-gray-900">{association.name}</h1>
               {association.active ? (
-                <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full">
-                  <CheckCircle size={11} /> Active
-                </span>
+                <Badge tone="success" icon={<CheckCircle size={11} />}>Active</Badge>
               ) : (
-                <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-full">
-                  <XCircle size={11} /> Inactive
-                </span>
+                <Badge tone="danger" icon={<XCircle size={11} />}>Inactive</Badge>
               )}
             </div>
             {association.nameNe && <p className="text-gray-500 text-sm">{association.nameNe}</p>}
@@ -128,18 +128,18 @@ export default async function AssociationDetailPage({ params }: Props) {
             </div>
           ))}
         </div>
-      </div>
+      </PanelCard>
 
       {/* Stats */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
         {statCards.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-xl border border-gray-100 p-4 text-center">
+          <PanelCard key={label} className="p-4 text-center" hover={false}>
             <div className={`inline-flex p-2 rounded-xl ${bg} mb-2`}>
               <Icon size={16} className={color} />
             </div>
             <div className="text-2xl font-bold text-gray-900">{value}</div>
             <div className="text-xs text-gray-400 mt-0.5">{label}</div>
-          </div>
+          </PanelCard>
         ))}
       </div>
 
@@ -150,41 +150,39 @@ export default async function AssociationDetailPage({ params }: Props) {
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Admin users */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
+        <PanelTable>
+          <div className="px-5 py-4 border-b border-slate-100">
             <h2 className="font-semibold text-gray-900">Admin Users</h2>
           </div>
           {association.admins.length === 0 ? (
             <div className="text-center py-8 text-gray-400 text-sm">No admin users</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <PanelTableHead>
                 <tr>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Role</th>
                 </tr>
-              </thead>
+              </PanelTableHead>
               <tbody className="divide-y divide-gray-50">
-                {association.admins.map((admin) => (
-                  <tr key={admin.id} className="hover:bg-gray-50/50">
+                {association.admins.map((admin, i) => (
+                  <PanelTableRow key={admin.id} index={i}>
                     <td className="px-4 py-2.5 font-medium text-gray-900">{admin.name}</td>
                     <td className="px-4 py-2.5 text-gray-500 text-xs">{admin.email}</td>
                     <td className="px-4 py-2.5">
-                      <span className="text-xs font-medium px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full capitalize">
-                        {admin.role}
-                      </span>
+                      <Badge tone="warning" className="capitalize">{admin.role}</Badge>
                     </td>
-                  </tr>
+                  </PanelTableRow>
                 ))}
               </tbody>
             </table>
           )}
-        </div>
+        </PanelTable>
 
         {/* Recent API logs */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <PanelTable>
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-semibold text-gray-900">Recent API Logs</h2>
             <Link href="/platform/logs" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
               All logs →
@@ -194,16 +192,16 @@ export default async function AssociationDetailPage({ params }: Props) {
             <div className="text-center py-8 text-gray-400 text-sm">No logs yet</div>
           ) : (
             <table className="w-full text-xs">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <PanelTableHead>
                 <tr>
                   <th className="text-left px-4 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Path</th>
                   <th className="text-left px-4 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="text-right px-4 py-2.5 font-semibold text-gray-400 uppercase tracking-wider">ms</th>
                 </tr>
-              </thead>
+              </PanelTableHead>
               <tbody className="divide-y divide-gray-50">
-                {recentLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50/50">
+                {recentLogs.map((log, i) => (
+                  <PanelTableRow key={log.id} index={i}>
                     <td className="px-4 py-2 font-mono text-gray-700 truncate max-w-[180px]">{log.path}</td>
                     <td className="px-4 py-2">
                       <span className={`font-bold ${
@@ -214,12 +212,27 @@ export default async function AssociationDetailPage({ params }: Props) {
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right text-gray-400">{log.responseTimeMs}</td>
-                  </tr>
+                  </PanelTableRow>
                 ))}
               </tbody>
             </table>
           )}
-        </div>
+        </PanelTable>
+      </div>
+
+      <div className="mt-6">
+        <DeleteAssociationButton
+          associationId={association.id}
+          associationName={association.name}
+          associationSlug={association.slug}
+          counts={{
+            members: association._count.memberLinks,
+            events: association._count.events,
+            news: association._count.news,
+            committee: association._count.committee,
+            admins: association._count.admins,
+          }}
+        />
       </div>
     </div>
   );

@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import Badge from "@/components/ui/panel/Badge";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 interface EventRow {
   id: string;
@@ -107,7 +111,7 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
       </div>
 
       {/* ── Filters ─── */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
+      <PanelCard className="p-4 mb-4 space-y-3" hover={false}>
         {/* Search */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -157,7 +161,7 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
             </button>
           )}
         </div>
-      </div>
+      </PanelCard>
 
       {/* Results count */}
       {anyFilter && (
@@ -167,14 +171,13 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
       )}
 
       {/* ── Mobile cards (hidden md+) ─────────────────────────────────── */}
-      <div className="md:hidden bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable className="md:hidden">
         {displayed.length === 0 ? (
-          <div className="py-16 text-center">
-            <CalendarDays size={28} className="text-gray-200 mx-auto mb-2" />
-            <p className="text-gray-400 text-sm">
-              {events.length === 0 ? "No events yet. Tap \"Add Event\" to create one." : "No events match your filters."}
-            </p>
-          </div>
+          <EmptyState
+            icon={CalendarDays}
+            title={events.length === 0 ? "No events yet." : "No events match your filters."}
+            description={events.length === 0 ? "Tap \"Add Event\" to create one." : undefined}
+          />
         ) : (
           <div className="divide-y divide-gray-50">
             {displayed.map((e) => {
@@ -195,13 +198,9 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-semibold text-gray-900 text-sm leading-snug">{e.title}</p>
-                        <span className={`flex-shrink-0 px-2 py-0.5 text-[11px] rounded-full border capitalize ${
-                          e.status === "upcoming"
-                            ? "bg-green-50 text-green-700 border-green-200"
-                            : "bg-gray-50 text-gray-600 border-gray-200"
-                        }`}>
+                        <Badge tone={e.status === "upcoming" ? "success" : "neutral"} className="flex-shrink-0 capitalize">
                           {e.status}
-                        </span>
+                        </Badge>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
                         <span className="flex items-center gap-1">
@@ -219,7 +218,8 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-2.5">
-                        <span className={`px-2 py-0.5 text-[11px] rounded-full border ${typeCls}`}>
+                        {/* Per-type color varies (5 palettes) — plain span keeps Badge's shape without tone-class conflicts */}
+                        <span className={`px-2 py-0.5 text-[11px] font-medium rounded-full border ${typeCls}`}>
                           {TYPE_LABELS[e.type] ?? e.type}
                         </span>
                         <div className="ml-auto flex items-center gap-1.5">
@@ -239,12 +239,12 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
             })}
           </div>
         )}
-      </div>
+      </PanelTable>
 
       {/* ── Desktop table (hidden below md) ──────────────────────────── */}
-      <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable className="hidden md:block">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <PanelTableHead>
             <tr>
               <th className="px-4 py-3 w-8" />
               <th className="text-left px-4 py-3 text-gray-500 font-medium">
@@ -269,10 +269,10 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
               </th>
               <th className="px-4 py-3" />
             </tr>
-          </thead>
+          </PanelTableHead>
           <tbody className="divide-y divide-gray-50">
-            {displayed.map((e) => (
-              <tr key={e.id} className="hover:bg-gray-50/50">
+            {displayed.map((e, i) => (
+              <PanelTableRow key={e.id} index={i}>
                 <td className="px-4 py-3">
                   <div className="w-9 h-9 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                     {e.image ? (
@@ -300,18 +300,14 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
                   )}
                 </td>
                 <td className="px-4 py-3 hidden lg:table-cell">
-                  <span className={`px-2 py-0.5 text-xs rounded-full border ${TYPE_COLORS[e.type] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
+                  <span className={`px-2 py-0.5 text-xs font-medium rounded-full border ${TYPE_COLORS[e.type] ?? "bg-gray-50 text-gray-600 border-gray-200"}`}>
                     {TYPE_LABELS[e.type] ?? e.type}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 text-xs rounded-full border capitalize ${
-                    e.status === "upcoming"
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : "bg-gray-50 text-gray-600 border-gray-200"
-                  }`}>
+                  <Badge tone={e.status === "upcoming" ? "success" : "neutral"} className="capitalize">
                     {e.status}
-                  </span>
+                  </Badge>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 justify-end">
@@ -324,20 +320,19 @@ export default function EventsClient({ events }: { events: EventRow[] }) {
                     <DeleteButton id={e.id} entity="events" redirectTo="/admin/events" />
                   </div>
                 </td>
-              </tr>
+              </PanelTableRow>
             ))}
           </tbody>
         </table>
 
         {displayed.length === 0 && (
-          <div className="py-16 text-center">
-            <CalendarDays size={28} className="text-gray-200 mx-auto mb-2" />
-            <p className="text-gray-400 text-sm">
-              {events.length === 0 ? "No events yet. Click \"Add Event\" to create one." : "No events match your search or filters."}
-            </p>
-          </div>
+          <EmptyState
+            icon={CalendarDays}
+            title={events.length === 0 ? "No events yet." : "No events match your search or filters."}
+            description={events.length === 0 ? "Click \"Add Event\" to create one." : undefined}
+          />
         )}
-      </div>
+      </PanelTable>
     </div>
   );
 }

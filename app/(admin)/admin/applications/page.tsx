@@ -11,6 +11,9 @@ import {
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 function safeDate(val: string | null | undefined): string {
   if (!val) return "—";
@@ -23,6 +26,8 @@ interface Application {
   ownerName: string;
   phone: string;
   email: string;
+  emailFailedAt: string | null;
+  emailError: string | null;
   location: string;
   capacity: string | null;
   website: string | null;
@@ -976,22 +981,18 @@ export default function ApplicationsPage() {
       {loading ? (
         <div className="text-center py-20 text-gray-400">Loading…</div>
       ) : applications.length === 0 ? (
-        <div className="text-center py-20">
-          <Clock size={36} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 font-medium">No applications yet</p>
-          <p className="text-gray-400 text-sm mt-1">Applications from the membership form will appear here</p>
-        </div>
+        <EmptyState icon={Clock} title="No applications yet" description="Applications from the membership form will appear here" />
       ) : (
         <>
           {/* ── Desktop: table + sidebar ────────────────────────────────── */}
           <div className="hidden lg:grid lg:grid-cols-3 gap-5">
             {/* Table */}
-            <div className="lg:col-span-2 bg-white rounded-xl border border-gray-100 overflow-hidden">
+            <PanelTable className="lg:col-span-2">
               {paginated.length === 0 ? (
                 <div className="py-12 text-center text-sm text-gray-400">No applications match your search.</div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-100">
+                  <PanelTableHead>
                     <tr>
                       <th className="text-left px-4 py-3 text-gray-500 font-medium cursor-pointer select-none hover:text-gray-700"
                         onClick={() => toggleSort("venueName")}>
@@ -1010,14 +1011,14 @@ export default function ApplicationsPage() {
                         Status <SortIcon col="status" />
                       </th>
                     </tr>
-                  </thead>
+                  </PanelTableHead>
                   <tbody className="divide-y divide-gray-50">
-                    {paginated.map((app) => {
+                    {paginated.map((app, i) => {
                       const cfg  = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.pending;
                       const Icon = STATUS_ICON[app.status] ?? Clock;
                       return (
-                        <tr key={app.id}
-                          className={`hover:bg-gray-50/50 cursor-pointer transition-colors ${selected?.id === app.id ? "bg-amber-50/40" : ""}`}
+                        <PanelTableRow key={app.id} index={i}
+                          className={`cursor-pointer ${selected?.id === app.id ? "bg-amber-50/40" : ""}`}
                           onClick={() => selectApp(app)}
                         >
                           <td className="px-4 py-3">
@@ -1025,6 +1026,11 @@ export default function ApplicationsPage() {
                             {app.memberId && (
                               <div className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5">
                                 <CheckCircle size={10} /> Member created
+                              </div>
+                            )}
+                            {app.emailFailedAt && (
+                              <div title={`Email failed: ${app.emailError ?? "unknown error"}`} className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
+                                <AlertTriangle size={10} /> Confirmation email failed
                               </div>
                             )}
                           </td>
@@ -1035,28 +1041,25 @@ export default function ApplicationsPage() {
                               <Icon size={10} /> {cfg.label}
                             </span>
                           </td>
-                        </tr>
+                        </PanelTableRow>
                       );
                     })}
                   </tbody>
                 </table>
               )}
               {renderPagination()}
-            </div>
+            </PanelTable>
 
             {/* Sidebar */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5 h-fit sticky top-6">
+            <PanelCard className="p-5 h-fit sticky top-6" hover={false}>
               {selected ? renderDetail() : (
-                <div className="text-center py-10">
-                  <ClipboardList size={28} className="text-gray-200 mx-auto mb-2" />
-                  <p className="text-gray-400 text-sm">Select an application to review</p>
-                </div>
+                <EmptyState icon={ClipboardList} title="Select an application to review" />
               )}
-            </div>
+            </PanelCard>
           </div>
 
           {/* ── Mobile: card list ────────────────────────────────────────── */}
-          <div className="lg:hidden bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <PanelTable className="lg:hidden">
             {paginated.length === 0 ? (
               <div className="py-12 text-center text-sm text-gray-400">No applications match your search.</div>
             ) : (
@@ -1093,6 +1096,11 @@ export default function ApplicationsPage() {
                               <CheckCircle size={9} /> Member
                             </span>
                           )}
+                          {app.emailFailedAt && (
+                            <span title={`Email failed: ${app.emailError ?? "unknown error"}`} className="text-[10px] text-amber-600 flex items-center gap-0.5">
+                              <AlertTriangle size={9} /> Email issue
+                            </span>
+                          )}
                         </div>
                       </div>
                     </button>
@@ -1101,7 +1109,7 @@ export default function ApplicationsPage() {
               </div>
             )}
             {renderPagination()}
-          </div>
+          </PanelTable>
 
           {/* ── Mobile bottom sheet ──────────────────────────────────────── */}
           <AnimatePresence>

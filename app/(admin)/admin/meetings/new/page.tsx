@@ -450,7 +450,7 @@ export default function NewMeetingPage() {
                     type="text"
                     value={form.venue}
                     onChange={(e) => set("venue", e.target.value)}
-                    placeholder="e.g. EVA Nepal Office, Hotel Annapurna, Thamel"
+                    placeholder="e.g. Association Office, Grand Hall, Thamel"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1040]/30 focus:border-[#0a1040] transition-all"
                   />
                   <p className="text-xs text-gray-400 mt-1.5 flex items-start gap-1">
@@ -609,7 +609,7 @@ export default function NewMeetingPage() {
                       <input
                         value={aiKeywords}
                         onChange={(e) => setAiKeywords(e.target.value)}
-                        placeholder="e.g. budget review, new committee, 150 members, annual report"
+                        placeholder="e.g. budget review, new committee, membership update, annual report"
                         className="w-full px-3 py-2 border border-violet-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-violet-400"
                       />
                       <p className="text-[11px] text-violet-500 mt-1">AI will weave these into the description naturally.</p>

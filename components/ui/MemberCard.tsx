@@ -10,6 +10,7 @@ interface MemberCardProps {
   member: MemberType;
   index?: number;
   defaultImage?: string;
+  memberMode?: string;
 }
 
 // Capacity tier configuration
@@ -65,12 +66,17 @@ const categoryPattern = (category: string) => {
   return PATTERNS.default;
 };
 
-export default function MemberCard({ member, index = 0, defaultImage }: MemberCardProps) {
+export default function MemberCard({ member, index = 0, defaultImage, memberMode = "venue" }: MemberCardProps) {
   const { t } = useLocale();
-  const tier = getTierConfig(member.capacity);
-  const fillPct = Math.min(100, Math.round(((member.capacity ?? 0) / 1200) * 100));
+  const isPersonMode = memberMode === "person";
+  const tier = getTierConfig(isPersonMode ? null : member.capacity);
+  const fillPct = isPersonMode ? 0 : Math.min(100, Math.round(((member.capacity ?? 0) / 1200) * 100));
   const pattern = categoryPattern(member.category ?? "");
   const heroImage = member.image || defaultImage || null;
+  // Resolve phones for display (phones array takes priority over legacy phone string)
+  const displayPhones = member.phones && member.phones.length > 0
+    ? member.phones
+    : (member.phone ? [member.phone] : []);
 
   return (
     <motion.div
@@ -160,24 +166,34 @@ export default function MemberCard({ member, index = 0, defaultImage }: MemberCa
           )}
         </div>
 
-        {/* Capacity overlay — bottom */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-8 z-10" style={{
-          background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)"
-        }}>
-          <div className="flex items-end justify-between">
-            <div>
-              <div className={`font-serif font-bold text-2xl leading-none ${tier.textColor}`}>
-                {member.capacity != null ? member.capacity.toLocaleString() : "—"}
+        {/* Capacity overlay — bottom (venue mode only) */}
+        {!isPersonMode && (
+          <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-8 z-10" style={{
+            background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)"
+          }}>
+            <div className="flex items-end justify-between">
+              <div>
+                <div className={`font-serif font-bold text-2xl leading-none ${tier.textColor}`}>
+                  {member.capacity != null ? member.capacity.toLocaleString() : "—"}
+                </div>
+                <div className="text-white/50 text-[10px] font-medium tracking-wide uppercase mt-0.5">
+                  Guest Capacity
+                </div>
               </div>
-              <div className="text-white/50 text-[10px] font-medium tracking-wide uppercase mt-0.5">
-                Guest Capacity
+              <div className="text-right">
+                <div className="text-white/60 text-[10px] uppercase tracking-wider">{member.category}</div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="text-white/60 text-[10px] uppercase tracking-wider">{member.category}</div>
             </div>
           </div>
-        </div>
+        )}
+        {/* Person mode — category label only */}
+        {isPersonMode && member.category && (
+          <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 pt-8 z-10" style={{
+            background: "linear-gradient(to top, rgba(0,0,0,0.45) 0%, transparent 100%)"
+          }}>
+            <div className="text-white/70 text-[10px] uppercase tracking-wider">{member.category}</div>
+          </div>
+        )}
       </div>
 
       {/* ── Bottom content ── */}
@@ -187,22 +203,24 @@ export default function MemberCard({ member, index = 0, defaultImage }: MemberCa
           {member.name}
         </h3>
 
-        {/* Location + phone */}
+        {/* Location + contact */}
         <div className="space-y-1.5 mb-4">
           <div className="flex items-center gap-2 text-slate-500 text-xs">
             <MapPin size={11} className="text-gold-500 flex-shrink-0" />
-            <span className="truncate">{member.location}</span>
+            <span className="truncate">{member.location || member.area}</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-500 text-xs">
-            <Phone size={11} className="text-gold-500 flex-shrink-0" />
-            <a
-              href={`tel:${member.phone}`}
-              className="hover:text-navy-700 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {member.phone}
-            </a>
-          </div>
+          {displayPhones.length > 0 && (
+            <div className="flex items-center gap-2 text-slate-500 text-xs">
+              <Phone size={11} className="text-gold-500 flex-shrink-0" />
+              <a
+                href={`tel:${displayPhones[0]}`}
+                className="hover:text-navy-700 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {displayPhones[0]}
+              </a>
+            </div>
+          )}
           {member.website && (
             <div className="flex items-center gap-2 text-slate-500 text-xs">
               <Globe size={11} className="text-gold-500 flex-shrink-0" />
@@ -219,17 +237,19 @@ export default function MemberCard({ member, index = 0, defaultImage }: MemberCa
           )}
         </div>
 
-        {/* Capacity bar */}
-        <div className="mb-4">
-          <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${fillPct}%` }}
-              transition={{ duration: 0.9, delay: Math.min(index * 0.04, 0.5) + 0.3, ease: "easeOut" }}
-              className={`h-full rounded-full ${tier.barColor}`}
-            />
+        {/* Capacity bar — venue mode only */}
+        {!isPersonMode && (
+          <div className="mb-4">
+            <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${fillPct}%` }}
+                transition={{ duration: 0.9, delay: Math.min(index * 0.04, 0.5) + 0.3, ease: "easeOut" }}
+                className={`h-full rounded-full ${tier.barColor}`}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-3.5 border-t border-slate-100">

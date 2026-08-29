@@ -10,6 +10,7 @@ interface StatsSectionProps {
   yearsActive?: number;
   foundedYear?: number;
   shortName?: string;
+  memberMode?: string;
 }
 
 function Counter({
@@ -50,9 +51,10 @@ function Counter({
   );
 }
 
-export default function StatsSection({ memberCount = 150, eventsHosted = 20000, yearsActive = 14, foundedYear = 2011, shortName = "EVA" }: StatsSectionProps) {
+export default function StatsSection({ memberCount = 150, eventsHosted = 20000, yearsActive = 14, foundedYear = 2011, shortName = "EVA", memberMode = "venue" }: StatsSectionProps) {
+  const isPersonMode = memberMode === "person";
   const stats = [
-    { value: memberCount, suffix: "+", label: "Member Venues",  desc: "Registered banquet halls & event spaces",    icon: Building2, delay: 0   },
+    { value: memberCount, suffix: "+", label: isPersonMode ? "Members" : "Member Venues",  desc: isPersonMode ? "Registered members of the association" : "Registered banquet halls & event spaces", icon: Building2, delay: 0   },
     { value: yearsActive, suffix: "+", label: "Years Leading",  desc: `Serving Nepal's event industry since ${foundedYear}`, icon: Award, delay: 0.1 },
     { value: eventsHosted, suffix: "+", label: "Events Hosted", desc: "Across all member venues collectively",      icon: Calendar,  delay: 0.2 },
     { value: 100,         suffix: "%", label: "Valley Coverage",desc: "Kathmandu's largest venue network",          icon: MapPin,    delay: 0.3 },

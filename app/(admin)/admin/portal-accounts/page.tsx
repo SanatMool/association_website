@@ -8,6 +8,10 @@ import {
   Loader2, Mail, Lock, UserCheck, AlertCircle, Plus, List, Wand2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import Badge from "@/components/ui/panel/Badge";
+import EmptyState from "@/components/ui/panel/EmptyState";
+import ConfirmDialog from "@/components/ui/panel/ConfirmDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -15,6 +19,8 @@ interface PortalAccount {
   id: string;
   email: string;
   createdAt: string;
+  emailFailedAt: string | null;
+  emailError: string | null;
 }
 interface MemberRow {
   memberId: string;
@@ -264,14 +270,14 @@ export default function PortalAccountsPage() {
           <p className="text-sm text-gray-400 mt-0.5">Create and manage member login accounts for the Member Portal.</p>
         </div>
         <div className="flex gap-3">
-          <div className="flex-1 sm:flex-none bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+          <PanelCard className="flex-1 sm:flex-none px-4 py-3 text-center" hover={false}>
             <div className="text-lg font-bold text-emerald-600">{rows.filter((r) => r.account).length}</div>
             <div className="text-xs text-gray-400 mt-0.5">With access</div>
-          </div>
-          <div className="flex-1 sm:flex-none bg-white rounded-xl border border-gray-100 px-4 py-3 text-center">
+          </PanelCard>
+          <PanelCard className="flex-1 sm:flex-none px-4 py-3 text-center" hover={false}>
             <div className="text-lg font-bold text-gray-500">{rows.filter((r) => !r.account).length}</div>
             <div className="text-xs text-gray-400 mt-0.5">No access</div>
-          </div>
+          </PanelCard>
         </div>
       </div>
 
@@ -611,20 +617,17 @@ export default function PortalAccountsPage() {
         </div>
 
         {filteredRows.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400 text-sm">
-            <KeyRound size={24} className="mx-auto mb-2 opacity-30" />
-            <p>{tableSearch ? "No members match your search." : "No members found."}</p>
-          </div>
+          <PanelCard hover={false}>
+            <EmptyState icon={KeyRound} title={tableSearch ? "No members match your search." : "No members found."} />
+          </PanelCard>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {paginatedRows.map((r) => {
               const initials = r.memberName.split(" ").map((w: string) => w[0] ?? "").join("").slice(0, 2).toUpperCase();
               const hasAccount = !!r.account;
               return (
-                <motion.div key={r.memberId} layout
-                  className={`bg-white rounded-xl border overflow-hidden transition-colors ${
-                    hasAccount ? "border-gray-100" : "border-gray-100 opacity-70"
-                  }`}>
+                <motion.div key={r.memberId} layout className={hasAccount ? "" : "opacity-70"}>
+                  <PanelCard className="overflow-hidden">
                   <div className="p-4">
                     {/* Avatar + name + status */}
                     <div className="flex items-start gap-3 mb-3">
@@ -638,8 +641,8 @@ export default function PortalAccountsPage() {
                         <p className="text-xs text-gray-400 truncate">{r.area}</p>
                       </div>
                       {hasAccount
-                        ? <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full font-medium flex-shrink-0"><Check size={9} /> Active</span>
-                        : <span className="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0"><X size={9} /> No access</span>
+                        ? <Badge tone="success" icon={<Check size={9} />} className="flex-shrink-0">Active</Badge>
+                        : <Badge tone="neutral" icon={<X size={9} />} className="flex-shrink-0">No access</Badge>
                       }
                     </div>
 
@@ -648,6 +651,11 @@ export default function PortalAccountsPage() {
                         <div className="flex items-center gap-1.5 text-xs text-gray-500">
                           <Mail size={10} className="flex-shrink-0 text-gray-300" />
                           <span className="truncate">{r.account!.email}</span>
+                          {r.account!.emailFailedAt && (
+                            <span title={`Email failed: ${r.account!.emailError ?? "unknown error"}`} className="text-amber-600 flex-shrink-0">
+                              <AlertCircle size={10} />
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-gray-400">
                           <UserCheck size={10} className="flex-shrink-0 text-gray-300" />
@@ -690,21 +698,6 @@ export default function PortalAccountsPage() {
                               </button>
                             </div>
                           </div>
-                        ) : deleteId === r.account!.id ? (
-                          <div className="bg-red-50 border border-red-100 rounded-xl p-3">
-                            <p className="text-xs font-semibold text-red-700 mb-2">Remove portal access?</p>
-                            <p className="text-[11px] text-red-500 mb-2">{r.memberName} will no longer be able to log in to the portal.</p>
-                            <div className="flex gap-2">
-                              <button onClick={() => handleDelete(r.account!.id)} disabled={deleting}
-                                className="flex-1 py-2 text-xs font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 disabled:opacity-50 transition-colors min-h-[36px]">
-                                {deleting ? "Removing…" : "Yes, remove"}
-                              </button>
-                              <button onClick={() => setDeleteId(null)}
-                                className="px-3 py-2 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-xl transition-colors min-h-[36px]">
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
                         ) : (
                           <div className="flex gap-2">
                             <button
@@ -727,11 +720,22 @@ export default function PortalAccountsPage() {
                       </button>
                     )}
                   </div>
+                  </PanelCard>
                 </motion.div>
               );
             })}
           </div>
         )}
+
+        <ConfirmDialog
+          open={deleteId !== null}
+          title="Remove portal access?"
+          message={deleteId ? `${rows.find((r) => r.account?.id === deleteId)?.memberName ?? "This member"} will no longer be able to log in to the portal.` : undefined}
+          confirmLabel="Yes, remove"
+          loading={deleting}
+          onConfirm={() => deleteId && handleDelete(deleteId)}
+          onCancel={() => setDeleteId(null)}
+        />
 
         {/* Pagination */}
         {filteredRows.length > PAGE_SIZE && (

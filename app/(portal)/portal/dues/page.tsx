@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, Clock, CreditCard, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import Badge from "@/components/ui/panel/Badge";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 interface Payment {
   id: string; type: string; amount: string; dueAmount: string | null;
@@ -12,6 +16,12 @@ interface Payment {
 }
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function DuesStatusBadge({ status }: { status: string }) {
+  if (status === "paid") return <Badge tone="success" icon={<CheckCircle size={11} />}>Paid</Badge>;
+  if (status === "partial") return <Badge tone="warning" icon={<Clock size={11} />}>Partial</Badge>;
+  return <Badge tone="warning" icon={<Clock size={11} />}>Pending</Badge>;
+}
 
 function periodLabel(p: Payment) {
   const d = new Date(p.periodStart);
@@ -52,15 +62,15 @@ export default function PortalDuesPage() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <PanelCard className="p-4" hover={false}>
           <div className="text-xl font-bold text-gray-900">{payments.length}</div>
           <div className="text-xs text-gray-400 mt-0.5">Total Records</div>
-        </div>
-        <div className="bg-green-50 rounded-xl border border-green-100 p-4">
+        </PanelCard>
+        <div className="bg-green-50 rounded-2xl border border-green-100 p-4">
           <div className="text-xl font-bold text-green-700">Rs {totalPaid.toLocaleString()}</div>
           <div className="text-xs text-green-600 mt-0.5">{paid.length} paid</div>
         </div>
-        <div className={`${hasOutstanding ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100"} rounded-xl border p-4`}>
+        <div className={`${hasOutstanding ? "bg-amber-50 border-amber-100" : "bg-gray-50 border-gray-100"} rounded-2xl border p-4`}>
           <div className={`text-xl font-bold ${hasOutstanding ? "text-amber-700" : "text-gray-400"}`}>
             Rs {totalOutstanding.toLocaleString()}
           </div>
@@ -84,16 +94,15 @@ export default function PortalDuesPage() {
       )}
 
       {payments.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400">
-          <CreditCard size={24} className="mx-auto mb-2 opacity-30" />
-          <p className="text-sm">No payment records yet.</p>
-        </div>
+        <PanelCard className="text-center py-16" hover={false}>
+          <EmptyState icon={CreditCard} title="No payment records yet." />
+        </PanelCard>
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <PanelTable className="hidden md:block">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <PanelTableHead>
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Type</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Period</th>
@@ -103,14 +112,14 @@ export default function PortalDuesPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Paid On</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Receipt</th>
                 </tr>
-              </thead>
+              </PanelTableHead>
               <tbody className="divide-y divide-gray-50">
-                {payments.map((p) => {
+                {payments.map((p, i) => {
                   const dueAmt  = p.dueAmount ? Number(p.dueAmount) : null;
                   const paidAmt = Number(p.amount);
                   const remaining = dueAmt && p.status === "partial" ? dueAmt - paidAmt : 0;
                   return (
-                    <tr key={p.id} className="hover:bg-gray-50/50">
+                    <PanelTableRow key={p.id} index={i}>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
                           {p.type === "monthly" ? "Monthly" : "Annual"}
@@ -137,21 +146,15 @@ export default function PortalDuesPage() {
                           <span className="text-sm font-semibold text-gray-900">Rs {paidAmt.toLocaleString()}</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
-                        {p.status === "paid"
-                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle size={11} />Paid</span>
-                          : p.status === "partial"
-                          ? <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full"><Clock size={11} />Partial</span>
-                          : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"><Clock size={11} />Pending</span>}
-                      </td>
+                      <td className="px-4 py-3"><DuesStatusBadge status={p.status} /></td>
                       <td className="px-4 py-3 text-xs text-gray-400">{p.paidAt ? formatDate(p.paidAt) : "—"}</td>
                       <td className="px-4 py-3 text-xs text-gray-400">{p.receiptNumber ?? "—"}</td>
-                    </tr>
+                    </PanelTableRow>
                   );
                 })}
               </tbody>
             </table>
-          </div>
+          </PanelTable>
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
@@ -160,7 +163,7 @@ export default function PortalDuesPage() {
               const paidAmt   = Number(p.amount);
               const remaining = dueAmt && p.status === "partial" ? dueAmt - paidAmt : 0;
               return (
-                <div key={p.id} className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+                <PanelCard key={p.id} className="p-4 space-y-2" hover={false}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "monthly" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
@@ -168,11 +171,7 @@ export default function PortalDuesPage() {
                       </span>
                       <span className="text-sm font-medium text-gray-700">{periodLabel(p)}</span>
                     </div>
-                    {p.status === "paid"
-                      ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle size={11} />Paid</span>
-                      : p.status === "partial"
-                      ? <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full"><Clock size={11} />Partial</span>
-                      : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"><Clock size={11} />Pending</span>}
+                    <DuesStatusBadge status={p.status} />
                   </div>
                   {p.memberCategory && (
                     <div className="text-xs text-gray-400">{p.memberCategory.name}</div>
@@ -194,7 +193,7 @@ export default function PortalDuesPage() {
                       {p.receiptNumber && <div className="text-xs text-gray-400">#{p.receiptNumber}</div>}
                     </div>
                   </div>
-                </div>
+                </PanelCard>
               );
             })}
           </div>

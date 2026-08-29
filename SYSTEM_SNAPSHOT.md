@@ -3,7 +3,7 @@
 Read this before any schema change, API change, or structural decision.
 Update this after every migration or architectural change.
 
-Last updated: 2026-06-10 (Phases 3, 4, 6, 7 complete)
+Last updated: 2026-08-27 (Phase C — Meeting Enhancements + Phase D — Financial Ledger complete)
 
 ---
 
@@ -83,18 +83,22 @@ Dev credentials: `postgresql://sanatmool@localhost:5432/evanepal`
 | createdAt     | DateTime        | Auto                                     |
 | updatedAt     | DateTime        | Auto                                     |
 
-Relations: `memberLinks MemberAssociation[]`, `events Event[]`, `news News[]`, `committee CommitteeMember[]`, `admins AdminUser[]`, `settings SiteSettings[]`, `timeline TimelineEntry[]`, `apiLogs ApiLog[]`
+Relations: `memberLinks MemberAssociation[]`, `events Event[]`, `news News[]`, `committee CommitteeMember[]`, `admins AdminUser[]`, `settings SiteSettings[]`, `timeline TimelineEntry[]`, `apiLogs ApiLog[]`, `memberGroups MemberGroup[]`, `financialYears FinancialYear[]`, `financialAccounts FinancialAccount[]`, `journalEntries JournalEntry[]`
 
 ### MemberAssociation (join table — Members ↔ Associations)
 
-| Field         | Type          | Notes                                            |
-| ------------- | ------------- | ------------------------------------------------ |
-| id            | String (cuid) | PK                                               |
-| memberId      | String        | FK → Member (CASCADE delete)                     |
-| associationId | String        | FK → Association (CASCADE delete)                |
-| visible       | Boolean       | Default true. Admin of THIS association controls |
-| primary       | Boolean       | Default true. Which assoc is member's "home"     |
-| joinedAt      | DateTime      | Auto                                             |
+| Field           | Type          | Notes                                            |
+| --------------- | ------------- | ------------------------------------------------ |
+| id              | String (cuid) | PK                                               |
+| memberId        | String        | FK → Member (CASCADE delete)                     |
+| associationId   | String        | FK → Association (CASCADE delete)                |
+| memberCategoryId| String?       | FK → MembershipCategory                          |
+| designationId   | String?       | FK → Designation (Phase A)                       |
+| showPhone       | Boolean       | Default false — whether phone is shown publicly  |
+| showEmail       | Boolean       | Default false — whether email is shown publicly  |
+| visible         | Boolean       | Default true. Admin of THIS association controls |
+| primary         | Boolean       | Default true. Which assoc is member's "home"     |
+| joinedAt        | DateTime      | Auto                                             |
 
 `@@unique([memberId, associationId])`
 
@@ -109,14 +113,15 @@ Relations: `memberLinks MemberAssociation[]`, `events Event[]`, `news News[]`, `
 | Field       | Type            | Notes                                      |
 | ----------- | --------------- | ------------------------------------------ |
 | id          | String (cuid)   | PK                                         |
-| name        | String          | Business name (English)                    |
-| nameNe      | String?         | Business name (Nepali)                     |
+| name        | String          | Business name or person name (English)     |
+| nameNe      | String?         | Business/person name (Nepali)              |
 | slug        | String @unique  | URL key                                    |
 | area        | String          |                                            |
-| capacity    | Int?            | **Nullable** — Bhaktapur has no capacity   |
-| type        | String?         | **Nullable** — Bhaktapur has no type data  |
+| capacity    | Int?            | **Nullable** — not used in person mode     |
+| type        | String?         | **Nullable**                               |
 | category    | String?         |                                            |
-| phone       | String?         | **Nullable**                               |
+| phones      | String[]        | **Phase B** — array of phones; default []  |
+| phone       | String?         | LEGACY — kept for backward compat          |
 | email       | String?         |                                            |
 | website     | String?         |                                            |
 | description | String?         |                                            |
@@ -133,9 +138,31 @@ Relations: `memberLinks MemberAssociation[]`, `events Event[]`, `news News[]`, `
 | createdAt   | DateTime        | Auto                                       |
 | updatedAt   | DateTime        | Auto                                       |
 
-Relation: `associations MemberAssociation[]`
+Relations: `associations MemberAssociation[]`, `committeeMemberships CommitteeMember[]`, `memberGroupLinks MemberGroupLink[]`
 
 **Date anchor**: `createdAt`
+
+### MemberGroup (Phase B — per-association groups/professions)
+
+| Field         | Type          | Notes                    |
+| ------------- | ------------- | ------------------------ |
+| id            | String (cuid) | PK                       |
+| associationId | String        | FK → Association CASCADE |
+| name          | String        |                          |
+| nameNe        | String?       |                          |
+| order         | Int           | Default 0                |
+| createdAt     | DateTime      | Auto                     |
+| updatedAt     | DateTime      | Auto                     |
+
+### MemberGroupLink (join table — Member ↔ MemberGroup)
+
+| Field         | Type          | Notes                                      |
+| ------------- | ------------- | ------------------------------------------ |
+| id            | String (cuid) | PK                                         |
+| memberId      | String        | FK → Member CASCADE                        |
+| memberGroupId | String        | FK → MemberGroup CASCADE                   |
+
+`@@unique([memberId, memberGroupId])`
 
 ### Event
 
@@ -144,6 +171,30 @@ Relation: `associations MemberAssociation[]`
 | associationId  | String? FK → Association     |
 | date           | DateTime — **date anchor**   |
 | endDate        | DateTime?                    |
+
+### TicketType (event ticketing — migration `20260612110421`)
+
+| Field          | Type          | Notes                                            |
+| -------------- | ------------- | ------------------------------------------------- |
+| eventId        | String        | FK → Event (CASCADE)                               |
+| associationId  | String        | FK → Association (CASCADE)                         |
+| price          | Decimal       | @default(0)                                        |
+| memberPrice    | Decimal?      | optional discounted price for members              |
+| totalCapacity  | Int?          | null = unlimited                                   |
+| strictCapacity | Boolean       | @default(false) — block when soldCount >= capacity |
+| soldCount      | Int           | @default(0), incremented atomically on registration |
+
+### TicketRegistration (migration `20260612110421`)
+
+| Field          | Type          | Notes                                                    |
+| -------------- | ------------- | ---------------------------------------------------------- |
+| ticketTypeId   | String        | FK → TicketType                                             |
+| eventId        | String        | FK → Event (CASCADE)                                        |
+| paymentStatus  | String        | "pending" \| "paid" \| "cancelled" \| "refunded"             |
+| checkInToken   | String        | @unique @default(cuid()) — issued at registration           |
+| checkedIn      | Boolean       | @default(false)                                             |
+
+No separate `TicketPurchase`/`EventAttendance` models — buyer/payment fields and check-in tracking live directly on `TicketRegistration`. See PROGRESS.md "Phase 5 — Event Ticket Sales ✓ COMPLETE" for the full field list and wiring notes.
 
 ### News
 
@@ -160,6 +211,8 @@ Relation: `associations MemberAssociation[]`
 | associationId  | String? FK → Association     |
 | nameNe         | String?                      |
 | venueNe        | String?                      |
+| memberId       | String? FK → Member (optional link to a registered Member — snapshot-at-link, not live-synced) |
+| designationId  | String? FK → Designation (added 2026-08-28 — role in the association's own role vocabulary; admin form falls back to a fixed hardcoded role list only if the association has zero Designations) |
 
 ### TimelineEntry
 
@@ -178,13 +231,31 @@ Relation: `associations MemberAssociation[]`
 
 Section hides if no entries for the association.
 
+### Designation (NEW — Phase A)
+
+| Field         | Type          | Notes                                              |
+| ------------- | ------------- | -------------------------------------------------- |
+| id            | String (cuid) | PK                                                 |
+| associationId | String        | FK → Association (CASCADE)                         |
+| name          | String        | "President", "Secretary", "Treasurer", etc.        |
+| systemRole    | String        | "admin" \| "editor" \| "member"                   |
+| permissions   | String[]      | Permission keys — only for "editor" systemRole     |
+| isDefault     | Boolean       | Default false                                      |
+| order         | Int           | Display order                                      |
+
+6 default designations seeded per new association (President/VP/Secretary/Treasurer/Committee Member/General Member).
+
 ### AdminUser
 
-| Notable fields | Notes                                    |
-| -------------- | ---------------------------------------- |
-| associationId  | String? FK → Association                 |
-| password       | String? (bcrypt hashed)                  |
-| role           | String default "admin"                   |
+| Notable fields  | Notes                                              |
+| --------------- | -------------------------------------------------- |
+| associationId   | String? FK → Association                           |
+| password        | String? (bcrypt hashed)                            |
+| role            | String default "admin" — LEGACY, keep for JWT compat |
+| systemRole      | String default "admin" — "admin" \| "editor" \| "member" |
+| designationId   | String? FK → Designation                           |
+| extraPermissions | String[] — permission overrides beyond designation |
+| deletedAt       | DateTime? — soft delete (never hard-delete admins) |
 
 ### SiteSettings
 
@@ -240,6 +311,71 @@ Admin route: `/admin/applications` — list + status filter + detail panel + sta
 | errorMessage   | String?       |                                 |
 | createdAt      | DateTime      | Auto                            |
 
+### MeetingAttendance (Phase C)
+
+| Field         | Type          | Notes                                    |
+| ------------- | ------------- | ---------------------------------------- |
+| id            | String (cuid) | PK                                       |
+| meetingId     | String        | FK → Meeting (CASCADE)                   |
+| memberId      | String        | FK → Member (CASCADE)                    |
+| markedAt      | DateTime      | Default now()                            |
+| markedByAdminId | String?     | FK → AdminUser (nullable)                |
+
+`@@unique([meetingId, memberId])`
+
+Phase C also added: `AgendaItem.resolved Boolean @default(false)`, `MeetingMinutes.contentNe String?`
+
+### FinancialYear (Phase D)
+
+| Field          | Type          | Notes                                       |
+| -------------- | ------------- | ------------------------------------------- |
+| id             | String (cuid) | PK                                          |
+| associationId  | String        | FK → Association (CASCADE)                  |
+| label          | String        | "FY 2026"                                   |
+| startDateAD    | DateTime      |                                             |
+| endDateAD      | DateTime      |                                             |
+| openingBalance | Decimal(10,2) | Default 0                                   |
+| status         | String        | "active" \| "closed"                        |
+| closedAt       | DateTime?     | Set when status → closed                    |
+
+`@@index([associationId])`
+
+### FinancialAccount (Phase D)
+
+| Field         | Type          | Notes                                        |
+| ------------- | ------------- | -------------------------------------------- |
+| id            | String (cuid) | PK                                           |
+| associationId | String        | FK → Association (CASCADE)                   |
+| code          | String        | "1001" through "5004"                        |
+| name          | String        | "Cash in Hand", "Bank Account", etc.         |
+| type          | String        | "asset" \| "income" \| "expense" \| "liability" |
+| isDefault     | Boolean       | Default false — blocks delete if true        |
+| order         | Int           | Display order, default 0                     |
+
+`@@unique([associationId, code])` — 10 default accounts seeded per association
+
+### JournalEntry (Phase D)
+
+| Field            | Type          | Notes                                          |
+| ---------------- | ------------- | ---------------------------------------------- |
+| id               | String (cuid) | PK                                             |
+| associationId    | String        | FK → Association (CASCADE)                     |
+| financialYearId  | String        | FK → FinancialYear (CASCADE)                   |
+| date             | DateTime      | Transaction date                               |
+| description      | String        |                                                |
+| debitAccountId   | String        | FK → FinancialAccount "DebitAccount" relation  |
+| creditAccountId  | String        | FK → FinancialAccount "CreditAccount" relation |
+| amount           | Decimal(10,2) |                                                |
+| reference        | String?       | Invoice/receipt ref                            |
+| entityType       | String?       | "dues" \| "expense" \| "contribution" \| "ticket" \| "manual" |
+| entityId         | String?       | Links back to source record                    |
+| createdByAdminId | String?       | FK → AdminUser                                 |
+
+`@@index([associationId, financialYearId, date])`, `@@index([entityType, entityId])`
+
+**Auto-journal**: `lib/autoJournal.ts` — fire-and-forget; silently skips if no active year exists.
+Wired into: expense creation, dues payment, contribution payment, ticket payment confirmation.
+
 ---
 
 ## Migrations Applied
@@ -252,8 +388,15 @@ Admin route: `/admin/applications` — list + status filter + detail panel + sta
 | 20260508120000_add_committee_nepali_fields             | nameNe, venueNe on CommitteeMember                                  |
 | 20260609000000_add_multi_tenancy_association_platform  | Full multi-tenancy: 5 new models, associationId on all content rows |
 | 20260609091232_add_membership_application              | MembershipApplication model                                         |
+| 20260612110421_add_ticket_types_and_registrations       | TicketType + TicketRegistration models (Phase 5 — Event Ticket Sales) |
 | 20260609120537_add_phases_3_4_6_7                      | MembershipCategory, DuesPayment, Meeting, AgendaItem, MeetingMinutes, ExpenseVendor, Expense, MemberContribution, MemberAccount, MeetingRsvp, EventRsvp — memberCategoryId on MemberAssociation |
 | 20260702115537_add_due_amount_partial_status           | DuesPayment: dueAmount Decimal? added; status now supports "partial" (paid < dueAmount) |
+| 20260826115713_add_designation_role_system             | Designation model; AdminUser: systemRole, designationId, extraPermissions, deletedAt; MemberAssociation: designationId |
+| 20260826123225_add_member_generalization               | Member.phones String[]; MemberAssociation: showPhone, showEmail; CommitteeMember.memberId; MemberGroup + MemberGroupLink models |
+| 20260827014000_add_phase_c_meeting_enhancements        | AgendaItem.resolved Boolean; MeetingMinutes.contentNe String?; MeetingAttendance model |
+| 20260827015825_add_financial_ledger                    | FinancialYear, FinancialAccount, JournalEntry models; relations on Association |
+| 20260827105327_add_email_failure_tracking              | `emailFailedAt DateTime?` + `emailError String?` added to Member, MembershipApplication, MemberAccount, TicketRegistration |
+| 20260828101059_add_designation_link_to_committee_member | `CommitteeMember.designationId String?` FK → Designation (+ `committeeMembers CommitteeMember[]` relation on Designation) |
 
 ---
 
@@ -263,6 +406,9 @@ Admin route: `/admin/applications` — list + status filter + detail panel + sta
 app/
   layout.tsx                    Root layout (LocaleProvider, PublicChrome, Footer)
   page.tsx                      Homepage — getAssociationOrThrow(), all queries by associationId
+  opengraph-image.tsx           Dynamic og:image (next/og ImageResponse) — resolves association by
+                                 hostname directly (NOT getAssociation(), see CRITICAL note below —
+                                 this file compiles to a route handler, not a render-tree component)
   sitemap.ts                    Scoped to association domain
   members/page.tsx              Server component — members via associations join
   members/[slug]/page.tsx       ISR — member verified against association

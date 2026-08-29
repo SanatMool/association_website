@@ -6,9 +6,13 @@ import {
   Plus, CheckCircle, Clock, Trash2, ChevronDown, Search,
   User, CreditCard, FileText, ArrowRight, ArrowLeft,
   X, TrendingUp, AlertCircle, CalendarDays, Banknote,
-  BadgeCheck, Receipt, Tag, Info, RefreshCw, PlusCircle, Pencil, Save,
+  BadgeCheck, Receipt, Tag, Info, RefreshCw, PlusCircle, Pencil, Save, Bell,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead } from "@/components/ui/panel/PanelTable";
+import EmptyState from "@/components/ui/panel/EmptyState";
+import ConfirmDialog from "@/components/ui/panel/ConfirmDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +33,7 @@ interface Payment {
   notes: string | null;
   paidAt: string | null;
   paymentBreakdown: BreakdownLine[] | null;
-  member: { id: string; name: string; area: string };
+  member: { id: string; name: string; area: string; emailFailedAt: string | null; emailError: string | null };
   memberCategory: { id: string; name: string } | null;
 }
 
@@ -144,6 +148,11 @@ export default function DuesPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // Reminder state
+  const [showReminder,  setShowReminder]  = useState(false);
+  const [reminderMsg,   setReminderMsg]   = useState("");
+  const [reminding,     setReminding]     = useState(false);
+
   // Edit state
   const [editId,        setEditId]        = useState<string | null>(null);
   const [editForm,      setEditForm]      = useState<{ status: string; receiptNumber: string; notes: string; dueAmount: string }>({ status: "", receiptNumber: "", notes: "", dueAmount: "" });
@@ -182,6 +191,29 @@ export default function DuesPage() {
 
   useEffect(() => { void loadInit(); }, [loadInit]);
   useEffect(() => { if (!loading) void loadPayments(); }, [loading, loadPayments, filterStatus, filterType, filterMember]);
+
+  const sendReminders = async () => {
+    setReminding(true);
+    try {
+      const res  = await fetch("/api/membership/dues/remind", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ customMessage: reminderMsg }),
+      });
+      const json = await res.json() as { success: boolean; sent: number; skipped: number; message?: string };
+      if (json.success) {
+        setToast({ msg: json.message ?? `Reminders sent to ${json.sent} member(s). ${json.skipped} skipped (no email).`, ok: true });
+        setShowReminder(false);
+        setReminderMsg("");
+      } else {
+        setToast({ msg: "Failed to send reminders.", ok: false });
+      }
+    } catch {
+      setToast({ msg: "Network error. Please try again.", ok: false });
+    } finally {
+      setReminding(false);
+    }
+  };
 
   // ─── Toast helper ─────────────────────────────────────────────────────────
 
@@ -414,12 +446,20 @@ export default function DuesPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">Record and track membership fee payments for all members.</p>
         </div>
-        <button
-          onClick={() => { setShowForm(true); resetForm(); }}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm rounded-xl hover:bg-[#0d1550] transition-colors shadow-sm w-full sm:w-auto min-h-[44px]"
-        >
-          <Plus size={14} /> Record Payment
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => setShowReminder(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 text-sm rounded-xl hover:bg-amber-100 transition-colors w-full sm:w-auto min-h-[44px]"
+          >
+            <Bell size={14} /> Send Reminders
+          </button>
+          <button
+            onClick={() => { setShowForm(true); resetForm(); }}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#0a1040] text-white text-sm rounded-xl hover:bg-[#0d1550] transition-colors shadow-sm w-full sm:w-auto min-h-[44px]"
+          >
+            <Plus size={14} /> Record Payment
+          </button>
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -866,6 +906,48 @@ export default function DuesPage() {
         )}
       </AnimatePresence>
 
+      {/* Reminder modal */}
+      <AnimatePresence>
+        {showReminder && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-50 rounded-xl"><Bell size={18} className="text-amber-600" /></div>
+                <div>
+                  <h2 className="font-semibold text-gray-900">Send Dues Reminders</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Email all members with pending or partial dues.</p>
+                </div>
+                <button onClick={() => setShowReminder(false)} className="ml-auto text-gray-400 hover:text-gray-700 transition-colors p-1">
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="mb-5">
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Custom message (optional)</label>
+                <textarea
+                  value={reminderMsg}
+                  onChange={(e) => setReminderMsg(e.target.value)}
+                  rows={3}
+                  placeholder="Add a note to include in the reminder email..."
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowReminder(false)} className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={sendReminders} disabled={reminding}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-60">
+                  {reminding ? <RefreshCw size={14} className="animate-spin" /> : <Bell size={14} />}
+                  {reminding ? "Sending…" : "Send Reminders"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <span className="text-xs text-gray-400 font-medium mr-1">Filter:</span>
@@ -915,24 +997,22 @@ export default function DuesPage() {
 
       {/* ── Payment records ── */}
       {loading ? (
-        <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400 text-sm flex flex-col items-center gap-2">
-          <RefreshCw size={20} className="animate-spin opacity-30" />
-          Loading payment records…
-        </div>
+        <PanelCard className="text-center py-16 flex flex-col items-center gap-2" hover={false}>
+          <RefreshCw size={20} className="animate-spin opacity-30 text-gray-400" />
+          <span className="text-gray-400 text-sm">Loading payment records…</span>
+        </PanelCard>
       ) : payments.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400 text-sm flex flex-col items-center gap-3">
-          <Banknote size={32} className="opacity-20" />
-          <div>
-            <div className="font-medium text-gray-500">No payment records found</div>
-            <div className="text-xs mt-1">
-              {filterStatus || filterType || filterMember ? "Try clearing the filters above." : "Click \"Record Payment\" to add the first one."}
-            </div>
-          </div>
-        </div>
+        <PanelCard className="py-16" hover={false}>
+          <EmptyState
+            icon={Banknote}
+            title="No payment records found"
+            description={filterStatus || filterType || filterMember ? "Try clearing the filters above." : "Click \"Record Payment\" to add the first one."}
+          />
+        </PanelCard>
       ) : (
         <>
           {/* ── Mobile cards (hidden sm+) ── */}
-          <div className="sm:hidden bg-white rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+          <PanelTable className="sm:hidden divide-y divide-gray-50">
             {payments.map((p) => {
               const lines: BreakdownLine[] = Array.isArray(p.paymentBreakdown) ? p.paymentBreakdown : [];
               const mobileDueAmt  = editId === p.id && editForm.dueAmount
@@ -947,7 +1027,14 @@ export default function DuesPage() {
                   <div className="px-4 py-4">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 leading-snug">{p.member.name}</p>
+                        <p className="text-sm font-semibold text-gray-900 leading-snug flex items-center gap-1">
+                          {p.member.name}
+                          {p.member.emailFailedAt && (
+                            <span title={`Email failed: ${p.member.emailError ?? "unknown error"}`} className="text-amber-600">
+                              <AlertCircle size={11} />
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-400">{p.member.area}{p.memberCategory ? ` · ${p.memberCategory.name}` : ""}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
@@ -1014,22 +1101,10 @@ export default function DuesPage() {
                         className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors min-h-[36px] ${editId === p.id ? "bg-amber-50 border-amber-200 text-amber-700" : "border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600"}`}>
                         <Pencil size={11} /> Edit
                       </button>
-                      {confirmDeleteId === p.id ? (
-                        <span className="flex items-center gap-1 ml-auto">
-                          <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
-                            className="px-3 py-1.5 text-xs bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-40 min-h-[36px]">
-                            {deletingId === p.id ? <RefreshCw size={11} className="animate-spin inline" /> : "Delete"}
-                          </button>
-                          <button onClick={() => setConfirmDeleteId(null)} className="p-1.5 text-gray-400 hover:text-gray-600">
-                            <X size={13} />
-                          </button>
-                        </span>
-                      ) : (
-                        <button onClick={() => { setConfirmDeleteId(p.id); setEditId(null); }}
-                          className="ml-auto p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors min-h-[36px]">
-                          <Trash2 size={13} />
-                        </button>
-                      )}
+                      <button onClick={() => { setConfirmDeleteId(p.id); setEditId(null); }}
+                        className="ml-auto p-2.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors min-h-[36px]">
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
 
@@ -1120,12 +1195,12 @@ export default function DuesPage() {
                 </Fragment>
               );
             })}
-          </div>
+          </PanelTable>
 
           {/* ── Desktop table (hidden on mobile) ── */}
-          <div className="hidden sm:block bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <PanelTable className="hidden sm:block">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <PanelTableHead>
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Member</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Category</th>
@@ -1135,7 +1210,7 @@ export default function DuesPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3 w-24" />
                 </tr>
-              </thead>
+              </PanelTableHead>
               <tbody className="divide-y divide-gray-50">
                 {payments.map((p) => {
                   const lines: BreakdownLine[] = Array.isArray(p.paymentBreakdown) ? p.paymentBreakdown : [];
@@ -1151,7 +1226,14 @@ export default function DuesPage() {
                     <Fragment key={p.id}>
                       <motion.tr layout className="hover:bg-gray-50/60 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="font-medium text-gray-900 text-xs">{p.member.name}</div>
+                          <div className="font-medium text-gray-900 text-xs flex items-center gap-1">
+                            {p.member.name}
+                            {p.member.emailFailedAt && (
+                              <span title={`Email failed: ${p.member.emailError ?? "unknown error"}`} className="text-amber-600">
+                                <AlertCircle size={11} />
+                              </span>
+                            )}
+                          </div>
                           <div className="text-gray-400 text-xs">{p.member.area}</div>
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-500 hidden md:table-cell">
@@ -1233,22 +1315,10 @@ export default function DuesPage() {
                               className={`transition-colors ${editId === p.id ? "text-amber-500" : "text-gray-300 hover:text-amber-500"}`}>
                               <Pencil size={13} />
                             </button>
-                            {confirmDeleteId === p.id ? (
-                              <span className="flex items-center gap-1">
-                                <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id}
-                                  className="px-2 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-40">
-                                  {deletingId === p.id ? <RefreshCw size={11} className="animate-spin inline" /> : "Delete"}
-                                </button>
-                                <button onClick={() => setConfirmDeleteId(null)} className="p-0.5 text-gray-400 hover:text-gray-600">
-                                  <X size={12} />
-                                </button>
-                              </span>
-                            ) : (
-                              <button onClick={() => { setConfirmDeleteId(p.id); setEditId(null); }} title="Delete record"
-                                className="text-gray-300 hover:text-red-500 transition-colors">
-                                <Trash2 size={13} />
-                              </button>
-                            )}
+                            <button onClick={() => { setConfirmDeleteId(p.id); setEditId(null); }} title="Delete record"
+                              className="text-gray-300 hover:text-red-500 transition-colors">
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </td>
                       </motion.tr>
@@ -1351,9 +1421,18 @@ export default function DuesPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </PanelTable>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete this payment record?"
+        message={confirmDeleteId ? payments.find((p) => p.id === confirmDeleteId)?.member.name : undefined}
+        loading={deletingId === confirmDeleteId}
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

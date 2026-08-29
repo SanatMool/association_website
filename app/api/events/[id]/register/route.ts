@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAssociation } from "@/lib/getAssociation";
 import { sendMail } from "@/lib/mailer";
+import { recordEmailResult } from "@/lib/emailFailureTracking";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json() as {
@@ -71,7 +72,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     notifyAdminsNewReg(association.id, association.name, event.title, registration, ticketType.name).catch(console.error);
   }
   // Confirm to buyer (fire-and-forget)
-  confirmBuyer(body.buyerEmail, body.buyerName, event.title, ticketType.name, qty, association?.name ?? "").catch(console.error);
+  const flagBuyerEmail = (err: unknown) =>
+    recordEmailResult((data) => prisma.ticketRegistration.update({ where: { id: registration.id }, data }), err);
+  confirmBuyer(body.buyerEmail, body.buyerName, event.title, ticketType.name, qty, association?.name ?? "")
+    .then(() => flagBuyerEmail(null))
+    .catch((err) => { console.error(err); flagBuyerEmail(err); });
 
   return NextResponse.json({ success: true, data: { id: registration.id, checkInToken: registration.checkInToken } }, { status: 201 });
 }

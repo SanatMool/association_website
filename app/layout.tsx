@@ -36,9 +36,9 @@ export async function generateMetadata(): Promise<Metadata> {
   const description =
     association?.description ??
     "EVA Nepal is the official association of event venues, banquet halls and wedding venues in Kathmandu. Representing 150+ member venues across the Kathmandu Valley since 2011.";
-  const logo = association?.logo ?? "/eva/evanepal_transparent.png";
+  const logo = association?.logo ?? "/default-logo.png";
   const settings = association?.id ? await getSettings(association.id) : {};
-  const favicon = settings.favicon_image ?? logo;
+  const favicon = settings.favicon_image || logo;
 
   return {
     metadataBase: new URL(`https://${domain}`),

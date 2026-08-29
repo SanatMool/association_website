@@ -5,9 +5,24 @@ import { logApiCall } from "@/lib/apiLogger";
 import { logActivity } from "@/lib/activityLogger";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const member = await prisma.member.findUnique({ where: { id: params.id } });
+  const ctx = await getAdminContext();
+  const associationId = ctx?.associationId ?? null;
+
+  const member = await prisma.member.findUnique({
+    where: { id: params.id },
+    include: associationId
+      ? { associations: { where: { associationId }, select: { showPhone: true, showEmail: true } } }
+      : undefined,
+  });
   if (!member) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(member);
+
+  const link = (member as typeof member & { associations?: { showPhone: boolean; showEmail: boolean }[] }).associations?.[0];
+  return NextResponse.json({
+    ...member,
+    showPhone: link?.showPhone ?? false,
+    showEmail: link?.showEmail ?? false,
+    associations: undefined,
+  });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -21,8 +36,24 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   });
   if (!link) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const data = await req.json();
-  const member = await prisma.member.update({ where: { id: params.id }, data });
+  const rawData = await req.json() as Record<string, unknown>;
+
+  // Extract MemberAssociation fields that don't belong to the Member model
+  const { showPhone, showEmail, ...memberData } = rawData;
+
+  // Update MemberAssociation visibility flags if provided
+  if (showPhone !== undefined || showEmail !== undefined) {
+    await prisma.memberAssociation.update({
+      where: { memberId_associationId: { memberId: params.id, associationId: ctx.associationId ?? "" } },
+      data: {
+        ...(showPhone !== undefined ? { showPhone: showPhone as boolean } : {}),
+        ...(showEmail !== undefined ? { showEmail: showEmail as boolean } : {}),
+      },
+    });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const member = await prisma.member.update({ where: { id: params.id }, data: memberData as any });
   logApiCall({
     associationId: ctx.associationId,
     path: new URL(req.url).pathname,

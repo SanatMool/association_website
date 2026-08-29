@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users2, CheckCircle, ChevronDown, FileText } from "lucide-react";
+import { Users2, CheckCircle, ChevronDown, FileText, UserCheck, Globe } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import EmptyState from "@/components/ui/panel/EmptyState";
 
 interface Rsvp        { id: string; status: string; guestCount: number; note: string | null }
-interface AgendaItem  { title: string; description: string | null }
-interface Minutes     { content: string; publishedAt: string | null }
+interface AgendaItem  { title: string; description: string | null; resolved: boolean; outcome: string | null }
+interface Minutes     { content: string; contentNe: string | null; publishedAt: string | null }
 interface Meeting {
   id: string; title: string; type: string; scheduledAt: string;
   venue: string | null; status: string; description: string | null;
-  agendaItems: AgendaItem[]; minutes: Minutes | null;
+  agendaItems: AgendaItem[]; minutes: Minutes | null; attended: boolean;
   _count: { rsvps: number }; rsvps: Rsvp[];
 }
 
@@ -27,6 +29,7 @@ export default function PortalMeetingsPage() {
   const [loading,      setLoading]      = useState(true);
   const [expandedRsvp, setExpandedRsvp] = useState<string | null>(null);
   const [expandedMin,  setExpandedMin]  = useState<string | null>(null);
+  const [minutesLang,  setMinutesLang]  = useState<Record<string, "en" | "ne">>({});
   const [guestCount,   setGuestCount]   = useState(1);
   const [note,         setNote]         = useState("");
   const [rsvping,      setRsvping]      = useState<string | null>(null);
@@ -66,7 +69,7 @@ export default function PortalMeetingsPage() {
     const isExpMin  = expandedMin  === m.id;
 
     return (
-      <div className={`bg-white rounded-xl border border-gray-100 overflow-hidden ${dimmed ? "opacity-70" : ""}`}>
+      <PanelCard className={`overflow-hidden ${dimmed ? "opacity-70" : ""}`}>
         <div className="p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
@@ -87,17 +90,30 @@ export default function PortalMeetingsPage() {
             </div>
           </div>
 
+          {/* Attendance badge */}
+          {m.attended && m.status !== "scheduled" && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+              <UserCheck size={12} /> You were present at this meeting
+            </div>
+          )}
+
           {/* Agenda */}
           {m.agendaItems.length > 0 && (
             <div className="mt-4 pt-3 border-t border-gray-50">
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Agenda</div>
-              <ol className="space-y-1">
+              <ol className="space-y-1.5">
                 {m.agendaItems.map((item, i) => (
                   <li key={i} className="flex gap-2 text-sm text-gray-600">
                     <span className="text-xs text-gray-400 font-mono mt-0.5 flex-shrink-0">{i + 1}.</span>
-                    <div>
-                      <span>{item.title}</span>
-                      {item.description && <span className="text-gray-400 text-xs ml-1">— {item.description}</span>}
+                    <div className="flex-1">
+                      <div className="flex items-start gap-1.5">
+                        <span className={item.resolved ? "line-through text-gray-400" : ""}>{item.title}</span>
+                        {item.resolved && <CheckCircle size={12} className="text-emerald-500 flex-shrink-0 mt-0.5" />}
+                      </div>
+                      {item.description && <span className="text-gray-400 text-xs">— {item.description}</span>}
+                      {item.resolved && item.outcome && (
+                        <div className="text-xs text-emerald-700 bg-emerald-50 rounded px-1.5 py-0.5 mt-0.5 inline-block">{item.outcome}</div>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -161,12 +177,22 @@ export default function PortalMeetingsPage() {
             <div className="flex items-center gap-2 mb-3">
               <FileText size={13} className="text-indigo-600" />
               <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Meeting Minutes</span>
+              {m.minutes.contentNe && (
+                <button
+                  onClick={() => setMinutesLang((prev) => ({ ...prev, [m.id]: prev[m.id] === "ne" ? "en" : "ne" }))}
+                  className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:bg-white transition-colors ml-1"
+                >
+                  <Globe size={10} /> {minutesLang[m.id] === "ne" ? "NE" : "EN"}
+                </button>
+              )}
               <button onClick={() => setExpandedMin(null)} className="ml-auto text-xs text-gray-400 hover:text-gray-700">Close</button>
             </div>
-            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">{m.minutes.content}</pre>
+            <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+              {minutesLang[m.id] === "ne" && m.minutes.contentNe ? m.minutes.contentNe : m.minutes.content}
+            </pre>
           </div>
         )}
-      </div>
+      </PanelCard>
     );
   }
 
@@ -177,7 +203,7 @@ export default function PortalMeetingsPage() {
         <p className="text-sm text-gray-400 mt-0.5">View upcoming meetings, agenda, and minutes.</p>
       </div>
 
-      {meetings.length === 0 && <div className="text-center py-16 text-gray-400 text-sm"><Users2 size={24} className="mx-auto mb-2 opacity-30" />No meetings yet.</div>}
+      {meetings.length === 0 && <EmptyState icon={Users2} title="No meetings yet." />}
 
       {upcoming.length > 0 && (
         <div className="mb-8">

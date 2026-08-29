@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Pencil, ChevronLeft, ChevronRight, AlertTriangle, BadgeDollarSign, Building2, MapPin, Users, Tag, ShieldCheck, Eye, EyeOff, Star, LayoutList } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Pencil, AlertTriangle, BadgeDollarSign, Building2, MapPin, Users, Tag, ShieldCheck, Eye, EyeOff, Star, Download } from "lucide-react";
 import DeleteButton from "@/components/admin/DeleteButton";
 import VisibilityToggle from "@/components/admin/VisibilityToggle";
 import { useRouter } from "next/navigation";
+import PanelCard from "@/components/ui/panel/PanelCard";
+import { PanelTable, PanelTableHead, PanelTableRow } from "@/components/ui/panel/PanelTable";
+import Badge from "@/components/ui/panel/Badge";
 
 export interface MemberRow {
   id: string; memberId: string; name: string; area: string;
@@ -21,7 +24,10 @@ type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 25;
 
-export default function MembersClient({ rows, totalCount }: { rows: MemberRow[]; totalCount: number }) {
+export default function MembersClient({ rows, totalCount, memberMode = "venue" }: { rows: MemberRow[]; totalCount: number; memberMode?: "venue" | "person" }) {
+  const isPersonMode = memberMode === "person";
+  const areaLabel = isPersonMode ? "Location" : "Area";
+  const categoryLabel = isPersonMode ? "Profession" : "Category";
   const router = useRouter();
   const [search,         setSearch]         = useState("");
   const [filterArea,     setFilterArea]      = useState("");
@@ -35,6 +41,7 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
   const [page,        setPage]        = useState(1);
   const [selected,    setSelected]    = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const areas      = useMemo(() => Array.from(new Set(rows.map((r) => r.area).filter(Boolean))).sort(), [rows]);
   const categories = useMemo(() =>
@@ -112,6 +119,43 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
     router.refresh();
   }, [selected, router]);
 
+  // Infinite scroll — advance page when sentinel enters viewport
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && currentPage < totalPages) setPage((p) => p + 1); },
+      { rootMargin: "200px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [currentPage, totalPages]);
+
+  function exportCsv() {
+    const header = isPersonMode
+      ? ["Name", "Location", "Profession", "Type", "Phone", "Email", "Visible", "Featured", "Pending Dues (Rs)"]
+      : ["Name", "Area", "Capacity", "Category", "Type", "Phone", "Email", "Visible", "Featured", "Pending Dues (Rs)"];
+    const rowsData = sorted.map((r) => [
+      r.name, r.area,
+      ...(isPersonMode ? [] : [r.capacity ?? ""]),
+      r.category ?? "", r.type ?? "",
+      r.phone ?? "", r.email ?? "",
+      r.visible ? "Yes" : "No",
+      r.featured ? "Yes" : "No",
+      r.pendingDues > 0 ? r.pendingDues : "",
+    ]);
+    const csvContent = [header, ...rowsData]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `members-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function SortIcon({ k }: { k: SortKey }) {
     if (sortKey !== k) return <ChevronsUpDown size={12} className="text-gray-300" />;
     return sortDir === "asc" ? <ChevronUp size={12} className="text-indigo-500" /> : <ChevronDown size={12} className="text-indigo-500" />;
@@ -126,9 +170,9 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
 
   return (
     <div>
-      {/* ── Stats ────────────────────────────────────────────────────── */}
+      {/* ── Stats + Export ───────────────────────────────────────────── */}
       <div className="flex items-center flex-wrap gap-4 mb-4 text-xs text-gray-400">
-        <span className="flex items-center gap-1"><Building2 size={11} /> {totalCount} total</span>
+        <span className="flex items-center gap-1">{isPersonMode ? <Users size={11} /> : <Building2 size={11} />} {totalCount} total</span>
         <span className="flex items-center gap-1 text-green-600"><Eye size={11} /> {visibleCount} visible</span>
         <span className="flex items-center gap-1 text-gray-400"><Eye size={11} className="opacity-40" /> {hiddenCount} hidden</span>
         {incompleteCount > 0 && (
@@ -144,26 +188,32 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
         {filtered.length !== totalCount && (
           <span className="text-indigo-600 font-medium">{filtered.length} matching filters</span>
         )}
+        <button
+          onClick={exportCsv}
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+        >
+          <Download size={12} /> Export CSV
+        </button>
       </div>
 
       {/* ── Filters ──────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-4 space-y-3">
+      <PanelCard className="p-4 mb-4 space-y-3" hover={false}>
         {/* Row 1: search + selects */}
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-48">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search name, area, phone…"
+              placeholder={`Search name, ${areaLabel.toLowerCase()}, phone…`}
               className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-indigo-300"
             />
           </div>
           <select value={filterArea} onChange={(e) => { setFilterArea(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="">All Areas</option>
+            <option value="">All {areaLabel}s</option>
             {areas.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
           <select value={filterCat} onChange={(e) => { setFilterCat(e.target.value); setPage(1); }} className={selectCls}>
-            <option value="">All Categories</option>
+            <option value="">All {categoryLabel}s</option>
             {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <select value={filterVis} onChange={(e) => { setFilterVis(e.target.value as "all" | "visible" | "hidden"); setPage(1); }} className={selectCls}>
@@ -196,7 +246,7 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
             </button>
           )}
         </div>
-      </div>
+      </PanelCard>
 
       {/* ── Bulk action bar ──────────────────────────────────────────── */}
       {selected.size > 0 && (
@@ -228,12 +278,12 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
       )}
 
       {/* ── Table ────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <PanelTable>
         {paged.length === 0 ? (
           <div className="text-center py-16 text-gray-400 text-sm">No members match the current filters.</div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <PanelTableHead>
               <tr>
                 <th className="w-8 px-4 py-3">
                   <input
@@ -247,23 +297,25 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort("name")}
                     className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
-                    <Building2 size={12} /> Name <SortIcon k="name" />
+                    {isPersonMode ? <Users size={12} /> : <Building2 size={12} />} Name <SortIcon k="name" />
                   </button>
                 </th>
                 <th className="text-left px-4 py-3">
                   <button onClick={() => toggleSort("area")}
                     className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
-                    <MapPin size={12} /> Area <SortIcon k="area" />
+                    <MapPin size={12} /> {areaLabel} <SortIcon k="area" />
                   </button>
                 </th>
-                <th className="text-left px-4 py-3">
-                  <button onClick={() => toggleSort("capacity")}
-                    className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
-                    <Users size={12} /> Capacity <SortIcon k="capacity" />
-                  </button>
-                </th>
+                {!isPersonMode && (
+                  <th className="text-left px-4 py-3">
+                    <button onClick={() => toggleSort("capacity")}
+                      className="flex items-center gap-1 text-gray-500 font-medium hover:text-gray-800">
+                      <Users size={12} /> Capacity <SortIcon k="capacity" />
+                    </button>
+                  </th>
+                )}
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">
-                  <span className="flex items-center gap-1"><Tag size={12} /> Category</span>
+                  <span className="flex items-center gap-1"><Tag size={12} /> {categoryLabel}</span>
                 </th>
                 <th className="text-left px-4 py-3 text-gray-500 font-medium">
                   <span className="flex items-center gap-1"><ShieldCheck size={12} /> Profile</span>
@@ -279,10 +331,10 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                 </th>
                 <th className="px-4 py-3" />
               </tr>
-            </thead>
+            </PanelTableHead>
             <tbody className="divide-y divide-gray-50">
-              {paged.map((m) => (
-                <tr key={m.id} className={`hover:bg-gray-50/50 ${!m.visible ? "opacity-60" : ""} ${selected.has(m.memberId) ? "bg-indigo-50/40" : ""}`}>
+              {paged.map((m, i) => (
+                <PanelTableRow key={m.id} index={i} className={`${!m.visible ? "opacity-60" : ""} ${selected.has(m.memberId) ? "bg-indigo-50/40" : ""}`}>
                   <td className="w-8 px-4 py-3">
                     <input
                       type="checkbox"
@@ -293,15 +345,14 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-900">{m.name}</td>
                   <td className="px-4 py-3 text-gray-500">{m.area}</td>
-                  <td className="px-4 py-3 text-gray-500">{m.capacity ?? "—"}</td>
+                  {!isPersonMode && <td className="px-4 py-3 text-gray-500">{m.capacity ?? "—"}</td>}
                   <td className="px-4 py-3 text-gray-500">{m.category ?? "—"}</td>
                   <td className="px-4 py-3">
                     {m.missingFields.length > 0 ? (
                       <div className="relative group inline-block">
-                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-lg whitespace-nowrap cursor-help">
-                          <AlertTriangle size={11} />
+                        <Badge tone="warning" icon={<AlertTriangle size={11} />} className="cursor-help">
                           {m.missingFields.length} missing
-                        </span>
+                        </Badge>
                         <div className="absolute left-0 top-full mt-1 z-20 hidden group-hover:block w-max max-w-xs bg-gray-900 text-white text-[11px] rounded-lg px-2.5 py-1.5 shadow-lg pointer-events-none">
                           Missing: {m.missingFields.join(", ")}
                           <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-900 rotate-45" />
@@ -313,10 +364,9 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                   </td>
                   <td className="px-4 py-3">
                     {m.pendingDues > 0 ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-50 text-red-600 border border-red-200 rounded-lg whitespace-nowrap">
-                        <BadgeDollarSign size={11} />
+                      <Badge tone="danger" icon={<BadgeDollarSign size={11} />}>
                         Rs. {m.pendingDues.toLocaleString()}
-                      </span>
+                      </Badge>
                     ) : (
                       <span className="text-xs text-gray-300">—</span>
                     )}
@@ -326,7 +376,7 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                   </td>
                   <td className="px-4 py-3">
                     {m.featured && (
-                      <span className="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full">Featured</span>
+                      <Badge tone="warning" className="rounded-full">Featured</Badge>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -338,49 +388,19 @@ export default function MembersClient({ rows, totalCount }: { rows: MemberRow[];
                       <DeleteButton id={m.memberId} entity="members" redirectTo="/admin/members" />
                     </div>
                   </td>
-                </tr>
+                </PanelTableRow>
               ))}
             </tbody>
           </table>
         )}
 
-        {/* ── Pagination ───────────────────────────────────────────────── */}
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-            <span className="text-xs text-gray-400">
-              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} of {sorted.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}
-                className="p-1.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40">
-                <ChevronLeft size={14} />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                .reduce<(number | "…")[]>((acc, p, idx, arr) => {
-                  if (idx > 0 && (arr[idx - 1] as number) !== p - 1) acc.push("…");
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, i) =>
-                  p === "…" ? (
-                    <span key={`e${i}`} className="px-1 text-xs text-gray-400">…</span>
-                  ) : (
-                    <button key={p} onClick={() => setPage(p as number)}
-                      className={`w-7 h-7 rounded text-xs font-medium transition-colors
-                        ${currentPage === p ? "bg-indigo-600 text-white" : "border border-gray-200 text-gray-600 hover:bg-gray-100"}`}>
-                      {p}
-                    </button>
-                  )
-                )}
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                className="p-1.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-100 disabled:opacity-40">
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        {/* ── Status + infinite scroll sentinel ───────────────────────── */}
+        <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 text-xs text-gray-400 text-center">
+          Showing {Math.min(currentPage * PAGE_SIZE, sorted.length)} of {sorted.length} members
+          {currentPage < totalPages && <span className="ml-1 text-indigo-400">· scroll for more</span>}
+        </div>
+        <div ref={sentinelRef} className="h-1" />
+      </PanelTable>
     </div>
   );
 }

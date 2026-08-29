@@ -10,12 +10,16 @@ import { MemberType } from "@/lib/types";
 interface MembersClientProps {
   members: MemberType[];
   defaultMemberImage?: string;
+  memberMode?: string;
 }
 
-export default function MembersClient({ members, defaultMemberImage }: MembersClientProps) {
+const PAGE_SIZE = 24;
+
+export default function MembersClient({ members, defaultMemberImage, memberMode = "venue" }: MembersClientProps) {
   const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [selectedArea, setSelectedArea] = useState("All");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const areas = useMemo(() => {
     const areaSet = new Set(members.map((m) => m.area).filter(Boolean));
@@ -32,6 +36,10 @@ export default function MembersClient({ members, defaultMemberImage }: MembersCl
       return matchSearch && matchArea;
     });
   }, [members, search, selectedArea]);
+
+  // Reset visible count when filters change
+  const visible = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   return (
     <div className="min-h-screen bg-slate-50 pt-24">
@@ -68,7 +76,7 @@ export default function MembersClient({ members, defaultMemberImage }: MembersCl
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setVisibleCount(PAGE_SIZE); }}
               placeholder={t.members.search_placeholder}
               className="w-full pl-11 pr-10 py-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:border-transparent text-sm text-navy-900 placeholder-slate-400"
             />
@@ -84,7 +92,7 @@ export default function MembersClient({ members, defaultMemberImage }: MembersCl
             {areas.slice(0, 15).map((area) => (
               <button
                 key={area}
-                onClick={() => setSelectedArea(area)}
+                onClick={() => { setSelectedArea(area); setVisibleCount(PAGE_SIZE); }}
                 className={`flex-shrink-0 text-xs font-medium px-3.5 py-2 rounded-full transition-all ${
                   selectedArea === area
                     ? "bg-navy-900 text-gold-400"
@@ -99,7 +107,7 @@ export default function MembersClient({ members, defaultMemberImage }: MembersCl
 
         <div className="flex items-center justify-between mb-6">
           <p className="text-slate-500 text-sm">
-            Showing <span className="font-semibold text-navy-900">{filtered.length}</span> venues
+            Showing <span className="font-semibold text-navy-900">{filtered.length}</span> {memberMode === "person" ? "members" : "venues"}
           </p>
           <div className="flex items-center gap-2">
             <Building2 size={14} className="text-gold-500" />
@@ -108,17 +116,29 @@ export default function MembersClient({ members, defaultMemberImage }: MembersCl
         </div>
 
         {filtered.length > 0 ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filtered.map((member, i) => (
-              <MemberCard key={member.id} member={member} index={i} defaultImage={defaultMemberImage} />
-            ))}
-          </div>
+          <>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {visible.map((member, i) => (
+                <MemberCard key={member.id} member={member} index={i} defaultImage={defaultMemberImage} memberMode={memberMode} />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center mt-10">
+                <button
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="px-8 py-3 bg-navy-900 text-gold-400 text-sm font-semibold rounded-full hover:bg-navy-800 transition-colors border border-gold-500/30"
+                >
+                  Load more ({filtered.length - visibleCount} remaining)
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-20">
             <Building2 size={40} className="text-slate-300 mx-auto mb-4" />
-            <h3 className="font-serif font-bold text-navy-900 text-lg mb-2">No venues found</h3>
+            <h3 className="font-serif font-bold text-navy-900 text-lg mb-2">No {memberMode === "person" ? "members" : "venues"} found</h3>
             <p className="text-slate-500 text-sm">Try adjusting your search or filters</p>
-            <button onClick={() => { setSearch(""); setSelectedArea("All"); }} className="mt-4 text-gold-600 hover:text-gold-700 text-sm font-medium">
+            <button onClick={() => { setSearch(""); setSelectedArea("All"); setVisibleCount(PAGE_SIZE); }} className="mt-4 text-gold-600 hover:text-gold-700 text-sm font-medium">
               Clear all filters
             </button>
           </div>

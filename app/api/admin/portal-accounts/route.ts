@@ -16,7 +16,7 @@ export async function GET() {
           id: true, name: true, area: true,
           portalAccounts: {
             where: { associationId: ctx.associationId },
-            select: { id: true, email: true, createdAt: true },
+            select: { id: true, email: true, createdAt: true, emailFailedAt: true, emailError: true },
           },
         },
       },

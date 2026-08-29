@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAdminContext } from "@/lib/adminAuth";
+import { hasPermission } from "@/lib/permissions";
 
-export async function GET(req: Request) {
-  const session = await getServerSession(authOptions);
-  const associationId = (session?.user as { associationId?: string | null })?.associationId ?? null;
+export async function GET() {
+  const ctx = await getAdminContext();
+  const associationId = ctx?.associationId ?? null;
 
   const settings = await prisma.siteSettings.findMany({
     where: { associationId },
@@ -15,10 +15,13 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  const ctx = await getAdminContext();
+  if (!ctx) return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  if (!hasPermission(ctx, "settings.manage")) {
+    return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
+  }
 
-  const associationId = (session.user as { associationId?: string | null })?.associationId ?? null;
+  const associationId = ctx.associationId;
   const body = await req.json();
   const { key, value } = body as { key: string; value: string };
   if (!key) return NextResponse.json({ success: false, error: "key required" }, { status: 400 });

@@ -59,7 +59,7 @@ export default function NewUserPage() {
               value={form.email}
               onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-              placeholder="jane@evanepal.org"
+              placeholder="jane@example.com"
             />
           </div>
 

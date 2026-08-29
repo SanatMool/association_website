@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { sendMail } from "@/lib/mailer";
 import QRCode from "qrcode";
+import { journalForTicket } from "@/lib/autoJournal";
+import { recordEmailResult } from "@/lib/emailFailureTracking";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string; regId: string } }) {
   const ctx = await getAdminContext();
@@ -38,7 +40,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     });
 
     // Send QR email
-    sendPaymentConfirmEmail(reg, ctx.associationId).catch(console.error);
+    const flagRegEmail = (err: unknown) =>
+      recordEmailResult((data) => prisma.ticketRegistration.update({ where: { id: params.regId }, data }), err);
+    sendPaymentConfirmEmail(reg, ctx.associationId)
+      .then(() => flagRegEmail(null))
+      .catch((err) => { console.error(err); flagRegEmail(err); });
+
+    // Auto-journal
+    journalForTicket({
+      associationId:  ctx.associationId,
+      registrationId: params.regId,
+      description:    `Ticket sale — ${reg.event.title} (${reg.buyerName})`,
+      amount:         body.amount ?? Number(reg.amount) ?? 0,
+      method:         body.paymentMethod,
+      receiptNumber:  body.receiptNumber,
+      date:           new Date(),
+      adminId:        (ctx.session.user as { id?: string }).id ?? null,
+    });
 
   } else if (body.action === "cancel") {
     if (reg.paymentStatus === "cancelled") return NextResponse.json({ error: "Already cancelled" }, { status: 400 });

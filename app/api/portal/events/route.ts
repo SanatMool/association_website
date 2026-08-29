@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getPortalUser } from "@/lib/portalAuth";
+import { autoArchivePastEvents } from "@/lib/eventStatus";
 
 export async function GET() {
   const user = await getPortalUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  await autoArchivePastEvents(user.associationId);
 
   const events = await prisma.event.findMany({
     where: { associationId: user.associationId },
