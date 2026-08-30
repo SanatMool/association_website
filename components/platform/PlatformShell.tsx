@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Building2, FileText, LogOut, Layers, Menu, X } from "lucide-react";
+import { LayoutDashboard, Building2, FileText, LogOut, Layers, Menu, X, HardDrive } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import SidebarNavItem from "@/components/ui/panel/SidebarNavItem";
 
 const navLinks = [
   { href: "/platform/dashboard",     label: "Dashboard",     icon: LayoutDashboard },
   { href: "/platform/associations",  label: "Associations",  icon: Building2 },
+  { href: "/platform/uploads",       label: "Storage",       icon: HardDrive },
   { href: "/platform/logs",          label: "API Logs",      icon: FileText },
 ];
 

@@ -470,6 +470,7 @@ lib/
   theme-presets.ts              10 curated color presets (navy/gold shade ramps) + hexToRgbTriple/themePresetToCssVars helpers
   homepage-content.ts           HomepageContent type, curated SECTION_ICONS map, sanitizeHomepageContent() validator for Hero/About/Mission/WhyJoin/Events-header per-association overrides
   event-gallery.ts              sanitizeEventGalleryFields() — caps Event.promoImages/recapImages length, validates recapVideoUrl
+  uploadsCleanup.ts             cleanupOrphanedUploads() — deletes public/uploads files with zero DB references across every association; 24h grace period on file age. Any new model field that can hold an uploaded image path must be added to its collectReferencedFilenames() or it'll be treated as orphaned.
 
 components/
   layout/
@@ -626,6 +627,7 @@ Last verified: 2026-06-10
 | /api/admin/portal-accounts/[id] | PATCH, DELETE | Admin | Reset password / delete account |
 | /api/admin/reports | GET | Admin | All reporting metrics in one call |
 | /api/admin/branding | GET, PUT | Admin | GET returns name/logo/description/colorPreset/homepageContent; PUT sets colorPreset (+ mirrors themeColor/accentColor) and/or homepageContent (validated via lib/homepage-content.ts sanitizeHomepageContent) |
+| /api/platform/uploads-cleanup | POST | Platform | Scans/deletes orphaned public/uploads files (lib/uploadsCleanup.ts); body `{ dryRun }`, defaults to `true` |
 
 ## Known Issues / Watch Points
 

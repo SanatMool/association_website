@@ -238,6 +238,28 @@ bash deploy.sh
 
 ---
 
+## Scheduled Upload Cleanup (Cron)
+
+Deletes files in `public/uploads` that no longer have any database reference (left behind when an
+image is removed or replaced in the admin panel). Safe to run on a schedule — files uploaded in the
+last 24 hours are always skipped, and it only ever touches `public/uploads`. Can also be run
+on-demand from the Platform panel → **Storage** page, which shows a preview before deleting anything.
+
+Add to the deploy user's crontab (`crontab -e`) to run weekly, e.g. Sunday 3am:
+
+```cron
+0 3 * * 0 cd /var/www/eva-nepal && /usr/bin/npm run cleanup:uploads >> /var/log/eva-nepal-uploads-cleanup.log 2>&1
+```
+
+Adjust `/usr/bin/npm` to match `which npm` on the server if different. Test it manually first:
+
+```bash
+cd /var/www/eva-nepal
+npm run cleanup:uploads
+```
+
+---
+
 ## Change Admin Password (Required Before Going Live)
 
 ```bash

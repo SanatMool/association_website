@@ -1763,6 +1763,23 @@ Verified: `npx tsc --noEmit` and full `npm run build` clean. Live end-to-end tes
 
 ---
 
+## Feature — Unused Uploads Cleanup (admin panel + cron) ✓ COMPLETE (2026-08-30)
+
+Follow-up to the "do we ever delete removed images?" question — confirmed the answer was no: removing or replacing an image anywhere in the admin panel only cleared the URL from that record, the actual file stayed in `public/uploads` forever. User asked for both an admin-triggered cleanup and a scheduled cron.
+
+- **`lib/uploadsCleanup.ts`** — the shared scan/delete logic. Cross-checks every table that can hold an uploaded image path (`Association.logo`, `Association.homepageContent` JSON — `heroSlides[].image`/`aboutImage`, `Member.image`, `Event.image`/`promoImages`/`recapImages`, `News.image`, `CommitteeMember.image`, and every `SiteSettings.value` generically rather than hardcoding which keys hold images — e.g. `favicon_image`, `default_member_image`, legacy `hero_image`) against every file actually present in `public/uploads`, across **all associations**, not just one — the uploads folder is shared/global, no per-association subfolder exists. Any file with zero references is a deletion candidate.
+  - **Safety margin**: files younger than 24 hours are always skipped regardless of reference status, so a cron run can never delete an image an admin just uploaded into a form they haven't saved yet.
+  - Supports a `dryRun` mode (default) that reports what *would* be deleted without touching anything.
+- **Admin UI**: new "Storage" page in the **Platform** panel (`/platform/uploads`, added to `PlatformShell.tsx`'s nav) — deliberately platform-level rather than per-association admin, since the operation is inherently cross-tenant (same reasoning as the existing Delete Association / Reset Data platform-only features). Two-step flow: "Scan for unused images" shows a preview (file count, total size, list of candidate filenames, how many were skipped as too-recent) before a separate confirm click actually deletes — no irreversible action happens on the first click.
+- **API**: `POST /api/platform/uploads-cleanup`, `getPlatformUser()`-gated, defaults to `dryRun: true` unless the caller explicitly sends `dryRun: false` (so an empty/malformed request body can never accidentally delete anything).
+- **Cron**: `scripts/cleanup-uploads.ts`, run via `npm run cleanup:uploads` (new `package.json` script, mirrors the existing `ts-node -P tsconfig.seed.json` pattern already used by `prisma/seed.ts`). Logs a one-line summary + the list of deleted filenames to stdout. Crontab line + testing instructions added to `DEPLOY.md` under a new "Scheduled Upload Cleanup (Cron)" section — suggested weekly (Sunday 3am), redirected to a log file.
+
+Verified end-to-end against real local data (not synthetic): created one artificially-aged orphan file and one freshly-created orphan file, confirmed the scan correctly flagged the old one and skipped the recent one (`skippedTooRecent: 1`). Also cross-checked the scan's real findings directly against the database with raw SQL — confirmed 8 genuinely-orphaned files already sitting in `public/uploads` (8.6MB, zero references in any table), and confirmed two files the scan correctly did NOT flag were each still legitimately referenced (one by a `Member.image`, one by an `Event.image`). Test files and scratch scripts cleaned up after. `npx tsc --noEmit` and full `npm run build` clean throughout (new `/platform/uploads` route builds successfully).
+
+**Takeaway for future work**: any new model/field added later that can hold an uploaded image path (a future feature's photo field, etc.) must be added to `collectReferencedFilenames()` in `lib/uploadsCleanup.ts`, or the cleanup will start treating that field's images as orphaned and deleting them out from under the feature that uses them.
+
+---
+
 ## Pending (real-world content, not code)
 
 Superseded by the consolidated "Known Pending Items" section near the top of this file (re-verified 2026-08-27) — see there instead of this stale duplicate.
