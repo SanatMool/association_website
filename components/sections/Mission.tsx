@@ -1,11 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Shield, Star, TrendingUp, Network, BookOpen, Users } from "lucide-react";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
+import { getSectionIcon, type ContentItem } from "@/lib/homepage-content";
 
-const icons = [Shield, Star, TrendingUp, Network, BookOpen, Users];
+// Icon names used for the i18n-default items (positional, matches their original lucide imports)
+const DEFAULT_ICON_NAMES = ["Shield", "Star", "TrendingUp", "Network", "BookOpen", "Users"];
 
 const accentColors = [
   { bg: "bg-blue-500/10",    icon: "text-blue-400",    border: "hover:border-blue-400/30",   num: "text-blue-400/40"   },
@@ -16,8 +17,20 @@ const accentColors = [
   { bg: "bg-cyan-500/10",    icon: "text-cyan-400",    border: "hover:border-cyan-400/30",   num: "text-cyan-400/40"   },
 ];
 
-export default function Mission() {
+interface MissionProps {
+  items?: ContentItem[];
+}
+
+export default function Mission({ items }: MissionProps) {
   const { t } = useLocale();
+
+  const displayItems: ContentItem[] = items && items.length > 0
+    ? items
+    : t.mission.items.map((item: { title: string; desc: string }, i: number) => ({
+        icon: DEFAULT_ICON_NAMES[i % DEFAULT_ICON_NAMES.length],
+        title: item.title,
+        desc: item.desc,
+      }));
 
   return (
     <section className="section-padding relative overflow-hidden" style={{ background: "linear-gradient(160deg, rgb(var(--navy-900)) 0%, rgb(var(--navy-800)) 60%, rgb(var(--navy-700)) 100%)" }}>
@@ -45,12 +58,12 @@ export default function Mission() {
           </AnimatedSection>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {t.mission.items.map((item: { title: string; desc: string }, i: number) => {
-            const Icon = icons[i];
-            const color = accentColors[i];
+        <div className="flex flex-wrap justify-center gap-5">
+          {displayItems.map((item, i) => {
+            const Icon = getSectionIcon(item.icon);
+            const color = accentColors[i % accentColors.length];
             return (
-              <AnimatedSection key={i} delay={i * 0.08}>
+              <AnimatedSection key={i} delay={i * 0.08} className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]">
                 <motion.div
                   whileHover={{ y: -4 }}
                   transition={{ type: "spring", stiffness: 350, damping: 25 }}

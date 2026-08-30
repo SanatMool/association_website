@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { EventType } from "@/lib/types";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 import { autoArchivePastEvents } from "@/lib/eventStatus";
+import { sanitizeHomepageContent } from "@/lib/homepage-content";
 import EventsClient from "./EventsClient";
 
 export const revalidate = 3600;
@@ -32,7 +33,12 @@ export default async function EventsPage() {
     status: e.status,
     attendees: e.attendees ?? null,
     image: e.image,
+    promoImages: e.promoImages,
+    recapImages: e.recapImages,
+    recapVideoUrl: e.recapVideoUrl,
   }));
 
-  return <EventsClient events={events} />;
+  const homepageContent = sanitizeHomepageContent(association.homepageContent);
+
+  return <EventsClient events={events} headline={homepageContent.eventsHeadline} subtitle={homepageContent.eventsSubtitle} />;
 }

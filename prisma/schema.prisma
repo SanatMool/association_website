@@ -20,6 +20,7 @@ model Association {
   themeColor    String   @default("#0a1040")
   accentColor   String   @default("#f59e0b")
   colorPreset   String   @default("navy-gold") // key into lib/theme-presets.ts; themeColor/accentColor above are kept in sync for PWA manifest routes
+  homepageContent Json?  // shape: HomepageContent in lib/homepage-content.ts — Hero slides, About overrides, Mission/WhyJoin items
   foundedYear   Int?
   description   String?
   descriptionNe String?
@@ -162,6 +163,9 @@ model Event {
   status        String    // upcoming | past
   attendees     Int?
   image         String?
+  promoImages   String[] @default([]) // shown while event is upcoming — max 4, enforced in API
+  recapImages   String[] @default([]) // shown once event is past — max 6, enforced in API
+  recapVideoUrl String?               // optional highlights video link, shown alongside recapImages
   associationId String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

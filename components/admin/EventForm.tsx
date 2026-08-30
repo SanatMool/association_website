@@ -12,7 +12,7 @@ import {
   Loader2, Users, GraduationCap, Handshake,
   LayoutGrid, Presentation, Sparkles,
   Navigation, AlertCircle, Clock, RefreshCw,
-  Tag, Crosshair, Languages,
+  Tag, Crosshair, Languages, X, Plus,
 } from "lucide-react";
 
 const MapPicker = dynamic(() => import("@/components/admin/MapPicker"), { ssr: false });
@@ -57,9 +57,9 @@ function autoStatus(dateStr: string): "upcoming" | "past" {
 }
 
 function buildDescription(params: {
-  title: string; type: string; location: string; date: string; attendees: string; keywords: string;
+  title: string; type: string; location: string; date: string; attendees: string; keywords: string; assocName: string;
 }): string {
-  const { title, type, location, date, attendees, keywords } = params;
+  const { title, type, location, date, attendees, keywords, assocName } = params;
   const typeLabel = EVENT_TYPES.find((t) => t.value === type)?.label ?? type;
   const dateStr = date ? new Date(date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "";
   const capTx  = attendees ? ` with an expected attendance of ${attendees} participants` : "";
@@ -69,13 +69,13 @@ function buildDescription(params: {
   const kwTx   = kwList.length > 0 ? ` Key highlights include: ${kwList.join(", ")}.` : "";
 
   const variants = [
-    `EVA Nepal is pleased to announce ${title}, a ${typeLabel.toLowerCase()} event${dateTx}${locTx}${capTx}. This event brings together venue professionals and industry stakeholders to share insights, build connections, and strengthen the events industry in Nepal.${kwTx}`,
+    `${assocName} is pleased to announce ${title}, a ${typeLabel.toLowerCase()} event${dateTx}${locTx}${capTx}. This event brings together industry professionals and stakeholders to share insights, build connections, and strengthen the sector in Nepal.${kwTx}`,
 
-    `${title} is an upcoming ${typeLabel.toLowerCase()} organized by EVA Nepal${dateTx}${locTx}. ${capTx ? `The event is expected to host${capTx}.` : ""} Join us for an engaging session designed to advance the event and venue industry across Kathmandu Valley.${kwTx}`,
+    `${title} is an upcoming ${typeLabel.toLowerCase()} organized by ${assocName}${dateTx}${locTx}. ${capTx ? `The event is expected to host${capTx}.` : ""} Join us for an engaging session designed to advance the industry across Kathmandu Valley.${kwTx}`,
 
-    `EVA Nepal invites members and industry professionals to ${title}${dateTx}. Taking place${locTx}, this ${typeLabel.toLowerCase()} is a key gathering${capTx} dedicated to fostering collaboration and professional growth within Nepal's event sector.${kwTx}`,
+    `${assocName} invites members and industry professionals to ${title}${dateTx}. Taking place${locTx}, this ${typeLabel.toLowerCase()} is a key gathering${capTx} dedicated to fostering collaboration and professional growth.${kwTx}`,
 
-    `${title} is a ${typeLabel.toLowerCase()} event hosted by EVA Nepal${dateTx}${locTx}${capTx}. As part of our commitment to elevating industry standards, this event provides a platform for networking, learning, and advancing the collective interests of our members.${kwTx}`,
+    `${title} is a ${typeLabel.toLowerCase()} event hosted by ${assocName}${dateTx}${locTx}${capTx}. As part of our commitment to elevating industry standards, this event provides a platform for networking, learning, and advancing the collective interests of our members.${kwTx}`,
   ];
 
   return variants[Math.floor(Math.random() * variants.length)];
@@ -106,8 +106,17 @@ export default function EventForm({ event }: Props) {
   const [error,      setError]      = useState("");
   const [genLoading,    setGenLoading]    = useState(false);
   const [descNeLoading, setDescNeLoading] = useState(false);
+  const [descNeError,   setDescNeError]   = useState("");
   const [statusMode,    setStatusMode]    = useState<"auto" | "manual">("auto");
   const [keywords,      setKeywords]      = useState("");
+  const [assocName,     setAssocName]     = useState("the association");
+  useEffect(() => {
+    fetch("/api/admin/branding").then((r) => r.json())
+      .then((json: { success: boolean; data?: { name: string } }) => {
+        if (json.success && json.data?.name) setAssocName(json.data.name);
+      })
+      .catch(() => {});
+  }, []);
 
   // Auto-translate state
   const [translating,  setTranslating]  = useState(false);
@@ -142,7 +151,11 @@ export default function EventForm({ event }: Props) {
     status:      event?.status      ?? "upcoming",
     attendees:   String(event?.attendees ?? ""),
     image:       event?.image       ?? "",
+    recapVideoUrl: event?.recapVideoUrl ?? "",
   });
+
+  const [promoImages, setPromoImages] = useState<string[]>(event?.promoImages ?? []);
+  const [recapImages, setRecapImages] = useState<string[]>(event?.recapImages ?? []);
 
   function set(k: string, v: string) {
     setForm((p) => {
@@ -261,7 +274,7 @@ export default function EventForm({ event }: Props) {
     if (!englishText) {
       englishText = buildDescription({
         title: form.title, type: form.type, location: form.location,
-        date: form.date, attendees: form.attendees, keywords,
+        date: form.date, attendees: form.attendees, keywords, assocName,
       });
     }
 
@@ -276,17 +289,22 @@ export default function EventForm({ event }: Props) {
   async function translateDescriptionToNepali(text: string) {
     if (!text.trim()) return;
     setDescNeLoading(true);
+    setDescNeError("");
     try {
       const res = await fetch("/api/ai/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "translate", text, targetLang: "ne" }),
       });
-      const json = await res.json() as { success: boolean; data?: { text: string } };
+      const json = await res.json() as { success: boolean; data?: { text: string }; error?: string };
       if (json.success && json.data?.text) {
         setForm((p) => ({ ...p, descriptionNe: json.data!.text }));
+      } else {
+        setDescNeError(json.error ?? "Translation failed. You can write the Nepali description manually.");
       }
-    } catch { /* silently fail — Nepali is optional */ }
+    } catch {
+      setDescNeError("Couldn't reach the translation service. You can write the Nepali description manually.");
+    }
     setDescNeLoading(false);
   }
 
@@ -327,6 +345,9 @@ export default function EventForm({ event }: Props) {
       endTime:    form.endTime    || null,
       latitude:   form.latitude   ? parseFloat(form.latitude)   : null,
       longitude:  form.longitude  ? parseFloat(form.longitude)  : null,
+      recapVideoUrl: form.recapVideoUrl || null,
+      promoImages,
+      recapImages,
     };
 
     const url    = event ? `/api/events/${event.id}` : "/api/events";
@@ -819,6 +840,11 @@ export default function EventForm({ event }: Props) {
                     <Loader2 size={10} className="animate-spin" /> Translating to Nepali…
                   </p>
                 )}
+                {!descNeLoading && descNeError && (
+                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle size={10} /> {descNeError}
+                  </p>
+                )}
               </div>
 
               {/* Image */}
@@ -830,6 +856,74 @@ export default function EventForm({ event }: Props) {
                 </label>
                 <p className="text-[11px] text-gray-400 mb-2">Upload a banner or photo for this event.</p>
                 <ImageUpload value={form.image} onChange={(url) => set("image", url)} />
+              </div>
+
+              {/* Promo gallery */}
+              <div>
+                <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-1">
+                  Promo Gallery
+                  <span className="text-gray-400 font-normal text-xs">(optional, up to 4)</span>
+                  <HelperTip text="Photos shown on the event page while it's still upcoming — flyers, teasers, past-edition highlights." />
+                </label>
+                <p className="text-[11px] text-indigo-500 mb-2">
+                  Shown on the public event page only while this event is <strong>Upcoming</strong>.
+                </p>
+                <div className="space-y-3">
+                  {promoImages.map((img, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="flex-1"><ImageUpload value={img} onChange={(url) => setPromoImages((p) => p.map((x, idx) => (idx === i ? url : x)))} /></div>
+                      <button type="button" onClick={() => setPromoImages((p) => p.filter((_, idx) => idx !== i))}
+                        className="mt-2 text-red-400 hover:text-red-600 flex-shrink-0" title="Remove image">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {promoImages.length < 4 && (
+                  <button type="button" onClick={() => setPromoImages((p) => [...p, ""])}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 border border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors">
+                    <Plus size={14} /> Add promo image
+                  </button>
+                )}
+              </div>
+
+              {/* Recap gallery */}
+              <div>
+                <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-1">
+                  Recap Gallery
+                  <span className="text-gray-400 font-normal text-xs">(optional, up to 6)</span>
+                  <HelperTip text="Photos shown once the event is marked past — how the event actually went. Add these after the event completes." />
+                </label>
+                <p className="text-[11px] text-indigo-500 mb-2">
+                  Shown once this event is marked <strong>Past</strong> (replaces the Promo Gallery above). If left empty, the Promo Gallery is shown instead so your photos are never hidden entirely.
+                </p>
+                <div className="space-y-3">
+                  {recapImages.map((img, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="flex-1"><ImageUpload value={img} onChange={(url) => setRecapImages((p) => p.map((x, idx) => (idx === i ? url : x)))} /></div>
+                      <button type="button" onClick={() => setRecapImages((p) => p.filter((_, idx) => idx !== i))}
+                        className="mt-2 text-red-400 hover:text-red-600 flex-shrink-0" title="Remove image">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {recapImages.length < 6 && (
+                  <button type="button" onClick={() => setRecapImages((p) => [...p, ""])}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 border border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors">
+                    <Plus size={14} /> Add recap image
+                  </button>
+                )}
+                <div className="mt-3">
+                  <label className="text-xs font-medium text-gray-600 block mb-1">Recap video link (optional)</label>
+                  <input
+                    type="url"
+                    placeholder="https://youtube.com/watch?v=…"
+                    value={form.recapVideoUrl}
+                    onChange={(e) => set("recapVideoUrl", e.target.value)}
+                    className={inputCls}
+                  />
+                </div>
               </div>
 
               {/* Review summary */}

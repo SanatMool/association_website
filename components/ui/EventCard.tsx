@@ -59,7 +59,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         isUpcoming ? "bg-navy-900" : "bg-slate-100"
       )}>
         {event.image ? (
-          <img src={event.image} alt={event.title} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={event.image} alt={event.title} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-contain" />
         ) : (
           <>
             <div className={cn(
@@ -102,12 +102,12 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
 
         {/* Date overlay */}
         <div className="absolute bottom-4 left-4">
-          <div className={cn(
-            "text-sm font-bold",
-            isUpcoming ? "text-gold-300" : "text-slate-500"
+          <span className={cn(
+            "inline-flex text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur-sm",
+            isUpcoming ? "bg-navy-950/80 text-gold-300" : "bg-navy-950/70 text-white/80"
           )}>
             {formatDate(event.date)}
-          </div>
+          </span>
         </div>
       </div>
 

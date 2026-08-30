@@ -56,8 +56,9 @@ function lc(s: string) { return s.toLowerCase().trim(); }
 function buildDescription(params: {
   name: string; area: string; capacity: string;
   cats: Set<string>; types: Set<string>; amenities: Set<string>; memberSince: string;
+  assocName: string;
 }): string {
-  const { name, area, capacity, cats, types, amenities, memberSince } = params;
+  const { name, area, capacity, cats, types, amenities, memberSince, assocName } = params;
   const capN  = capacity ? Number(capacity) : null;
   const capTx = capN ? `accommodate up to ${capN.toLocaleString()} guests` : "welcome guests of all group sizes";
   const catTx = cats.size ? Array.from(cats).join(" and ") : "event venue";
@@ -67,13 +68,13 @@ function buildDescription(params: {
   const since = memberSince ? ` since ${memberSince}` : "";
 
   const variants = [
-    `${name} is a premier${typTx}${catTx} located in ${area}, Kathmandu Valley. The venue can ${capTx}, making it an ideal choice for weddings, corporate events, and social celebrations. ${amTx ? `The venue features ${amTx} among its many amenities.` : ""} As a proud member of EVA Nepal${since}, ${name} is dedicated to delivering exceptional event experiences.`,
+    `${name} is a premier${typTx}${catTx} located in ${area}, Kathmandu Valley. The venue can ${capTx}, making it an ideal choice for weddings, corporate events, and social celebrations. ${amTx ? `The venue features ${amTx} among its many amenities.` : ""} As a proud member of ${assocName}${since}, ${name} is dedicated to delivering exceptional event experiences.`,
 
-    `Situated in ${area}, ${name} is one of Kathmandu Valley's trusted${typTx}${catTx}s. With a capacity to ${capTx}, the venue is perfectly suited for ceremonies, receptions, and large gatherings. ${amTx ? `Guests can enjoy ${amTx} and a range of other modern facilities.` : ""} ${name} has been a registered EVA Nepal member${since}.`,
+    `Situated in ${area}, ${name} is one of Kathmandu Valley's trusted${typTx}${catTx}s. With a capacity to ${capTx}, the venue is perfectly suited for ceremonies, receptions, and large gatherings. ${amTx ? `Guests can enjoy ${amTx} and a range of other modern facilities.` : ""} ${name} has been a registered ${assocName} member${since}.`,
 
-    `Nestled in the heart of ${area}, ${name} offers an elegant${typTx}setting for all kinds of events. The venue comfortably ${capTx} and is renowned as a leading ${catTx} in the valley. ${amTx ? `Notable amenities include ${amTx}.` : ""} With its commitment to quality service, ${name} continues to be a preferred choice for memorable celebrations${since ? ` — a proud EVA member${since}` : ""}.`,
+    `Nestled in the heart of ${area}, ${name} offers an elegant${typTx}setting for all kinds of events. The venue comfortably ${capTx} and is renowned as a leading ${catTx} in the valley. ${amTx ? `Notable amenities include ${amTx}.` : ""} With its commitment to quality service, ${name} continues to be a preferred choice for memorable celebrations${since ? ` — a proud ${assocName} member${since}` : ""}.`,
 
-    `${name}, based in ${area}, is a well-established${typTx}${catTx} known for hosting memorable events across Kathmandu Valley. The venue can ${capTx} and offers an excellent environment for everything from intimate gatherings to large-scale celebrations. ${amTx ? `Key features include ${amTx}.` : ""} ${since ? `A proud member of EVA Nepal${since}.` : ""}`,
+    `${name}, based in ${area}, is a well-established${typTx}${catTx} known for hosting memorable events across Kathmandu Valley. The venue can ${capTx} and offers an excellent environment for everything from intimate gatherings to large-scale celebrations. ${amTx ? `Key features include ${amTx}.` : ""} ${since ? `A proud member of ${assocName}${since}.` : ""}`,
   ];
 
   return variants[Math.floor(Math.random() * variants.length)];
@@ -117,6 +118,14 @@ export default function MemberForm({ member, showPhone: initialShowPhone = false
   const [yearMode,  setYearMode]  = useState<"AD" | "BS">("AD");
 
   const [genLoading, setGenLoading] = useState(false);
+  const [assocName,  setAssocName]  = useState("the association");
+  useEffect(() => {
+    fetch("/api/admin/branding").then((r) => r.json())
+      .then((json: { success: boolean; data?: { name: string } }) => {
+        if (json.success && json.data?.name) setAssocName(json.data.name);
+      })
+      .catch(() => {});
+  }, []);
 
   // Membership category + billing (new member only)
   const [memberCategories,   setMemberCategories]   = useState<CategoryOption[]>([]);
@@ -244,6 +253,7 @@ export default function MemberForm({ member, showPhone: initialShowPhone = false
       const desc = buildDescription({
         name: form.name, area: form.area, capacity: form.capacity,
         cats: categories, types, amenities, memberSince: form.memberSince,
+        assocName,
       });
       set("description", desc);
       setGenLoading(false);

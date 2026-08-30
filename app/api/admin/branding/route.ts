@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { hasPermission } from "@/lib/permissions";
 import { THEME_PRESETS, DEFAULT_THEME_PRESET } from "@/lib/theme-presets";
+import { sanitizeHomepageContent } from "@/lib/homepage-content";
+import type { Prisma } from "@prisma/client";
 
 export async function GET() {
   // Prefer the logged-in admin's own association — this is an admin-scoped endpoint,
@@ -56,6 +58,7 @@ export async function GET() {
       yearsActive,
       memberCount,
       colorPreset: association.colorPreset ?? DEFAULT_THEME_PRESET,
+      homepageContent: sanitizeHomepageContent(association.homepageContent),
     },
   }, {
     headers: { "Cache-Control": "no-store" },
@@ -73,24 +76,40 @@ export async function PUT(req: Request) {
   }
 
   const body = await req.json();
-  const { colorPreset } = body as { colorPreset?: string };
+  const { colorPreset, homepageContent } = body as { colorPreset?: string; homepageContent?: unknown };
 
-  if (!colorPreset || !(colorPreset in THEME_PRESETS)) {
-    return NextResponse.json({ success: false, error: "Invalid color preset" }, { status: 400 });
+  if (colorPreset === undefined && homepageContent === undefined) {
+    return NextResponse.json({ success: false, error: "Nothing to update" }, { status: 400 });
   }
 
-  const preset = THEME_PRESETS[colorPreset];
+  const data: Prisma.AssociationUpdateInput = {};
+
+  if (colorPreset !== undefined) {
+    if (!(colorPreset in THEME_PRESETS)) {
+      return NextResponse.json({ success: false, error: "Invalid color preset" }, { status: 400 });
+    }
+    const preset = THEME_PRESETS[colorPreset];
+    data.colorPreset = colorPreset;
+    // Kept in sync so the PWA manifest routes and viewport theme-color, which read these
+    // two fields directly, reflect the new preset without any changes to their own code.
+    data.themeColor = preset.primary[800];
+    data.accentColor = preset.accent[500];
+  }
+
+  if (homepageContent !== undefined) {
+    data.homepageContent = sanitizeHomepageContent(homepageContent) as Prisma.InputJsonValue;
+  }
 
   const association = await prisma.association.update({
     where: { id: ctx.associationId },
-    data: {
-      colorPreset,
-      // Kept in sync so the PWA manifest routes and viewport theme-color, which read these
-      // two fields directly, reflect the new preset without any changes to their own code.
-      themeColor:  preset.primary[800],
-      accentColor: preset.accent[500],
-    },
+    data,
   });
 
-  return NextResponse.json({ success: true, data: { colorPreset: association.colorPreset } });
+  return NextResponse.json({
+    success: true,
+    data: {
+      colorPreset: association.colorPreset,
+      homepageContent: sanitizeHomepageContent(association.homepageContent),
+    },
+  });
 }

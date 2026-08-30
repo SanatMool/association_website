@@ -8,9 +8,11 @@ import { EventType } from "@/lib/types";
 
 interface EventsClientProps {
   events: EventType[];
+  headline?: string;
+  subtitle?: string;
 }
 
-export default function EventsClient({ events }: EventsClientProps) {
+export default function EventsClient({ events, headline, subtitle }: EventsClientProps) {
   const { t } = useLocale();
   const [filter, setFilter] = useState<"all" | "upcoming" | "past">("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -32,8 +34,8 @@ export default function EventsClient({ events }: EventsClientProps) {
               <span className="w-6 h-px bg-gold-500" />
               {t.events.label}
             </div>
-            <h1 className="font-serif text-4xl sm:text-5xl font-bold text-white mb-3">{t.events.title}</h1>
-            <p className="text-white/60 text-lg">{t.events.subtitle}</p>
+            <h1 className="font-serif text-4xl sm:text-5xl font-bold text-white mb-3">{headline || t.events.title}</h1>
+            <p className="text-white/60 text-lg">{subtitle || t.events.subtitle}</p>
           </motion.div>
         </div>
       </div>

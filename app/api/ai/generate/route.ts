@@ -28,11 +28,18 @@ async function incrementUsage(associationId: string): Promise<void> {
   });
 }
 
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+// Groq periodically deprecates/renames models (llama-3.3-70b-versatile was removed from the
+// catalog entirely — confirmed 2026-08-30 via GET /v1/models, not a key/config problem). If
+// generation starts failing again, check `curl https://api.groq.com/openai/v1/models` with the
+// current key before assuming the key itself is the issue.
+const GROQ_MODEL = "openai/gpt-oss-120b";
 
-async function callAI(prompt: string, maxTokens: number): Promise<string> {
+class GroqAuthError extends Error {}
+class GroqQuotaError extends Error {}
+
+async function callAI(prompt: string, maxTokens: number, temperature = 0.7): Promise<string> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY not configured");
+  if (!apiKey) throw new GroqAuthError("GROQ_API_KEY not configured");
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
@@ -44,16 +51,19 @@ async function callAI(prompt: string, maxTokens: number): Promise<string> {
       model: GROQ_MODEL,
       messages: [{ role: "user", content: prompt }],
       max_tokens: maxTokens,
-      temperature: 0.7,
+      temperature,
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
     console.error(`[Groq] HTTP ${res.status}:`, err);
-    if (res.status === 401) throw new Error("GROQ_API_KEY is invalid");
-    if (res.status === 429) throw new Error("quota exceeded");
-    throw new Error(`Groq API error ${res.status}: ${err.slice(0, 200)}`);
+    // Only a real 401 means the key itself is missing/bad — never infer this from message text,
+    // since Groq's JSON error bodies routinely contain the substring "invalid" for unrelated
+    // reasons (e.g. "invalid_request_error" on a deprecated/renamed model, bad params, etc.).
+    if (res.status === 401) throw new GroqAuthError("GROQ_API_KEY is invalid");
+    if (res.status === 429) throw new GroqQuotaError("quota exceeded");
+    throw new Error(`Groq API error ${res.status}: ${err.slice(0, 300)}`);
   }
 
   const json = await res.json() as {
@@ -76,6 +86,12 @@ export async function POST(req: NextRequest) {
   }
 
   const { type } = body;
+
+  const association = await prisma.association.findUnique({
+    where: { id: associationId },
+    select: { name: true },
+  });
+  const assocName = association?.name ?? "the association";
 
   // ── Enabled check ──────────────────────────────────────────────────────────
   const enabledSetting = await prisma.siteSettings.findUnique({
@@ -111,7 +127,7 @@ export async function POST(req: NextRequest) {
       }
 
       const prompt = [
-        `Write a concise professional biography (2–4 sentences) for a committee member of EVA Nepal (Event and Venue Association Nepal), an industry body for event venues in Kathmandu, Nepal.`,
+        `Write a concise professional biography (2–4 sentences) for a committee member of ${assocName}, an industry association in Nepal.`,
         ``,
         `Name: ${name}`,
         `Role: ${role}`,
@@ -142,7 +158,7 @@ export async function POST(req: NextRequest) {
       }
 
       const prompt = [
-        `Write a professional news article for EVA Nepal (Event and Venue Association Nepal), an industry body for event venues in Kathmandu, Nepal, established in 2011 with 150+ member venues.`,
+        `Write a professional news article for ${assocName}, an industry association in Nepal.`,
         ``,
         `Article Title: ${title}`,
         `Category: ${category}`,
@@ -193,7 +209,7 @@ export async function POST(req: NextRequest) {
       const typeLabel = typeLabels[meetingType] ?? meetingType;
 
       const prompt = [
-        `Suggest 5–7 agenda items for the following EVA Nepal (Event and Venue Association Nepal) meeting.`,
+        `Suggest 5–7 agenda items for the following ${assocName} meeting.`,
         ``,
         `Meeting Title: ${title}`,
         `Meeting Type: ${typeLabel}`,
@@ -251,7 +267,7 @@ export async function POST(req: NextRequest) {
       const typeLabel = typeLabels[meetingType] ?? meetingType;
 
       const prompt = [
-        `Write a concise meeting description (2–3 sentences) for an EVA Nepal (Event and Venue Association Nepal) meeting notice.`,
+        `Write a concise meeting description (2–3 sentences) for a ${assocName} meeting notice.`,
         ``,
         `Meeting Title: ${title}`,
         `Meeting Type: ${typeLabel}`,
@@ -300,7 +316,7 @@ export async function POST(req: NextRequest) {
         : "No agenda items recorded.";
 
       const prompt = [
-        `Draft formal meeting minutes for the following EVA Nepal (Event and Venue Association Nepal) meeting.`,
+        `Draft formal meeting minutes for the following ${assocName} meeting.`,
         ``,
         `Meeting Title: ${title}`,
         `Meeting Type: ${typeLabel}`,
@@ -356,7 +372,7 @@ export async function POST(req: NextRequest) {
       ].filter(Boolean).join("\n");
 
       const prompt = [
-        `Write a compelling event description (2–3 paragraphs) for the following EVA Nepal (Event and Venue Association Nepal) event.`,
+        `Write a compelling event description (2–3 paragraphs) for the following ${assocName} event.`,
         ``,
         contextLines,
         ``,
@@ -388,13 +404,25 @@ export async function POST(req: NextRequest) {
       const langLabel = langNames[targetLang] ?? targetLang;
 
       const prompt = [
-        `Translate the following text into ${langLabel}. Preserve the paragraph structure.`,
-        `Return only the translated text — no labels, no explanations, no original text.`,
+        `You are a literal, faithful translator. Translate ONLY the exact text below into ${langLabel}.`,
+        `Preserve the paragraph structure.`,
         ``,
+        `Strict rules:`,
+        `- Translate every sentence that is present. Do not summarize or shorten.`,
+        `- Do NOT add any information, names, organizations, dates, or sentences that are not in the source text below.`,
+        `- Do NOT substitute a different organization/association name than what actually appears in the source text.`,
+        `- If the source text names no organization, the translation must not introduce one either.`,
+        `- Return only the translated text — no labels, no explanations, no notes, no original text.`,
+        ``,
+        `SOURCE TEXT TO TRANSLATE:`,
         text,
       ].join("\n");
 
-      const translated = await callAI(prompt, 1000);
+      // Low temperature — this is a fidelity task (translate exactly what's given), not a
+      // creative one; the default 0.7 was observed inventing unrelated content (e.g. inserting
+      // "EVA Nepal" into a Nepali translation of an English description that never mentioned
+      // any association name at all).
+      const translated = await callAI(prompt, 1000, 0.2);
       await incrementUsage(associationId);
       return NextResponse.json({ success: true, data: { text: translated }, remaining: quota.remaining - 1 });
     }
@@ -403,13 +431,13 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error("[AI Generate]", err);
-    const message = err instanceof Error ? err.message : "Unknown error";
-    if (message.includes("not configured") || message.includes("invalid")) {
+    if (err instanceof GroqAuthError) {
       return NextResponse.json({ success: false, error: "AI generation is not configured. Ask your admin to add the GROQ_API_KEY to the server environment." }, { status: 503 });
     }
-    if (message.includes("quota") || message.includes("429")) {
-      return NextResponse.json({ success: false, error: "AI quota exceeded. Please wait a minute and try again, or upgrade your Gemini API plan." }, { status: 429 });
+    if (err instanceof GroqQuotaError) {
+      return NextResponse.json({ success: false, error: "AI quota exceeded. Please wait a minute and try again, or ask your admin to increase the daily limit." }, { status: 429 });
     }
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ success: false, error: `AI generation failed: ${message}` }, { status: 500 });
   }
 }

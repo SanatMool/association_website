@@ -14,7 +14,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const ROLE_KEYS: { key: string; label: string; desc: string }[] = [
-  { key: "president",                label: "President",                desc: "Head of EVA Nepal" },
+  { key: "president",                label: "President",                desc: "Head of the association" },
   { key: "immediate_past_president", label: "Immediate Past President", desc: "Previous term president" },
   { key: "senior_vice_president",    label: "Senior Vice President",    desc: "Second-in-command" },
   { key: "vice_president",           label: "Vice President",           desc: "VP / joint VP" },

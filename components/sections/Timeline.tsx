@@ -109,10 +109,16 @@ function TimelineItem({
 
 interface TimelineProps {
   entries: TimelineType[];
+  name?: string;
+  foundedYear?: number;
+  memberCount?: number;
+  yearsActive?: number;
+  memberMode?: "venue" | "person";
 }
 
-export default function Timeline({ entries }: TimelineProps) {
+export default function Timeline({ entries, name = "the association", foundedYear = 2011, memberCount = 150, yearsActive = 14, memberMode = "venue" }: TimelineProps) {
   if (!entries || entries.length === 0) return null;
+  const isPersonMode = memberMode === "person";
 
   const milestones: MilestoneItem[] = [...entries]
     .sort((a, b) => a.order - b.order)
@@ -136,7 +142,7 @@ export default function Timeline({ entries }: TimelineProps) {
       {/* Large decorative text */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
         <span className="text-[16rem] font-serif font-bold text-white/[0.018] leading-none select-none tracking-tight">
-          2011
+          {foundedYear}
         </span>
       </div>
 
@@ -152,13 +158,15 @@ export default function Timeline({ entries }: TimelineProps) {
           </AnimatedSection>
           <AnimatedSection delay={0.1}>
             <h2 className="heading-lg text-white mt-4">
-              14 Years of Leading<br />
-              <span className="text-gold-400">Nepal&apos;s Event Industry</span>
+              {yearsActive} Years of Leading<br />
+              <span className="text-gold-400">{isPersonMode ? "Nepal's Professional Community" : "Nepal's Event Industry"}</span>
             </h2>
           </AnimatedSection>
           <AnimatedSection delay={0.15}>
             <p className="text-white/50 mt-3 max-w-xl mx-auto text-base leading-relaxed">
-              From a small group of venue owners in 2011 to the definitive industry association representing 150+ venues across Kathmandu Valley.
+              {isPersonMode
+                ? `From a small group of founding members in ${foundedYear} to the definitive professional association representing ${memberCount}+ members across Kathmandu Valley.`
+                : `From a small group of venue owners in ${foundedYear} to the definitive industry association representing ${memberCount}+ venues across Kathmandu Valley.`}
             </p>
           </AnimatedSection>
           <AnimatedSection delay={0.2}>
@@ -205,17 +213,18 @@ export default function Timeline({ entries }: TimelineProps) {
 
             <div className="relative">
               <h3 className="font-serif font-bold text-white text-2xl sm:text-3xl mb-3">
-                Building the Future of Event Venues in Nepal
+                {isPersonMode ? "Building Nepal's Professional Community" : "Building the Future of Event Venues in Nepal"}
               </h3>
               <p className="text-white/50 max-w-xl mx-auto mb-10 text-sm leading-relaxed">
-                From 2011 to today, EVA Nepal continues to grow, advocate, and elevate the standard of event venues across the Kathmandu Valley.
+                {isPersonMode
+                  ? `From ${foundedYear} to today, ${name} continues to grow, advocate, and elevate standards across Nepal's professional community.`
+                  : `From ${foundedYear} to today, ${name} continues to grow, advocate, and elevate the standard of event venues across the Kathmandu Valley.`}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-10">
                 {[
-                  { value: "2011", label: "Founded" },
-                  { value: "150+", label: "Members" },
-                  { value: "14+",  label: "Years"   },
-                  { value: "500+", label: "Trained" },
+                  { value: String(foundedYear), label: "Founded" },
+                  { value: `${memberCount}+`, label: isPersonMode ? "Members" : "Member Venues" },
+                  { value: `${yearsActive}+`, label: "Years"   },
                 ].map(({ value, label }) => (
                   <div key={label} className="text-center">
                     <div className="font-serif font-bold text-3xl sm:text-4xl text-gold-400 leading-none">{value}</div>

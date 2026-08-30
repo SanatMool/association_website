@@ -4,6 +4,7 @@ import { getAdminContext } from "@/lib/adminAuth";
 import { logActivity } from "@/lib/activityLogger";
 import { hasPermission } from "@/lib/permissions";
 import { autoArchivePastEvents } from "@/lib/eventStatus";
+import { sanitizeEventGalleryFields } from "@/lib/event-gallery";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAdminContext();
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
   const event = await prisma.event.create({
     data: {
       ...data,
+      ...sanitizeEventGalleryFields(data),
       associationId: ctx.associationId,
       date: new Date(data.date),
       endDate: data.endDate ? new Date(data.endDate) : null,

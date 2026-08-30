@@ -2,16 +2,32 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Award, Network, BookOpen, Megaphone, ListChecks, HeartHandshake, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
+import { getSectionIcon, type ContentItem } from "@/lib/homepage-content";
 
-const icons = [Award, Network, BookOpen, Megaphone, ListChecks, HeartHandshake];
+const DEFAULT_ICON_NAMES = ["Award", "Network", "BookOpen", "Megaphone", "ListChecks", "HeartHandshake"];
 
-export default function WhyJoin({ name = "EVA Nepal", memberCount = 150, memberMode = "venue" }: { name?: string; memberCount?: number; memberMode?: "venue" | "person" }) {
+interface WhyJoinProps {
+  name?: string;
+  memberCount?: number;
+  memberMode?: "venue" | "person";
+  items?: ContentItem[];
+}
+
+export default function WhyJoin({ name = "EVA Nepal", memberCount = 150, memberMode = "venue", items }: WhyJoinProps) {
   const { t } = useLocale();
   const isPersonMode = memberMode === "person";
   const shortName = name.split(" ")[0];
+
+  const displayItems: ContentItem[] = items && items.length > 0
+    ? items
+    : t.whyjoin.benefits.map((benefit: { title: string; desc: string }, i: number) => ({
+        icon: DEFAULT_ICON_NAMES[i % DEFAULT_ICON_NAMES.length],
+        title: benefit.title,
+        desc: benefit.desc,
+      }));
 
   return (
     <section id="join" className="section-padding bg-white relative overflow-hidden">
@@ -41,11 +57,11 @@ export default function WhyJoin({ name = "EVA Nepal", memberCount = 150, memberM
           </AnimatedSection>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-14">
-          {t.whyjoin.benefits.map((benefit: { title: string; desc: string }, i: number) => {
-            const Icon = icons[i];
+        <div className="flex flex-wrap justify-center gap-5 mb-14">
+          {displayItems.map((item, i) => {
+            const Icon = getSectionIcon(item.icon);
             return (
-              <AnimatedSection key={i} delay={i * 0.08}>
+              <AnimatedSection key={i} delay={i * 0.08} className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]">
                 <motion.div
                   whileHover={{ y: -4 }}
                   transition={{ type: "spring", stiffness: 350, damping: 25 }}
@@ -62,10 +78,10 @@ export default function WhyJoin({ name = "EVA Nepal", memberCount = 150, memberM
                   </div>
 
                   <h3 className="font-serif font-bold text-navy-900 text-base mb-3 group-hover:text-navy-700 transition-colors">
-                    {benefit.title}
+                    {item.title}
                   </h3>
                   <p className="text-slate-500 text-sm leading-relaxed">
-                    {benefit.desc}
+                    {item.desc}
                   </p>
 
                   {/* Bottom hover line */}

@@ -48,6 +48,9 @@ export interface EventType {
   status: string;
   attendees?: number | null;
   image?: string | null;
+  promoImages?: string[];
+  recapImages?: string[];
+  recapVideoUrl?: string | null;
 }
 
 export interface NewsType {

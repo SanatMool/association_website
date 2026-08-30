@@ -15,6 +15,7 @@ import { getSettings } from "@/lib/settings";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 import { autoArchivePastEvents } from "@/lib/eventStatus";
 import { MemberType, EventType, NewsType, CommitteeType, TimelineType } from "@/lib/types";
+import { sanitizeHomepageContent } from "@/lib/homepage-content";
 
 // Page-level metadata is handled by generateMetadata() in app/layout.tsx
 
@@ -57,6 +58,7 @@ export default async function Home() {
   const hqLocation = siteSettings.contact_address?.split("\n")[0] ?? "Kathmandu";
 
   const memberMode: "venue" | "person" = siteSettings.member_mode === "person" ? "person" : "venue";
+  const homepageContent = sanitizeHomepageContent(association.homepageContent);
 
   const members: MemberType[] = dbMembers.map((m) => ({
     id: m.id,
@@ -146,6 +148,7 @@ export default async function Home() {
         yearsActive={yearsActive}
         eventsHosted={eventsHosted}
         heroImage={siteSettings.hero_image || null}
+        heroSlides={homepageContent.heroSlides}
         memberMode={memberMode}
       />
       <StatsSection
@@ -164,11 +167,14 @@ export default async function Home() {
         name={association.name}
         description={association.description ?? undefined}
         memberMode={memberMode}
+        aboutImage={homepageContent.aboutImage}
+        aboutHeadline={homepageContent.aboutHeadline}
+        aboutBadge={homepageContent.aboutBadge}
       />
-      <Mission />
+      <Mission items={homepageContent.missionItems} />
       <MemberDirectory members={members} defaultMemberImage={siteSettings.default_member_image} memberCount={memberCount} memberMode={memberMode} />
-      <WhyJoin name={association.name} memberCount={memberCount} memberMode={memberMode} />
-      <Timeline entries={timeline} />
+      <WhyJoin name={association.name} memberCount={memberCount} memberMode={memberMode} items={homepageContent.whyjoinItems} />
+      <Timeline entries={timeline} name={association.name} foundedYear={foundedYear} memberCount={memberCount} yearsActive={yearsActive} memberMode={memberMode} />
       <Events events={events} />
       <News news={news} name={association.name} />
       <ExecutiveCommittee committee={committee} />

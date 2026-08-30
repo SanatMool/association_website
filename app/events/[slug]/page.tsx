@@ -5,12 +5,13 @@ import Link from "next/link";
 import { Metadata } from "next";
 import {
   CalendarDays, MapPin, Clock, Users, ChevronLeft,
-  ArrowUpRight, ExternalLink,
+  ArrowUpRight, ExternalLink, PlayCircle,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import { autoArchivePastEvents } from "@/lib/eventStatus";
 import DescriptionSection from "./DescriptionSection";
 import TicketSection from "./TicketSection";
+import ImageLightboxGallery from "@/components/ui/ImageLightboxGallery";
 
 export const revalidate = 60;
 
@@ -42,6 +43,15 @@ const TYPE_LABELS: Record<string, string> = {
   exhibition: "Exhibition",
   conference: "Conference",
 };
+
+function getVideoEmbedUrl(url: string): string | null {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vimeo = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
+  return null;
+}
+
 
 const TYPE_COLORS: Record<string, string> = {
   networking: "bg-purple-100 text-purple-800",
@@ -135,8 +145,8 @@ export default async function EventDetailPage({ params }: Props) {
       {/* Cover image */}
       {event.image && (
         <div className="max-w-4xl mx-auto px-4 -mt-6">
-          <div className="h-64 sm:h-80 rounded-2xl overflow-hidden shadow-lg">
-            <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
+          <div className="h-64 sm:h-80 rounded-2xl overflow-hidden shadow-lg bg-navy-900">
+            <img src={event.image} alt={event.title} className="w-full h-full object-contain" />
           </div>
         </div>
       )}
@@ -144,8 +154,49 @@ export default async function EventDetailPage({ params }: Props) {
       <div className="max-w-4xl mx-auto px-4 py-10">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Description */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-8">
             <DescriptionSection description={event.description} descriptionNe={event.descriptionNe} />
+
+            {isUpcoming ? (
+              <ImageLightboxGallery images={event.promoImages} title="Event Gallery" />
+            ) : (
+              <>
+                {/* If the event went past before recap photos were ever added, fall back to
+                    showing the promo images instead of the gallery silently disappearing. */}
+                <ImageLightboxGallery
+                  images={event.recapImages.length > 0 ? event.recapImages : event.promoImages}
+                  title={event.recapImages.length > 0 ? "Event Recap" : "Event Gallery"}
+                />
+                {event.recapVideoUrl && (
+                  <div>
+                    <h3 className="flex items-center gap-1.5 text-sm font-bold text-gray-800 uppercase tracking-wide mb-3">
+                      <PlayCircle size={14} className="text-gold-500" /> Highlights Video
+                    </h3>
+                    {getVideoEmbedUrl(event.recapVideoUrl) ? (
+                      <div className="aspect-video rounded-2xl overflow-hidden bg-black">
+                        <iframe
+                          title="Event highlights video"
+                          width="100%"
+                          height="100%"
+                          src={getVideoEmbedUrl(event.recapVideoUrl)!}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <a
+                        href={event.recapVideoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-gold-600 hover:text-gold-700 font-medium"
+                      >
+                        <ExternalLink size={13} /> Watch the highlights video
+                      </a>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Sidebar */}

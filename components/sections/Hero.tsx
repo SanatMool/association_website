@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import Link from "next/link";
 import { ArrowRight, Award, Users, Calendar, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
+import type { HeroSlide } from "@/lib/homepage-content";
 
 const VENUE_SLIDES = [
   {
@@ -78,10 +79,11 @@ interface HeroProps {
   yearsActive?: number;
   eventsHosted?: number;
   heroImage?: string | null;
+  heroSlides?: HeroSlide[];
   memberMode?: "venue" | "person";
 }
 
-export default function Hero({ name = "Event and Venue Association Nepal", foundedYear = 2011, memberCount = 150, yearsActive = 14, eventsHosted = 0, heroImage, memberMode = "venue" }: HeroProps) {
+export default function Hero({ name = "Event and Venue Association Nepal", foundedYear = 2011, memberCount = 150, yearsActive = 14, eventsHosted = 0, heroImage, heroSlides, memberMode = "venue" }: HeroProps) {
   const { t } = useLocale();
   const isPersonMode = memberMode === "person";
 
@@ -99,12 +101,36 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
     { icon: MapPin,   value: "100%",                keyLabel: "stats_coverage" as const },
   ];
 
-  const slides = isPersonMode ? PERSON_SLIDES : VENUE_SLIDES;
+  const modeSlides = isPersonMode ? PERSON_SLIDES : VENUE_SLIDES;
 
-  // Use association's hero image as first slide if provided
-  const activeSlides = heroImage
+  // Admin-managed slides (Branding tab) fully replace the stock slideshow when set; falls back
+  // to the stock venue/person slides otherwise — zero visual change for any association that
+  // hasn't configured this.
+  const customSlides = heroSlides && heroSlides.length > 0
+    ? heroSlides.map((s, i) => ({ id: i + 1, image: s.image, label: s.label, accent: s.label }))
+    : null;
+  const slides = customSlides ?? modeSlides;
+
+  // Legacy single-image override (pre-dates the full heroSlides list) — only applies when no
+  // custom slide list is set.
+  const activeSlides = !customSlides && heroImage
     ? [{ ...slides[0], image: heroImage }, ...slides.slice(1)]
     : slides;
+
+  // Floating thumbnail cards mirror the first 1-2 custom slides when available, instead of
+  // separately hardcoded stock images.
+  const thumbnail1 = customSlides?.[0] ?? {
+    image: isPersonMode
+      ? "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=75"
+      : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&auto=format&fit=crop&q=75",
+    label: isPersonMode ? "Professional Network" : "Grand Banquet Hall",
+  };
+  const thumbnail2 = customSlides?.[1] ?? {
+    image: isPersonMode
+      ? "https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&auto=format&fit=crop&q=75"
+      : "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=500&auto=format&fit=crop&q=75",
+    label: isPersonMode ? "Community Gathering" : "Wedding Venue",
+  };
 
   const [current, setCurrent] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
@@ -426,15 +452,13 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={isPersonMode
-                  ? "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=75"
-                  : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&auto=format&fit=crop&q=75"}
-                alt={isPersonMode ? "Professional Network" : "Grand Banquet Hall"}
+                src={thumbnail1.image}
+                alt={thumbnail1.label}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-900/85 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
-                <p className="text-white font-semibold text-sm">{isPersonMode ? "Professional Network" : "Grand Banquet Hall"}</p>
+                <p className="text-white font-semibold text-sm">{thumbnail1.label}</p>
                 <p className="text-gold-400 text-xs mt-0.5">Kathmandu</p>
               </div>
               {!isPersonMode && (
@@ -453,15 +477,13 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={isPersonMode
-                  ? "https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&auto=format&fit=crop&q=75"
-                  : "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=500&auto=format&fit=crop&q=75"}
-                alt={isPersonMode ? "Community Gathering" : "Wedding Venue"}
+                src={thumbnail2.image}
+                alt={thumbnail2.label}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-900/85 via-transparent to-transparent" />
               <div className="absolute bottom-3 left-3 right-3">
-                <p className="text-white font-semibold text-xs">{isPersonMode ? "Community Gathering" : "Wedding Venue"}</p>
+                <p className="text-white font-semibold text-xs">{thumbnail2.label}</p>
                 <p className="text-gold-400 text-[10px] mt-0.5">{isPersonMode ? "Members" : "Patan"}</p>
               </div>
             </motion.div>

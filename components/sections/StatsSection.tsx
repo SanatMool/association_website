@@ -55,9 +55,9 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
   const isPersonMode = memberMode === "person";
   const stats = [
     { value: memberCount, suffix: "+", label: isPersonMode ? "Members" : "Member Venues",  desc: isPersonMode ? "Registered members of the association" : "Registered banquet halls & event spaces", icon: Building2, delay: 0   },
-    { value: yearsActive, suffix: "+", label: "Years Leading",  desc: `Serving Nepal's event industry since ${foundedYear}`, icon: Award, delay: 0.1 },
+    { value: yearsActive, suffix: "+", label: "Years Leading",  desc: isPersonMode ? `Serving Nepal's professional community since ${foundedYear}` : `Serving Nepal's event industry since ${foundedYear}`, icon: Award, delay: 0.1 },
     { value: eventsHosted, suffix: "+", label: "Events Hosted", desc: isPersonMode ? "Across all members collectively" : "Across all member venues collectively", icon: Calendar,  delay: 0.2 },
-    { value: 100,         suffix: "%", label: "Valley Coverage",desc: "Kathmandu's largest venue network",          icon: MapPin,    delay: 0.3 },
+    { value: 100,         suffix: "%", label: "Valley Coverage",desc: isPersonMode ? "Kathmandu's largest professional network" : "Kathmandu's largest venue network",          icon: MapPin,    delay: 0.3 },
   ];
 
   return (

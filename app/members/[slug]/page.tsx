@@ -5,6 +5,7 @@ import Image from "next/image";
 import { MapPin, Users, Phone, Globe, ArrowLeft, Calendar, CheckCircle, Building2, Facebook, Instagram, Youtube, Navigation } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
+import { getSettings } from "@/lib/settings";
 
 interface Props {
   params: { slug: string };
@@ -13,18 +14,22 @@ interface Props {
 export const revalidate = 3600;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const association = await getAssociationOrThrow();
+  const settings = await getSettings(association.id);
+  const isPersonMode = settings.member_mode === "person";
   const member = await prisma.member.findUnique({ where: { slug: params.slug } });
-  if (!member) return { title: "Venue Not Found" };
+  if (!member) return { title: isPersonMode ? "Member Not Found" : "Venue Not Found" };
 
   return {
-    title: `${member.name} – Member Venue | ${member.location}`,
-    description: `${member.name} is a certified event venue located in ${member.location}.${member.capacity != null ? ` Capacity: ${member.capacity} guests.` : ""} ${member.description ?? ""}`,
-    keywords: [
-      member.name,
-      `${member.name} ${member.location}`,
-      `event venue ${member.area}`,
-      `banquet hall ${member.area}`,
-    ],
+    title: isPersonMode
+      ? `${member.name} – Member | ${member.location}`
+      : `${member.name} – Member Venue | ${member.location}`,
+    description: isPersonMode
+      ? `${member.name} is a member of ${association.name}, based in ${member.location}. ${member.description ?? ""}`
+      : `${member.name} is a certified event venue located in ${member.location}.${member.capacity != null ? ` Capacity: ${member.capacity} guests.` : ""} ${member.description ?? ""}`,
+    keywords: isPersonMode
+      ? [member.name, `${member.name} ${member.location}`]
+      : [member.name, `${member.name} ${member.location}`, `event venue ${member.area}`, `banquet hall ${member.area}`],
     openGraph: {
       title: member.name,
       description: member.description ?? undefined,
@@ -35,6 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MemberProfilePage({ params }: Props) {
   const association = await getAssociationOrThrow();
+  const settings = await getSettings(association.id);
+  const isPersonMode = settings.member_mode === "person";
 
   // Verify the member belongs to this association and is visible
   const memberWithLink = await prisma.member.findFirst({
@@ -126,7 +133,7 @@ export default async function MemberProfilePage({ params }: Props) {
                 {member.featured && (
                   <div className="flex items-center justify-center gap-1.5 mb-4">
                     <span className="text-xs font-semibold bg-navy-900 text-gold-400 px-3 py-1 rounded-full">
-                      ★ Featured Venue
+                      ★ {isPersonMode ? "Featured Member" : "Featured Venue"}
                     </span>
                   </div>
                 )}
@@ -232,8 +239,10 @@ export default async function MemberProfilePage({ params }: Props) {
                 <p className="text-slate-600 leading-relaxed">{member.description}</p>
                 {member.memberSince && (
                   <p className="text-slate-600 leading-relaxed mt-3">
-                    Located in {member.location}, this venue has been a proud member of {association.name} since {member.memberSince}.
-                    {member.capacity != null && ` With a capacity of up to ${member.capacity.toLocaleString()} guests, it is an excellent choice for weddings, receptions, corporate events, and social gatherings.`}
+                    {isPersonMode
+                      ? `Based in ${member.location}, ${member.name} has been a proud member of ${association.name} since ${member.memberSince}.`
+                      : `Located in ${member.location}, this venue has been a proud member of ${association.name} since ${member.memberSince}.`}
+                    {!isPersonMode && member.capacity != null && ` With a capacity of up to ${member.capacity.toLocaleString()} guests, it is an excellent choice for weddings, receptions, corporate events, and social gatherings.`}
                   </p>
                 )}
               </div>
@@ -254,10 +263,10 @@ export default async function MemberProfilePage({ params }: Props) {
             )}
 
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
-              <h2 className="font-serif font-bold text-navy-900 text-xl mb-5">Venue Details</h2>
+              <h2 className="font-serif font-bold text-navy-900 text-xl mb-5">{isPersonMode ? "Member Details" : "Venue Details"}</h2>
               <div className="grid sm:grid-cols-2 gap-4">
                 {[
-                  { label: "Venue Type", value: member.category ?? member.type },
+                  { label: isPersonMode ? "Category" : "Venue Type", value: member.category ?? member.type },
                   member.capacity != null ? { label: "Maximum Capacity", value: `${member.capacity.toLocaleString()} guests` } : null,
                   { label: "Area", value: member.area },
                   member.location ? { label: "Full Address", value: member.location } : null,
@@ -303,7 +312,7 @@ export default async function MemberProfilePage({ params }: Props) {
 
             {relatedMembers.length > 0 && (
               <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
-                <h2 className="font-serif font-bold text-navy-900 text-xl mb-5">Other Venues in {member.area}</h2>
+                <h2 className="font-serif font-bold text-navy-900 text-xl mb-5">{isPersonMode ? `Other Members in ${member.area}` : `Other Venues in ${member.area}`}</h2>
                 <div className="space-y-3">
                   {relatedMembers.map((m) => (
                     <Link key={m.id} href={`/members/${m.slug}`} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-gold-200 hover:bg-gold-50/30 transition-all group">

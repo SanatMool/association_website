@@ -89,12 +89,13 @@ export default async function DashboardPage() {
     ]);
 
   const settingsMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
+  const memberMode = settingsMap["member_mode"] === "person" ? "person" : "venue";
 
   const checklist = [
     { label: "Set real phone number", done: !settingsMap["contact_phone"]?.includes("XXXXXXX"), href: "/admin/settings" },
     { label: "Set Facebook URL", done: settingsMap["social_facebook"] !== "https://facebook.com/evanepal", href: "/admin/settings" },
     { label: "Set Instagram URL", done: settingsMap["social_instagram"] !== "https://instagram.com/evanepal", href: "/admin/settings" },
-    { label: "Add member venues", done: memberCount > 10, href: "/admin/members" },
+    { label: memberMode === "person" ? "Add members" : "Add member venues", done: memberCount > 10, href: "/admin/members" },
     { label: "Add upcoming events", done: eventCount > 0, href: "/admin/events" },
     { label: "Publish news articles", done: newsCount > 0, href: "/admin/news" },
     { label: "Add committee members", done: committeeCount > 0, href: "/admin/committee" },

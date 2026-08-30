@@ -368,7 +368,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-center text-white/15 text-xs mt-5">
-              © {new Date().getFullYear()} EVA Nepal · Admin Panel
+              © {new Date().getFullYear()} {assocName} · Admin Panel
             </p>
           </motion.div>
         </div>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getAdminContext } from "@/lib/adminAuth";
 import { logApiCall } from "@/lib/apiLogger";
 import { logActivity } from "@/lib/activityLogger";
+import { sanitizeEventGalleryFields } from "@/lib/event-gallery";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const event = await prisma.event.findUnique({ where: { id: params.id } });
@@ -26,6 +27,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     where: { id: params.id },
     data: {
       ...data,
+      ...sanitizeEventGalleryFields(data),
       date: new Date(data.date),
       endDate: data.endDate ? new Date(data.endDate) : null,
     },

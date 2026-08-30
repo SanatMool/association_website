@@ -9,7 +9,7 @@ import {
   FileText, AlignLeft, CalendarDays, Image as ImageIcon,
   ChevronRight, ChevronLeft, Check, Info, Star, Loader2,
   Globe, User, Sparkles, Languages, Clock, FileEdit,
-  CheckCircle2, Hash,
+  CheckCircle2, Hash, AlertCircle,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -97,6 +97,8 @@ export default function NewsForm({ article }: Props) {
 
   const [translatingExcerpt, setTranslatingExcerpt] = useState(false);
   const [translatingContent, setTranslatingContent] = useState(false);
+  const [excerptTranslateError, setExcerptTranslateError] = useState("");
+  const [contentTranslateError, setContentTranslateError] = useState("");
 
   function set(key: string, value: string | boolean) {
     setForm((prev) => {
@@ -222,20 +224,28 @@ export default function NewsForm({ article }: Props) {
   async function translateExcerpt() {
     if (!form.excerpt.trim()) return;
     setTranslatingExcerpt(true);
+    setExcerptTranslateError("");
     try {
       const translated = await translateText(form.excerpt);
       if (translated) setForm((p) => ({ ...p, excerptNe: translated }));
-    } catch { /* silently fail */ }
+      else setExcerptTranslateError("Translation failed. You can write the Nepali excerpt manually.");
+    } catch {
+      setExcerptTranslateError("Couldn't reach the translation service. You can write the Nepali excerpt manually.");
+    }
     setTranslatingExcerpt(false);
   }
 
   async function translateContent() {
     if (!form.content.trim()) return;
     setTranslatingContent(true);
+    setContentTranslateError("");
     try {
       const translated = await translateText(form.content);
       if (translated) setForm((p) => ({ ...p, contentNe: translated }));
-    } catch { /* silently fail */ }
+      else setContentTranslateError("Translation failed. You can write the Nepali content manually.");
+    } catch {
+      setContentTranslateError("Couldn't reach the translation service. You can write the Nepali content manually.");
+    }
     setTranslatingContent(false);
   }
 
@@ -552,6 +562,11 @@ export default function NewsForm({ article }: Props) {
                   placeholder="नेपालीमा सारांश — auto-fills from English summary"
                   className={`${inputCls} resize-none`} />
                 <p className="text-[11px] text-gray-400 mt-1">Shown on the news card in Nepali. Auto-translatable from the English excerpt above.</p>
+                {excerptTranslateError && (
+                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle size={10} /> {excerptTranslateError}
+                  </p>
+                )}
               </div>
 
               {/* Content */}
@@ -586,6 +601,11 @@ export default function NewsForm({ article }: Props) {
                   placeholder="नेपालीमा पूर्ण लेख — auto-fills from English content"
                   className={`${inputCls} resize-y`} />
                 <p className="text-[11px] text-gray-400 mt-1">Full article in Nepali. Displayed with an EN/NE toggle on the public article page.</p>
+                {contentTranslateError && (
+                  <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle size={10} /> {contentTranslateError}
+                  </p>
+                )}
               </div>
             </>)}
 
@@ -600,7 +620,7 @@ export default function NewsForm({ article }: Props) {
                   placeholder="e.g. Association Secretariat"
                   className={inputCls} />
                 <p className="text-[11px] text-gray-400 mt-1">
-                  Use &ldquo;EVA Nepal Secretariat&rdquo; for official communications.
+                  Use &ldquo;Association Secretariat&rdquo; for official communications.
                 </p>
               </div>
 

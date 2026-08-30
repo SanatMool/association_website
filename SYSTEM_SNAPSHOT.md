@@ -76,6 +76,7 @@ Dev credentials: `postgresql://sanatmool@localhost:5432/evanepal`
 | themeColor    | String          | Default "#0a1040" — mirrors colorPreset's primary anchor, read by PWA manifest routes + viewport theme-color |
 | accentColor   | String          | Default "#f59e0b" — mirrors colorPreset's accent anchor, read by PWA manifest routes |
 | colorPreset   | String          | Default "navy-gold" — key into lib/theme-presets.ts, drives public site + portal CSS var theming |
+| homepageContent | Json?         | Nullable — shape `HomepageContent` in lib/homepage-content.ts (heroSlides, aboutImage/Headline/Badge, missionItems, whyjoinItems); each field falls back to hardcoded/i18n default when unset |
 | foundedYear   | Int?            |                                          |
 | description   | String?         |                                          |
 | descriptionNe | String?         |                                          |
@@ -399,6 +400,8 @@ Wired into: expense creation, dues payment, contribution payment, ticket payment
 | 20260827105327_add_email_failure_tracking              | `emailFailedAt DateTime?` + `emailError String?` added to Member, MembershipApplication, MemberAccount, TicketRegistration |
 | 20260828101059_add_designation_link_to_committee_member | `CommitteeMember.designationId String?` FK → Designation (+ `committeeMembers CommitteeMember[]` relation on Designation) |
 | 20260830061702_add_color_preset_to_association          | `Association.colorPreset String @default("navy-gold")` |
+| 20260830085806_add_homepage_content_to_association       | `Association.homepageContent Json?` |
+| 20260830095726_add_event_promo_recap_galleries            | `Event.promoImages String[]`, `Event.recapImages String[]`, `Event.recapVideoUrl String?` |
 
 ---
 
@@ -464,7 +467,9 @@ lib/
   types.ts                      MemberType, EventType, NewsType, CommitteeType, TimelineType, AssociationType
   i18n.ts                       EN + NE translations
   utils.ts                      cn(), slugify(), formatDate() family
-  theme-presets.ts              6 curated color presets (navy/gold shade ramps) + hexToRgbTriple/themePresetToCssVars helpers
+  theme-presets.ts              10 curated color presets (navy/gold shade ramps) + hexToRgbTriple/themePresetToCssVars helpers
+  homepage-content.ts           HomepageContent type, curated SECTION_ICONS map, sanitizeHomepageContent() validator for Hero/About/Mission/WhyJoin/Events-header per-association overrides
+  event-gallery.ts              sanitizeEventGalleryFields() — caps Event.promoImages/recapImages length, validates recapVideoUrl
 
 components/
   layout/
@@ -497,6 +502,14 @@ components/
 Standard response shape: `{ success: true, data: T }` / `{ success: false, error: string }`
 
 **POST /api/members** creates both a `Member` record and a `MemberAssociation` link in a `$transaction`.
+
+**/api/upload** re-encodes every upload to WebP via `sharp` (already a prod dependency) — quality 80, max 1920px longest dimension (`fit: "inside"`, never upscales), EXIF-rotation applied before resize, rejects non-image MIME types and anything over 5MB raw (lowered from an initial 15MB same day, per user request — compression already keeps the *stored* file tiny regardless of the raw ceiling; the ceiling exists only to bound memory/CPU use during processing). Typically 90%+ size reduction vs. the original. See PROGRESS.md "Image upload compression" (2026-08-30).
+
+**AI generation model**: `app/api/ai/generate/route.ts` uses Groq's `openai/gpt-oss-120b` (swapped 2026-08-30 after Groq fully deprecated `llama-3.3-70b-versatile`). If generation starts failing with a "not configured" error again, check `GET https://api.groq.com/openai/v1/models` with the real key before assuming the key itself is the problem — Groq deprecates/renames models without warning. `callAI()` takes an optional `temperature` param (default 0.7); the `translate` type calls it at `0.2` — do the same for any new *fidelity* task (must not embellish/invent), keep 0.7+ for genuinely creative generation types.
+
+**nginx upload limit**: `nginx.conf` needs `client_max_body_size 6m;` (already added to the repo's template — 1MB headroom above the app's 5MB ceiling) — without it, nginx rejects uploads over ~1MB with a raw 413 before the request ever reaches `/api/upload`'s own check. If the live server's actual nginx config diverges from this repo's template (likely, given multiple subdomains now), the directive must be added there too, then `sudo nginx -t && sudo systemctl reload nginx`.
+
+**Event image galleries**: `components/ui/ImageLightboxGallery.tsx` (client component) renders a scroll-snap thumbnail strip + full-screen lightbox modal (prev/next, keyboard nav, Escape-to-close) — used on `app/events/[slug]/page.tsx` for both `Event.promoImages` (shown while upcoming) and `Event.recapImages` (shown once past, falls back to `promoImages` if recap is empty so uploaded photos are never hidden entirely).
 
 ---
 
@@ -612,7 +625,7 @@ Last verified: 2026-06-10
 | /api/admin/portal-accounts | GET, POST | Admin | List members with portal status; create account |
 | /api/admin/portal-accounts/[id] | PATCH, DELETE | Admin | Reset password / delete account |
 | /api/admin/reports | GET | Admin | All reporting metrics in one call |
-| /api/admin/branding | GET, PUT | Admin | GET returns name/logo/description/colorPreset; PUT sets colorPreset + mirrors themeColor/accentColor |
+| /api/admin/branding | GET, PUT | Admin | GET returns name/logo/description/colorPreset/homepageContent; PUT sets colorPreset (+ mirrors themeColor/accentColor) and/or homepageContent (validated via lib/homepage-content.ts sanitizeHomepageContent) |
 
 ## Known Issues / Watch Points
 

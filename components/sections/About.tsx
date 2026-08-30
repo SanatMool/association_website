@@ -13,9 +13,12 @@ interface AboutProps {
   name?: string;
   description?: string;
   memberMode?: "venue" | "person";
+  aboutImage?: string;
+  aboutHeadline?: string;
+  aboutBadge?: string;
 }
 
-export default function About({ foundedYear = 2011, location = "Maitidevi, Kathmandu", memberCount = 150, yearsActive = 14, name = "EVA Nepal", description, memberMode = "venue" }: AboutProps) {
+export default function About({ foundedYear = 2011, location = "Maitidevi, Kathmandu", memberCount = 150, yearsActive = 14, name = "EVA Nepal", description, memberMode = "venue", aboutImage, aboutHeadline, aboutBadge }: AboutProps) {
   const { t } = useLocale();
   const isPersonMode = memberMode === "person";
   const shortName = name.split(" ")[0];
@@ -43,7 +46,7 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
 
             <AnimatedSection delay={0.1}>
               <h2 className="heading-lg text-navy-900 mt-4 mb-6">
-                {t.about.title}
+                {aboutHeadline || t.about.title}
               </h2>
             </AnimatedSection>
 
@@ -87,9 +90,9 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
               <div className="relative h-[440px] rounded-3xl overflow-hidden shadow-navy-lg">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={isPersonMode
+                  src={aboutImage || (isPersonMode
                     ? "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=900&auto=format&fit=crop&q=80"
-                    : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=900&auto=format&fit=crop&q=80"}
+                    : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=900&auto=format&fit=crop&q=80")}
                   alt={isPersonMode ? "Professional community in Kathmandu" : "Grand banquet hall in Kathmandu"}
                   className="w-full h-full object-cover"
                 />
@@ -102,7 +105,7 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 rounded-full bg-gold-400 animate-pulse" />
                     <span className="text-gold-300 text-xs font-semibold tracking-wider uppercase">
-                      Official Industry Body
+                      {aboutBadge || "Official Industry Body"}
                     </span>
                   </div>
                   <p className="text-white/80 text-sm leading-relaxed">
