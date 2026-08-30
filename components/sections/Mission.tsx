@@ -20,7 +20,7 @@ export default function Mission() {
   const { t } = useLocale();
 
   return (
-    <section className="section-padding relative overflow-hidden" style={{ background: "linear-gradient(160deg, #060b2c 0%, #0a1040 60%, #0d1654 100%)" }}>
+    <section className="section-padding relative overflow-hidden" style={{ background: "linear-gradient(160deg, rgb(var(--navy-900)) 0%, rgb(var(--navy-800)) 60%, rgb(var(--navy-700)) 100%)" }}>
       {/* Background mesh */}
       <div className="absolute inset-0 bg-mesh-navy opacity-60" />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-500/30 to-transparent" />

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, Info, Check, X, Loader2, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Info, Check, X, Loader2, DollarSign, AlertTriangle } from "lucide-react";
 
 interface Fee {
   id: string;
@@ -16,6 +16,7 @@ const empty = { name: "", amount: "", description: "" };
 export default function AdditionalFeesPage() {
   const [fees,        setFees]        = useState<Fee[]>([]);
   const [loading,     setLoading]     = useState(true);
+  const [loadError,   setLoadError]   = useState("");
   const [form,        setForm]        = useState(empty);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [editing,     setEditing]     = useState<string | null>(null);
@@ -26,10 +27,18 @@ export default function AdditionalFeesPage() {
   const [deleting,    setDeleting]    = useState(false);
 
   const load = useCallback(async () => {
-    const res  = await fetch("/api/membership/fees");
-    const json = await res.json() as { success: boolean; data: Fee[] };
-    if (json.success) setFees(json.data);
-    setLoading(false);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res  = await fetch("/api/membership/fees");
+      const json = await res.json() as { success: boolean; data: Fee[]; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to load fees.");
+      setFees(json.data);
+    } catch {
+      setLoadError("Couldn't load fees. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -200,7 +209,18 @@ export default function AdditionalFeesPage() {
 
       {/* Fee list */}
       <div className="space-y-2">
-        {loading ? (
+        {loadError ? (
+          <div className="bg-white rounded-xl border border-gray-100 py-16 text-center">
+            <AlertTriangle size={24} className="text-amber-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 mb-3">{loadError}</p>
+            <button
+              onClick={() => void load()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors mx-auto"
+            >
+              Try again
+            </button>
+          </div>
+        ) : loading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-100 px-5 py-4 animate-pulse">

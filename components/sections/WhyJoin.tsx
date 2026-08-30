@@ -8,8 +8,9 @@ import { useLocale } from "@/context/LocaleContext";
 
 const icons = [Award, Network, BookOpen, Megaphone, ListChecks, HeartHandshake];
 
-export default function WhyJoin({ name = "EVA Nepal", memberCount = 150 }: { name?: string; memberCount?: number }) {
+export default function WhyJoin({ name = "EVA Nepal", memberCount = 150, memberMode = "venue" }: { name?: string; memberCount?: number; memberMode?: "venue" | "person" }) {
   const { t } = useLocale();
+  const isPersonMode = memberMode === "person";
   const shortName = name.split(" ")[0];
 
   return (
@@ -94,10 +95,12 @@ export default function WhyJoin({ name = "EVA Nepal", memberCount = 150 }: { nam
               </div>
 
               <h3 className="font-serif font-bold text-white text-2xl sm:text-3xl mb-4">
-                Ready to join Nepal's premier venue network?
+                {isPersonMode
+                  ? "Ready to join Nepal's premier professional network?"
+                  : "Ready to join Nepal's premier venue network?"}
               </h3>
               <p className="text-white/60 mb-8 max-w-md mx-auto text-sm leading-relaxed">
-                Become part of {name} and access exclusive benefits, industry advocacy, and a community of {memberCount}+ professional venues.
+                Become part of {name} and access exclusive benefits, industry advocacy, and a community of {memberCount}+ {isPersonMode ? "professionals" : "professional venues"}.
               </p>
 
               <motion.div

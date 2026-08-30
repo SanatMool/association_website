@@ -68,6 +68,7 @@ const STATUS_ICON: Record<string, React.ElementType> = {
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading]           = useState(true);
+  const [loadError, setLoadError]       = useState("");
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selected, setSelected]         = useState<Application | null>(null);
@@ -143,11 +144,17 @@ export default function ApplicationsPage() {
     return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
   }
 
-  useEffect(() => {
+  function loadApplications() {
+    setLoading(true);
+    setLoadError("");
     fetch("/api/membership-applications")
       .then((r) => r.json())
-      .then((data: Application[]) => { setApplications(data); setLoading(false); });
-  }, []);
+      .then((data: Application[]) => setApplications(data))
+      .catch(() => setLoadError("Couldn't load applications. Check your connection and try again."))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { loadApplications(); }, []);
 
   useEffect(() => { setCurrentPage(1); }, [search, statusFilter]);
 
@@ -980,6 +987,17 @@ export default function ApplicationsPage() {
 
       {loading ? (
         <div className="text-center py-20 text-gray-400">Loading…</div>
+      ) : loadError ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+          <AlertTriangle size={24} className="text-amber-300" />
+          <p className="text-sm text-gray-500">{loadError}</p>
+          <button
+            onClick={loadApplications}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors"
+          >
+            Try again
+          </button>
+        </div>
       ) : applications.length === 0 ? (
         <EmptyState icon={Clock} title="No applications yet" description="Applications from the membership form will appear here" />
       ) : (

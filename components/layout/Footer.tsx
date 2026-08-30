@@ -161,7 +161,7 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
       <div className="relative z-10 border-t border-white/8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-slate-500 text-xs">
-            &copy; 2025 {t.footer.association}. {t.footer.rights}
+            &copy; {new Date().getFullYear()} {settings?.name ?? "Association"}. {t.footer.rights}
           </p>
           <p className="text-slate-600 text-xs">
             Established {foundedYear} &middot; {hqLocation}

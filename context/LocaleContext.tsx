@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState } from "react";
-import { Locale, translations } from "@/lib/i18n";
+import { Locale, MemberMode, resolveTranslations } from "@/lib/i18n";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Translation = any;
@@ -15,13 +15,13 @@ interface LocaleContextType {
 const LocaleContext = createContext<LocaleContextType>({
   locale: "en",
   setLocale: () => {},
-  t: translations.en,
+  t: resolveTranslations("en", "venue"),
 });
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
+export function LocaleProvider({ children, memberMode = "venue" }: { children: React.ReactNode; memberMode?: MemberMode }) {
   const [locale, setLocale] = useState<Locale>("en");
 
-  const t = translations[locale];
+  const t = resolveTranslations(locale, memberMode);
 
   return (
     <LocaleContext.Provider value={{ locale, setLocale, t }}>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   TrendingUp, CreditCard, Receipt, Users, Wallet, BarChart2,
   ArrowUpRight, ArrowDownRight, CalendarDays, KeyRound, Ticket, Landmark,
+  AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -212,27 +213,46 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
 export default function ReportsPage() {
   const [data,    setData]    = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState("");
   const [tab,     setTab]     = useState<Tab>("overview");
   const [year,    setYear]    = useState<number | "all">("all");
   const [attendanceSub, setAttendanceSub] = useState<"events" | "meetings">("events");
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     setLoading(true);
-    const url = year === "all" ? "/api/admin/reports" : `/api/admin/reports?year=${year}`;
-    fetch(url)
-      .then((r) => r.json())
-      .then((json: { success: boolean; data: ReportData }) => {
-        if (json.success) setData(json.data);
-        setLoading(false);
-      });
+    setError("");
+    try {
+      const url = year === "all" ? "/api/admin/reports" : `/api/admin/reports?year=${year}`;
+      const res  = await fetch(url);
+      const json = await res.json() as { success: boolean; data: ReportData; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to load reports.");
+      setData(json.data);
+    } catch {
+      setError("Couldn't load reports. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }, [year]);
+
+  useEffect(() => { void load(); }, [load]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-20 text-gray-400 text-sm gap-2">
       <TrendingUp size={16} className="animate-pulse" /> Loading reports…
     </div>
   );
-  if (!data)   return <div className="text-center py-20 text-red-400 text-sm">Failed to load reports.</div>;
+  if (error || !data) return (
+    <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+      <AlertTriangle size={24} className="text-amber-300" />
+      <p className="text-sm text-gray-500">{error || "Failed to load reports."}</p>
+      <button
+        onClick={() => void load()}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors"
+      >
+        <RefreshCw size={12} /> Try again
+      </button>
+    </div>
+  );
 
   const {
     summary, duesByMonth, duesByCategory, expensesByMeeting,

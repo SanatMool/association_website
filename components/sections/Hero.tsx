@@ -6,7 +6,7 @@ import Link from "next/link";
 import { ArrowRight, Award, Users, Calendar, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 
-const slides = [
+const VENUE_SLIDES = [
   {
     id: 1,
     image: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=1920&auto=format&fit=crop&q=80",
@@ -33,6 +33,33 @@ const slides = [
   },
 ];
 
+const PERSON_SLIDES = [
+  {
+    id: 1,
+    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1920&auto=format&fit=crop&q=80",
+    label: "Professional Networks",
+    accent: "Built on Shared Expertise",
+  },
+  {
+    id: 2,
+    image: "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1920&auto=format&fit=crop&q=80",
+    label: "Community Gatherings",
+    accent: "Where Ideas Connect",
+  },
+  {
+    id: 3,
+    image: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=1920&auto=format&fit=crop&q=80",
+    label: "Collaborative Growth",
+    accent: "Professional. Prestigious.",
+  },
+  {
+    id: 4,
+    image: "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=1920&auto=format&fit=crop&q=80",
+    label: "Member Community",
+    accent: "Every Voice, Valued",
+  },
+];
+
 // Stats are populated dynamically in the component using props
 
 // Bokeh orbs config
@@ -49,11 +76,14 @@ interface HeroProps {
   foundedYear?: number;
   memberCount?: number;
   yearsActive?: number;
+  eventsHosted?: number;
   heroImage?: string | null;
+  memberMode?: "venue" | "person";
 }
 
-export default function Hero({ name = "Event and Venue Association Nepal", foundedYear = 2011, memberCount = 150, yearsActive = 14, heroImage }: HeroProps) {
+export default function Hero({ name = "Event and Venue Association Nepal", foundedYear = 2011, memberCount = 150, yearsActive = 14, eventsHosted = 0, heroImage, memberMode = "venue" }: HeroProps) {
   const { t } = useLocale();
+  const isPersonMode = memberMode === "person";
 
   // Split association name into two display lines for the hero title
   const words = name.split(" ");
@@ -63,11 +93,13 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
 
   // Dynamic stats bar
   const stats = [
-    { icon: Users,    value: `${memberCount}+`, keyLabel: "stats_members"  as const },
-    { icon: Award,    value: `${yearsActive}+`, keyLabel: "stats_years"    as const },
-    { icon: Calendar, value: "20+",             keyLabel: "stats_events"   as const },
-    { icon: MapPin,   value: "100%",            keyLabel: "stats_coverage" as const },
+    { icon: Users,    value: `${memberCount}+`,     keyLabel: "stats_members"  as const },
+    { icon: Award,    value: `${yearsActive}+`,     keyLabel: "stats_years"    as const },
+    { icon: Calendar, value: `${eventsHosted}+`,    keyLabel: "stats_events"   as const },
+    { icon: MapPin,   value: "100%",                keyLabel: "stats_coverage" as const },
   ];
+
+  const slides = isPersonMode ? PERSON_SLIDES : VENUE_SLIDES;
 
   // Use association's hero image as first slide if provided
   const activeSlides = heroImage
@@ -394,19 +426,22 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&auto=format&fit=crop&q=75"
-                alt="Grand Banquet Hall"
+                src={isPersonMode
+                  ? "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=75"
+                  : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=600&auto=format&fit=crop&q=75"}
+                alt={isPersonMode ? "Professional Network" : "Grand Banquet Hall"}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-900/85 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
-                <p className="text-white font-semibold text-sm">Grand Banquet Hall</p>
+                <p className="text-white font-semibold text-sm">{isPersonMode ? "Professional Network" : "Grand Banquet Hall"}</p>
                 <p className="text-gold-400 text-xs mt-0.5">Kathmandu</p>
               </div>
-              {/* Capacity badge */}
-              <div className="absolute top-3 right-3 bg-gold-500/90 text-navy-900 text-xs font-bold px-2.5 py-1 rounded-full">
-                1200 guests
-              </div>
+              {!isPersonMode && (
+                <div className="absolute top-3 right-3 bg-gold-500/90 text-navy-900 text-xs font-bold px-2.5 py-1 rounded-full">
+                  1200 guests
+                </div>
+              )}
             </motion.div>
 
             {/* Second card */}
@@ -418,14 +453,16 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=500&auto=format&fit=crop&q=75"
-                alt="Wedding Venue"
+                src={isPersonMode
+                  ? "https://images.unsplash.com/photo-1552664730-d307ca884978?w=500&auto=format&fit=crop&q=75"
+                  : "https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=500&auto=format&fit=crop&q=75"}
+                alt={isPersonMode ? "Community Gathering" : "Wedding Venue"}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-900/85 via-transparent to-transparent" />
               <div className="absolute bottom-3 left-3 right-3">
-                <p className="text-white font-semibold text-xs">Wedding Venue</p>
-                <p className="text-gold-400 text-[10px] mt-0.5">Patan</p>
+                <p className="text-white font-semibold text-xs">{isPersonMode ? "Community Gathering" : "Wedding Venue"}</p>
+                <p className="text-gold-400 text-[10px] mt-0.5">{isPersonMode ? "Members" : "Patan"}</p>
               </div>
             </motion.div>
 
@@ -438,7 +475,7 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
             >
               <div className="font-serif font-bold text-3xl leading-none">{memberCount}+</div>
               <div className="text-xs font-bold mt-1 uppercase tracking-wide opacity-75">
-                Member Venues
+                {isPersonMode ? "Members" : "Member Venues"}
               </div>
             </motion.div>
 

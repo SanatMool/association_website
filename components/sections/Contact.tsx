@@ -110,7 +110,7 @@ export default function Contact({ settings, name = "EVA Nepal" }: { settings?: C
   ];
 
   return (
-    <section id="contact" className="section-padding relative overflow-hidden" style={{ background: "linear-gradient(160deg, #03061a 0%, #060b2c 50%, #0a1040 100%)" }}>
+    <section id="contact" className="section-padding relative overflow-hidden" style={{ background: "linear-gradient(160deg, rgb(var(--navy-950)) 0%, rgb(var(--navy-900)) 50%, rgb(var(--navy-800)) 100%)" }}>
       {/* Background mesh */}
       <div className="absolute inset-0 bg-mesh-navy opacity-50" />
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-500/30 to-transparent" />

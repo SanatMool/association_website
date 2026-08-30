@@ -21,8 +21,16 @@ export async function middleware(request: NextRequest) {
   // ── 1. Platform domain ────────────────────────────────────────────────────
   // assoc-platform.nibjar.com — nibjar team only
   if (hostname === PLATFORM_DOMAIN) {
-    // Block public and admin routes on platform domain
-    if (!pathname.startsWith("/platform") && !pathname.startsWith("/api/platform-auth")) {
+    // Block public and admin routes on platform domain — but let through the platform's own
+    // API routes: /api/platform-auth (login) and /api/platform/* (associations CRUD, reset,
+    // edit, etc.), plus /api/manifest/platform (fetched directly by the browser via
+    // <link rel="manifest">, so it hits this same middleware on the platform domain).
+    if (
+      !pathname.startsWith("/platform") &&
+      !pathname.startsWith("/api/platform-auth") &&
+      !pathname.startsWith("/api/platform") &&
+      !pathname.startsWith("/api/manifest")
+    ) {
       return NextResponse.redirect(new URL("/platform/login", request.url));
     }
 

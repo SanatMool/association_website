@@ -123,6 +123,7 @@ export default function DuesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [payments,   setPayments]   = useState<Payment[]>([]);
   const [loading,    setLoading]    = useState(true);
+  const [loadError,  setLoadError]  = useState("");
   const [showForm,   setShowForm]   = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState<string | null>(null);
@@ -168,25 +169,38 @@ export default function DuesPage() {
   // ─── Data loading ────────────────────────────────────────────────────────────
 
   const loadPayments = useCallback(async () => {
-    const p = new URLSearchParams();
-    if (filterStatus) p.set("status",   filterStatus);
-    if (filterType)   p.set("type",     filterType);
-    if (filterMember) p.set("memberId", filterMember);
-    const res  = await fetch(`/api/membership/dues?${p}`);
-    const json = await res.json() as { success: boolean; data: Payment[] };
-    if (json.success) setPayments(json.data);
+    setLoadError("");
+    try {
+      const p = new URLSearchParams();
+      if (filterStatus) p.set("status",   filterStatus);
+      if (filterType)   p.set("type",     filterType);
+      if (filterMember) p.set("memberId", filterMember);
+      const res  = await fetch(`/api/membership/dues?${p}`);
+      const json = await res.json() as { success: boolean; data: Payment[]; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to load payment records.");
+      setPayments(json.data);
+    } catch {
+      setLoadError("Couldn't load payment records. Check your connection and try again.");
+    }
   }, [filterStatus, filterType, filterMember]);
 
   const loadInit = useCallback(async () => {
-    const [mRes, cRes] = await Promise.all([
-      fetch("/api/members"),
-      fetch("/api/membership/categories"),
-    ]);
-    const mJson = await mRes.json() as Member[];
-    const cJson = await cRes.json() as { success: boolean; data: Category[] };
-    setMembers(Array.isArray(mJson) ? mJson : []);
-    if (cJson.success) setCategories(cJson.data);
-    setLoading(false);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const [mRes, cRes] = await Promise.all([
+        fetch("/api/members"),
+        fetch("/api/membership/categories"),
+      ]);
+      const mJson = await mRes.json() as Member[];
+      const cJson = await cRes.json() as { success: boolean; data: Category[] };
+      setMembers(Array.isArray(mJson) ? mJson : []);
+      if (cJson.success) setCategories(cJson.data);
+    } catch {
+      setLoadError("Couldn't load this page. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void loadInit(); }, [loadInit]);
@@ -1000,6 +1014,17 @@ export default function DuesPage() {
         <PanelCard className="text-center py-16 flex flex-col items-center gap-2" hover={false}>
           <RefreshCw size={20} className="animate-spin opacity-30 text-gray-400" />
           <span className="text-gray-400 text-sm">Loading payment records…</span>
+        </PanelCard>
+      ) : loadError ? (
+        <PanelCard className="text-center py-16 flex flex-col items-center gap-3" hover={false}>
+          <AlertCircle size={24} className="text-amber-300" />
+          <span className="text-gray-500 text-sm">{loadError}</span>
+          <button
+            onClick={() => { void loadInit(); void loadPayments(); }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors"
+          >
+            <RefreshCw size={12} /> Try again
+          </button>
         </PanelCard>
       ) : payments.length === 0 ? (
         <PanelCard className="py-16" hover={false}>

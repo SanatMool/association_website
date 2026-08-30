@@ -58,7 +58,9 @@ export default function MembersClient({ members, defaultMemberImage, memberMode 
             <h1 className="font-serif text-4xl sm:text-5xl font-bold text-white mb-3">
               {t.members.title}
             </h1>
-            <p className="text-white/60 text-lg">{t.members.subtitle}</p>
+            <p className="text-white/60 text-lg">
+              {members.length}+ registered {memberMode === "person" ? "members" : "event venues"} across Kathmandu Valley
+            </p>
           </motion.div>
         </div>
       </div>

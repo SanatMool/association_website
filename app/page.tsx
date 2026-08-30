@@ -56,7 +56,7 @@ export default async function Home() {
   const shortName = association.name.split(" ")[0];
   const hqLocation = siteSettings.contact_address?.split("\n")[0] ?? "Kathmandu";
 
-  const memberMode = siteSettings.member_mode ?? "venue";
+  const memberMode: "venue" | "person" = siteSettings.member_mode === "person" ? "person" : "venue";
 
   const members: MemberType[] = dbMembers.map((m) => ({
     id: m.id,
@@ -144,7 +144,9 @@ export default async function Home() {
         foundedYear={foundedYear}
         memberCount={memberCount}
         yearsActive={yearsActive}
+        eventsHosted={eventsHosted}
         heroImage={siteSettings.hero_image || null}
+        memberMode={memberMode}
       />
       <StatsSection
         memberCount={memberCount}
@@ -161,15 +163,17 @@ export default async function Home() {
         yearsActive={yearsActive}
         name={association.name}
         description={association.description ?? undefined}
+        memberMode={memberMode}
       />
       <Mission />
-      <MemberDirectory members={members} defaultMemberImage={siteSettings.default_member_image} memberCount={memberCount} />
-      <WhyJoin name={association.name} memberCount={memberCount} />
+      <MemberDirectory members={members} defaultMemberImage={siteSettings.default_member_image} memberCount={memberCount} memberMode={memberMode} />
+      <WhyJoin name={association.name} memberCount={memberCount} memberMode={memberMode} />
       <Timeline entries={timeline} />
       <Events events={events} />
       <News news={news} name={association.name} />
       <ExecutiveCommittee committee={committee} />
-      <MembershipForm name={association.name} />
+      {/* Public application form is venue-mode only — person-mode admins add members directly */}
+      {memberMode !== "person" && <MembershipForm name={association.name} />}
       <Contact
         name={association.name}
         settings={{

@@ -73,8 +73,9 @@ Dev credentials: `postgresql://sanatmool@localhost:5432/evanepal`
 | slug          | String @unique  | "eva-nepal", "bhaktapur"                 |
 | domain        | String @unique  | "eva.nibjar.com", "bhaktapur.nibjar.com" |
 | logo          | String?         | Path to /public/ logo                    |
-| themeColor    | String          | Default "#0a1040"                        |
-| accentColor   | String          | Default "#f59e0b"                        |
+| themeColor    | String          | Default "#0a1040" — mirrors colorPreset's primary anchor, read by PWA manifest routes + viewport theme-color |
+| accentColor   | String          | Default "#f59e0b" — mirrors colorPreset's accent anchor, read by PWA manifest routes |
+| colorPreset   | String          | Default "navy-gold" — key into lib/theme-presets.ts, drives public site + portal CSS var theming |
 | foundedYear   | Int?            |                                          |
 | description   | String?         |                                          |
 | descriptionNe | String?         |                                          |
@@ -397,6 +398,7 @@ Wired into: expense creation, dues payment, contribution payment, ticket payment
 | 20260827015825_add_financial_ledger                    | FinancialYear, FinancialAccount, JournalEntry models; relations on Association |
 | 20260827105327_add_email_failure_tracking              | `emailFailedAt DateTime?` + `emailError String?` added to Member, MembershipApplication, MemberAccount, TicketRegistration |
 | 20260828101059_add_designation_link_to_committee_member | `CommitteeMember.designationId String?` FK → Designation (+ `committeeMembers CommitteeMember[]` relation on Designation) |
+| 20260830061702_add_color_preset_to_association          | `Association.colorPreset String @default("navy-gold")` |
 
 ---
 
@@ -462,6 +464,7 @@ lib/
   types.ts                      MemberType, EventType, NewsType, CommitteeType, TimelineType, AssociationType
   i18n.ts                       EN + NE translations
   utils.ts                      cn(), slugify(), formatDate() family
+  theme-presets.ts              6 curated color presets (navy/gold shade ramps) + hexToRgbTriple/themePresetToCssVars helpers
 
 components/
   layout/
@@ -609,6 +612,7 @@ Last verified: 2026-06-10
 | /api/admin/portal-accounts | GET, POST | Admin | List members with portal status; create account |
 | /api/admin/portal-accounts/[id] | PATCH, DELETE | Admin | Reset password / delete account |
 | /api/admin/reports | GET | Admin | All reporting metrics in one call |
+| /api/admin/branding | GET, PUT | Admin | GET returns name/logo/description/colorPreset; PUT sets colorPreset + mirrors themeColor/accentColor |
 
 ## Known Issues / Watch Points
 

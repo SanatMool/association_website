@@ -128,7 +128,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className={`w-56 bg-mesh-navy text-white flex flex-col fixed top-0 left-0 bottom-0 z-40 shadow-[4px_0_24px_rgba(10,16,64,0.18)] transition-transform duration-200
+      <aside className={`w-56 bg-mesh-navy text-white flex flex-col fixed top-0 left-0 bottom-0 z-40 shadow-[4px_0_24px_rgb(var(--navy-800)/0.18)] transition-transform duration-200
         ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         {sidebarContent}
       </aside>
@@ -136,7 +136,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
       {/* Mobile close button */}
       {mobileOpen && (
         <button onClick={() => setMobileOpen(false)}
-          className="fixed top-4 right-4 z-50 lg:hidden text-white/60 hover:text-white bg-[#0a1040] rounded-lg p-2">
+          className="fixed top-4 right-4 z-50 lg:hidden text-white/60 hover:text-white bg-navy-800 rounded-lg p-2">
           <X size={16} />
         </button>
       )}

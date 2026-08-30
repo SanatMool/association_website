@@ -58,7 +58,7 @@ export default async function CommitteeHistoryPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-[#0a1040] text-white py-16">
+      <div className="bg-navy-800 text-white py-16">
         <div className="container-max section-padding">
           <Link
             href="/#committee"
@@ -99,7 +99,7 @@ export default async function CommitteeHistoryPage() {
                     <div className="h-px flex-1 bg-gray-200" />
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {term.termYearBS && (
-                        <span className="px-3 py-1 text-sm font-semibold bg-[#0a1040] text-white rounded-full">
+                        <span className="px-3 py-1 text-sm font-semibold bg-navy-800 text-white rounded-full">
                           {term.termYearBS} B.S.
                         </span>
                       )}

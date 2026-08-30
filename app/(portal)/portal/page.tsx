@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Users2, CreditCard, Clock, UserCheck } from "lucide-react";
+import { Calendar, Users2, CreditCard, Clock, UserCheck, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import StatCard from "@/components/ui/panel/StatCard";
 import PanelCard from "@/components/ui/panel/PanelCard";
@@ -23,8 +23,12 @@ export default function PortalHomePage() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [events,   setEvents]   = useState<Event[]>([]);
   const [dues,     setDues]     = useState<Payment[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  useEffect(() => {
+  function load() {
+    setLoading(true);
+    setLoadError("");
     Promise.all([
       fetch("/api/portal/me").then((r) => r.json()),
       fetch("/api/portal/meetings").then((r) => r.json()),
@@ -35,14 +39,33 @@ export default function PortalHomePage() {
       if ((mJson as { success: boolean; data: Meeting[] }).success) setMeetings((mJson as { success: boolean; data: Meeting[] }).data);
       if ((eJson as { success: boolean; data: Event[] }).success) setEvents((eJson as { success: boolean; data: Event[] }).data);
       if ((dJson as { success: boolean; data: Payment[] }).success) setDues((dJson as { success: boolean; data: Payment[] }).data);
-    });
-  }, []);
+    })
+      .catch(() => setLoadError("Couldn't load your dashboard. Check your connection and try again."))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
 
   const nextMeeting      = meetings.find((m) => m.status === "scheduled");
   const upcomingEvents   = events.filter((e) => e.status === "upcoming").slice(0, 3);
   const pendingDues      = dues.filter((d) => d.status === "pending").length;
   const attendedCount    = meetings.filter((m) => m.attended).length;
   const totalMeetings    = meetings.filter((m) => m.status !== "scheduled").length;
+
+  if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Loading…</div>;
+
+  if (loadError) return (
+    <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+      <AlertCircle size={24} className="text-amber-300" />
+      <p className="text-sm text-gray-500">{loadError}</p>
+      <button
+        onClick={load}
+        className="px-3 py-1.5 text-xs font-medium text-white bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  );
 
   return (
     <div>

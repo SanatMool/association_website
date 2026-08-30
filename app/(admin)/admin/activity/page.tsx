@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Activity, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { Activity, ChevronLeft, ChevronRight, Filter, RefreshCw, AlertTriangle, UserPlus, CalendarPlus, Newspaper, Award, CalendarClock, CheckSquare, ClipboardCheck, Wallet } from "lucide-react";
 import PanelCard from "@/components/ui/panel/PanelCard";
 import { PanelTable, PanelTableRow } from "@/components/ui/panel/PanelTable";
 
@@ -43,13 +43,32 @@ const ACTION_COLORS: Record<string, string> = {
 
 const ENTITY_TYPES = ["", "member", "event", "news", "committee", "meeting", "task", "application", "dues"];
 
+const ENTITY_ICONS: Record<string, typeof UserPlus> = {
+  member: UserPlus, event: CalendarPlus, news: Newspaper, committee: Award,
+  meeting: CalendarClock, task: CheckSquare, application: ClipboardCheck, dues: Wallet,
+};
+
 function actionLabel(a: string) { return ACTION_LABELS[a] ?? a; }
 function actionColor(a: string) { return ACTION_COLORS[a] ?? "bg-gray-100 text-gray-600"; }
+function entityIcon(t: string) { return ENTITY_ICONS[t] ?? Activity; }
 
 function formatDT(iso: string) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Locale-safe relative time — never uses toLocaleDateString/toLocaleString (SSR/CSR hydration risk)
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return formatDT(iso).split(" ")[0];
 }
 
 export default function ActivityPage() {
@@ -58,6 +77,7 @@ export default function ActivityPage() {
   const [page, setPage]         = useState(1);
   const [pages, setPages]       = useState(1);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState("");
 
   // Filters
   const [entityType, setEntityType] = useState("");
@@ -66,18 +86,24 @@ export default function ActivityPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "50" });
-    if (entityType) params.set("entityType", entityType);
-    if (from) params.set("from", from);
-    if (to)   params.set("to",   to + "T23:59:59");
-    const res = await fetch(`/api/admin/activity?${params}`);
-    const json = await res.json() as { success: boolean; data: LogRow[]; total: number; pages: number };
-    if (json.success) {
+    setError("");
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "50" });
+      if (entityType) params.set("entityType", entityType);
+      if (from) params.set("from", from);
+      if (to)   params.set("to",   to + "T23:59:59");
+      const res = await fetch(`/api/admin/activity?${params}`);
+      const json = await res.json() as { success: boolean; data: LogRow[]; total: number; pages: number; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to load activity.");
       setLogs(json.data);
       setTotal(json.total);
       setPages(json.pages);
+    } catch {
+      setError("Couldn't load activity. Check your connection and try again.");
+    } finally {
+      // Always runs, even if the fetch/parse throws — the spinner can no longer get stuck forever.
+      setLoading(false);
     }
-    setLoading(false);
   }, [page, entityType, from, to]);
 
   useEffect(() => { void load(); }, [load]);
@@ -87,17 +113,29 @@ export default function ActivityPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <Link href="/admin/dashboard" className="text-gray-400 hover:text-gray-600 text-sm">Dashboard</Link>
-          <span className="text-gray-300">/</span>
-          <span className="text-gray-700 text-sm font-medium">Activity Log</span>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Link href="/admin/dashboard" className="text-gray-400 hover:text-gray-600 text-sm">Dashboard</Link>
+            <span className="text-gray-300">/</span>
+            <span className="text-gray-700 text-sm font-medium">Activity Log</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Activity size={22} className="text-[#0a1040]" />
+            Activity Log
+          </h1>
+          <p className="text-gray-500 text-sm mt-0.5">
+            All admin actions across the system — {loading ? "…" : `${total} ${total === 1 ? "entry" : "entries"}`}
+          </p>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Activity size={22} className="text-[#0a1040]" />
-          Activity Log
-        </h1>
-        <p className="text-gray-500 text-sm mt-0.5">All admin actions across the system — {total} entries</p>
+        <button
+          onClick={() => void load()}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors flex-shrink-0"
+        >
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          Refresh
+        </button>
       </div>
 
       {/* Filter bar */}
@@ -148,6 +186,17 @@ export default function ActivityPage() {
             <div className="w-6 h-6 border-2 border-[#0a1040] border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-sm text-gray-400 mt-3">Loading activity…</p>
           </div>
+        ) : error ? (
+          <div className="py-16 text-center">
+            <AlertTriangle size={28} className="text-amber-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500 mb-3">{error}</p>
+            <button
+              onClick={() => void load()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors"
+            >
+              <RefreshCw size={12} /> Try again
+            </button>
+          </div>
         ) : logs.length === 0 ? (
           <div className="py-16 text-center">
             <Activity size={28} className="text-gray-200 mx-auto mb-2" />
@@ -167,42 +216,56 @@ export default function ActivityPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {logs.map((log, i) => (
-                    <PanelTableRow key={log.id} index={i}>
-                      <td className="px-4 py-3">
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${actionColor(log.action)}`}>
-                          {actionLabel(log.action)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div>
-                          {log.entityName && (
-                            <p className="font-medium text-gray-800 truncate max-w-[260px]">{log.entityName}</p>
-                          )}
-                          <p className="text-xs text-gray-400 capitalize">{log.entityType}</p>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-sm">{log.adminName ?? <span className="text-gray-300 italic">system</span>}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{formatDT(log.createdAt)}</td>
-                    </PanelTableRow>
-                  ))}
+                  {logs.map((log, i) => {
+                    const EntityIcon = entityIcon(log.entityType);
+                    return (
+                      <PanelTableRow key={log.id} index={i}>
+                        <td className="px-4 py-3">
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${actionColor(log.action)}`}>
+                            {actionLabel(log.action)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                              <EntityIcon size={13} className="text-gray-400" />
+                            </div>
+                            <div>
+                              {log.entityName && (
+                                <p className="font-medium text-gray-800 truncate max-w-[260px]">{log.entityName}</p>
+                              )}
+                              <p className="text-xs text-gray-400 capitalize">{log.entityType}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-sm">{log.adminName ?? <span className="text-gray-300 italic">system</span>}</td>
+                        <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap" title={formatDT(log.createdAt)}>{timeAgo(log.createdAt)}</td>
+                      </PanelTableRow>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-gray-50">
-              {logs.map((log) => (
-                <div key={log.id} className="px-4 py-3 flex items-start gap-3">
-                  <span className={`mt-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0 ${actionColor(log.action)}`}>
-                    {actionLabel(log.action)}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    {log.entityName && <p className="text-sm font-medium text-gray-800 truncate">{log.entityName}</p>}
-                    <p className="text-xs text-gray-400">{log.adminName ?? "system"} · {formatDT(log.createdAt)}</p>
+              {logs.map((log) => {
+                const EntityIcon = entityIcon(log.entityType);
+                return (
+                  <div key={log.id} className="px-4 py-3 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <EntityIcon size={14} className="text-gray-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={`inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap mb-1 ${actionColor(log.action)}`}>
+                        {actionLabel(log.action)}
+                      </span>
+                      {log.entityName && <p className="text-sm font-medium text-gray-800 truncate">{log.entityName}</p>}
+                      <p className="text-xs text-gray-400">{log.adminName ?? "system"} · {timeAgo(log.createdAt)}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Pagination */}

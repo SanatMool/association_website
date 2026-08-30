@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, Tag, Info, Check, X, Loader2, Users, ChevronRight, ChevronDown, Search, ArrowUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Tag, Info, Check, X, Loader2, Users, ChevronRight, ChevronDown, Search, ArrowUpDown, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 interface CategoryMember { id: string; name: string; area: string; category: string | null }
@@ -35,6 +35,7 @@ type SortKey = "name" | "monthly" | "annual" | "members";
 export default function CategoriesPage() {
   const [categories,  setCategories]  = useState<Category[]>([]);
   const [loading,     setLoading]     = useState(true);
+  const [loadError,   setLoadError]   = useState("");
   const [form,        setForm]        = useState(empty);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [editing,     setEditing]     = useState<string | null>(null);
@@ -53,10 +54,18 @@ export default function CategoriesPage() {
   const [catMembersLoading, setCatMembersLoading] = useState(false);
 
   const load = useCallback(async () => {
-    const res  = await fetch("/api/membership/categories");
-    const json = await res.json() as { success: boolean; data: Category[] };
-    if (json.success) setCategories(json.data);
-    setLoading(false);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res  = await fetch("/api/membership/categories");
+      const json = await res.json() as { success: boolean; data: Category[]; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to load categories.");
+      setCategories(json.data);
+    } catch {
+      setLoadError("Couldn't load categories. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -355,7 +364,18 @@ export default function CategoriesPage() {
 
       {/* ── Category list ────────────────────────────────────────────────── */}
       <div className="space-y-2">
-        {loading ? (
+        {loadError ? (
+          <div className="bg-white rounded-xl border border-gray-100 py-16 text-center">
+            <AlertTriangle size={24} className="text-amber-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-500 mb-3">{loadError}</p>
+            <button
+              onClick={() => void load()}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors mx-auto"
+            >
+              Try again
+            </button>
+          </div>
+        ) : loading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-white rounded-xl border border-gray-100 px-5 py-4 animate-pulse">

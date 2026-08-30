@@ -60,7 +60,7 @@ export default async function MeetingsPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Page header */}
-      <div className="bg-[#0a1040] pt-28 pb-14">
+      <div className="bg-navy-800 pt-28 pb-14">
         <div className="container-max px-6">
           <p className="section-label text-gold-500 mb-3">Transparency &amp; Governance</p>
           <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-4">

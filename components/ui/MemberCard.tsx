@@ -19,8 +19,8 @@ function getTierConfig(capacity: number | null | undefined) {
   if (cap >= 1000) return {
     label: "Grand",
     badge: "bg-gold-500 text-navy-900",
-    gradient: "linear-gradient(135deg, #0a1040 0%, #1a237e 40%, #0d1654 100%)",
-    accentColor: "#f59e0b",
+    gradient: "linear-gradient(135deg, var(--color-navy) 0%, rgb(var(--navy-600)) 40%, rgb(var(--navy-700)) 100%)",
+    accentColor: "var(--color-gold)",
     barColor: "bg-gold-500",
     textColor: "text-gold-300",
   };
@@ -90,7 +90,7 @@ export default function MemberCard({ member, index = 0, defaultImage, memberMode
       {/* Gold glow on hover */}
       <div
         className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none z-10"
-        style={{ boxShadow: "0 12px 48px rgba(10,16,64,0.18), 0 0 0 1.5px rgba(245,158,11,0.3)" }}
+        style={{ boxShadow: "0 12px 48px rgb(var(--navy-800) / 0.18), 0 0 0 1.5px rgb(var(--gold-500) / 0.3)" }}
       />
 
       {/* ── Image / visual area ── */}
@@ -124,7 +124,7 @@ export default function MemberCard({ member, index = 0, defaultImage, memberMode
             <div
               className="absolute inset-0"
               style={{
-                background: `radial-gradient(ellipse at 50% 120%, ${tier.accentColor}18 0%, transparent 65%)`,
+                background: `radial-gradient(ellipse at 50% 120%, color-mix(in srgb, ${tier.accentColor} 9%, transparent) 0%, transparent 65%)`,
               }}
             />
 

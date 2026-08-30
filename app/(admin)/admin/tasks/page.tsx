@@ -93,6 +93,7 @@ function timeAgo(dateStr: string): string {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<AdminTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [memberNames, setMemberNames] = useState<string[]>([]);
   const [filter, setFilter] = useState<TaskStatus | "all">("all");
   const [search, setSearch] = useState("");
@@ -128,9 +129,17 @@ export default function TasksPage() {
   const [confirmDeleteCommentId, setConfirmDeleteCommentId] = useState<string | null>(null);
 
   async function fetchTasks() {
-    const res = await fetch("/api/tasks");
-    if (res.ok) setTasks(await res.json());
-    setLoading(false);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res = await fetch("/api/tasks");
+      if (!res.ok) throw new Error("Failed to load tasks.");
+      setTasks(await res.json());
+    } catch {
+      setLoadError("Couldn't load tasks. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function fetchDetail(id: string) {
@@ -457,6 +466,17 @@ export default function TasksPage() {
       {/* Task list */}
       {loading ? (
         <div className="text-center py-12 text-gray-400 text-sm">Loading tasks…</div>
+      ) : loadError ? (
+        <PanelCard className="py-16 text-center" hover={false}>
+          <AlertTriangle size={24} className="text-amber-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-500 mb-3">{loadError}</p>
+          <button
+            onClick={() => void fetchTasks()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors mx-auto"
+          >
+            Try again
+          </button>
+        </PanelCard>
       ) : filtered.length === 0 ? (
         <PanelCard className="py-16" hover={false}>
           <EmptyState

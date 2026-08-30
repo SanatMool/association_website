@@ -56,7 +56,7 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
   const stats = [
     { value: memberCount, suffix: "+", label: isPersonMode ? "Members" : "Member Venues",  desc: isPersonMode ? "Registered members of the association" : "Registered banquet halls & event spaces", icon: Building2, delay: 0   },
     { value: yearsActive, suffix: "+", label: "Years Leading",  desc: `Serving Nepal's event industry since ${foundedYear}`, icon: Award, delay: 0.1 },
-    { value: eventsHosted, suffix: "+", label: "Events Hosted", desc: "Across all member venues collectively",      icon: Calendar,  delay: 0.2 },
+    { value: eventsHosted, suffix: "+", label: "Events Hosted", desc: isPersonMode ? "Across all members collectively" : "Across all member venues collectively", icon: Calendar,  delay: 0.2 },
     { value: 100,         suffix: "%", label: "Valley Coverage",desc: "Kathmandu's largest venue network",          icon: MapPin,    delay: 0.3 },
   ];
 
@@ -64,7 +64,7 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
     <section className="relative overflow-hidden py-20 sm:py-28">
       {/* Rich dark background */}
       <div className="absolute inset-0" style={{
-        background: "linear-gradient(135deg, #03061a 0%, #060b2c 40%, #0a1040 70%, #060b2c 100%)"
+        background: "linear-gradient(135deg, rgb(var(--navy-950)) 0%, rgb(var(--navy-900)) 40%, rgb(var(--navy-800)) 70%, rgb(var(--navy-900)) 100%)"
       }} />
       <div className="absolute inset-0 bg-mesh-navy opacity-70" />
 
@@ -156,7 +156,7 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
           className="text-center mt-12"
         >
           <p className="text-white/35 text-sm font-medium tracking-wider uppercase">
-            Nepal's Premier Event &amp; Venue Association · Est. {foundedYear}
+            {isPersonMode ? "Nepal's Premier Professional Association" : "Nepal's Premier Event & Venue Association"} · Est. {foundedYear}
           </p>
         </motion.div>
       </div>

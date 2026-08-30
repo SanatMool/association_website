@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, CheckCircle, Users, ChevronDown } from "lucide-react";
+import { Calendar, CheckCircle, Users, ChevronDown, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import PanelCard from "@/components/ui/panel/PanelCard";
 import EmptyState from "@/components/ui/panel/EmptyState";
@@ -18,16 +18,25 @@ const RSVP_OPTIONS = [
 export default function PortalEventsPage() {
   const [events,  setEvents]  = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [rsvping, setRsvping] = useState<string | null>(null);
   const [expandedRsvp, setExpandedRsvp] = useState<string | null>(null);
   const [guestCount, setGuestCount] = useState(1);
   const [note,       setNote]       = useState("");
 
   async function load() {
-    const res  = await fetch("/api/portal/events");
-    const json = await res.json() as { success: boolean; data: Event[] };
-    if (json.success) setEvents(json.data);
-    setLoading(false);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res  = await fetch("/api/portal/events");
+      const json = await res.json() as { success: boolean; data: Event[] };
+      if (!json.success) throw new Error();
+      setEvents(json.data);
+    } catch {
+      setLoadError("Couldn't load events. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { void load(); }, []);
@@ -102,6 +111,19 @@ export default function PortalEventsPage() {
   }
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Loading…</div>;
+
+  if (loadError) return (
+    <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+      <AlertCircle size={24} className="text-amber-300" />
+      <p className="text-sm text-gray-500">{loadError}</p>
+      <button
+        onClick={() => void load()}
+        className="px-3 py-1.5 text-xs font-medium text-white bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  );
 
   return (
     <div>

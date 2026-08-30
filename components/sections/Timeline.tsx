@@ -126,7 +126,7 @@ export default function Timeline({ entries }: TimelineProps) {
 
   return (
     <section className="section-padding relative overflow-hidden" style={{
-      background: "linear-gradient(180deg, #060b2c 0%, #0a1040 50%, #060b2c 100%)"
+      background: "linear-gradient(180deg, rgb(var(--navy-900)) 0%, rgb(var(--navy-800)) 50%, rgb(var(--navy-900)) 100%)"
     }}>
       {/* Background texture */}
       <div className="absolute inset-0 bg-mesh-navy opacity-60" />
@@ -179,7 +179,7 @@ export default function Timeline({ entries }: TimelineProps) {
             viewport={{ once: true }}
             transition={{ duration: 2.5, ease: "easeInOut", delay: 0.3 }}
             className="hidden lg:block absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 z-0 origin-top"
-            style={{ background: "linear-gradient(to bottom, rgba(245,158,11,0.6), rgba(245,158,11,0.2) 70%, transparent)" }}
+            style={{ background: "linear-gradient(to bottom, rgb(var(--gold-500) / 0.6), rgb(var(--gold-500) / 0.2) 70%, transparent)" }}
           />
 
           <div className="space-y-0">
@@ -200,7 +200,7 @@ export default function Timeline({ entries }: TimelineProps) {
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold-500/40 to-transparent" />
             {/* Ambient glow */}
             <div className="absolute inset-0 pointer-events-none" style={{
-              background: "radial-gradient(ellipse at 50% 100%, rgba(245,158,11,0.07) 0%, transparent 60%)"
+              background: "radial-gradient(ellipse at 50% 100%, rgb(var(--gold-500) / 0.07) 0%, transparent 60%)"
             }} />
 
             <div className="relative">

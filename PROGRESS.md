@@ -718,6 +718,149 @@ platform panel — this capability didn't exist at all before (no DELETE route, 
 
 ---
 
+## Fix — Activity Log page stuck on "Loading activity…" forever + UI polish ✓ COMPLETE (2026-08-29)
+
+**Root cause**: `app/(admin)/admin/activity/page.tsx`'s `load()` function had zero error handling —
+`fetch()` and `res.json()` calls weren't wrapped in try/catch, and `setLoading(false)` was the very
+last line of the function. If the fetch or JSON parse threw for ANY reason (network blip, slow
+response, non-JSON error page), the function threw before reaching that line and the loading spinner
+stayed on-screen forever — no error message, no way to recover except a full page reload. Confirmed
+locally (as `namoAdmin`) that `/api/admin/activity` itself returns correctly and fast — this was a
+client-side resilience gap, not a broken endpoint; whatever triggered it in production (transient
+network issue, slow response) will happen again to *some* request eventually without this fix.
+- Wrapped the fetch in `try/catch/finally` — `setLoading(false)` now always runs in `finally`, so the
+  spinner can no longer get stuck no matter what fails.
+- Added a proper error state (amber warning icon + message + "Try again" button) instead of silently
+  doing nothing on failure.
+- **UI polish** (also requested): added a manual "Refresh" button in the header, per-entity-type icons
+  (member/event/news/committee/meeting/task/application/dues) on each log row (desktop + mobile),
+  switched the timestamp from a raw `YYYY-MM-DD HH:mm` string to a locale-safe relative "2h ago" /
+  "3d ago" format (full timestamp still available via a `title` tooltip on hover) — matches the
+  project's locale-safe-date-formatting rule (no `toLocaleDateString`/`toLocaleString`), and the
+  entry-count subtitle now shows "…" while loading instead of a misleading "0 entries" before the
+  real count arrives.
+- Verified via `npx tsc --noEmit` (clean) and curl (page loads clean, `/api/admin/activity` confirmed
+  fast and correct against a real `namo-udyam` admin session, zero error markers).
+
+---
+
+## Feature — Public homepage now respects member_mode (venue vs person) ✓ COMPLETE (2026-08-29)
+
+User tested `namoudyam.nibjar.com` (person-mode association) in production and found the ENTIRE
+public homepage still showed venue-specific copy, images, and fake stats — a much larger gap than
+the admin-panel work from 2026-08-28. Root cause: `lib/i18n.ts` was a single static `en`/`ne` object
+with hardcoded venue copy for `hero`, `about`, `mission`, `members`, `whyjoin`, `join`, `footer` —
+no `member_mode` branching existed anywhere in it, and several homepage sections (`Hero`,
+`MemberDirectory`, `WhyJoin`, `About`) had additional hardcoded venue text/images living directly in
+JSX, outside the translation system entirely.
+
+- **`lib/i18n.ts` restructured**: `hero`/`about`/`mission`/`members`/`whyjoin`/`footer` now each have
+  parallel `venue`/`person` copy variants (English + Nepali, hand-written, not auto-translated) under
+  the same locale objects. Added `resolveTranslations(locale, memberMode)` which flattens the right
+  variant into the exact same shape components already consumed (`t.hero.subtitle` etc.) — this means
+  most components (`Mission.tsx` fully, others partially) needed **zero code changes**, they just
+  started receiving correct copy automatically once the context became mode-aware.
+- **`LocaleContext.tsx`**: `LocaleProvider` now takes a `memberMode` prop and calls
+  `resolveTranslations()` instead of reading the raw locale object directly.
+- **`app/layout.tsx`**: `RootLayout` converted to async, fetches `member_mode` via
+  `getAssociation()` + `getSettings()` (same pattern as `generateMetadata()` in the same file) and
+  passes it into `LocaleProvider`. Harmless no-op under `/admin`, `/portal`, `/platform` — those
+  never call `useLocale()`.
+- **Components that also needed an explicit `memberMode` prop** (because they swap *images* or hide
+  *whole sections*, which can't come from a translation string): `Hero.tsx`, `About.tsx`,
+  `MemberDirectory.tsx`, `WhyJoin.tsx`. `app/page.tsx` now passes `memberMode` (already computed
+  there, explicitly typed as the `"venue" | "person"` union) to all four.
+- **`Hero.tsx`**: split the venue-only Unsplash slideshow (`VENUE_SLIDES`) into a parallel
+  `PERSON_SLIDES` array with professional/networking imagery; the two floating thumbnail cards and
+  the "Member Venues" stat badge now swap per mode too. **Also fixed a real, mode-independent bug
+  while in here**: the "Annual Events" stat was `value: "20+"` — a literal hardcoded string, never
+  wired to any prop at all, so it always showed a fake number regardless of the association's real
+  event count (Namo Udyam has 0 events, still showed "20+"). Added an `eventsHosted` prop, wired from
+  the same `eventsHosted` value `StatsSection` already correctly received.
+- **`MembershipForm.tsx` (public "Join" application form) is now hidden entirely in person-mode
+  associations** — per the original `platform-design.md` intent ("No public application form in
+  person mode. Admin creates members directly.") that was apparently never implemented. `app/page.tsx`
+  now wraps it in `{memberMode !== "person" && <MembershipForm ... />}`.
+- **`Footer.tsx` copyright line fixed**: was `{t.footer.association}` — a hardcoded i18n string
+  ("Event and Venue Association Nepal") completely ignoring the `settings.name` prop already being
+  passed in. Now uses `settings?.name`. Also fixed the hardcoded `&copy; 2025` to
+  `{new Date().getFullYear()}`.
+- **`app/members/MembersClient.tsx` (full `/members` listing page) subtitle fixed**: was
+  `{t.members.subtitle}`, a translation string with a hardcoded "150+" baked directly into the
+  copy — meaning even `eva-nepal`'s own `/members` page always claimed "150+ registered event venues"
+  regardless of the real count. Removed `subtitle` from the i18n `members` section entirely and built
+  it dynamically from `members.length` instead (component already receives the real array).
+- **Platform panel browser tab title fixed** (found while investigating the above): `/platform/*`
+  pages showed the EVA Nepal fallback title because `getAssociation()` never matches
+  `assoc-platform.nibjar.com` to any real Association row, so the root layout's `generateMetadata()`
+  fell through to its hardcoded EVA default. `app/(platform)/platform/layout.tsx` now sets its own
+  `title: { absolute: "Nibjar Platform", template: "%s | Nibjar Platform" }` — note **`absolute`, not
+  `default`** was required; `default` still gets wrapped by the parent layout's own title template
+  (confirmed via curl: `default` produced "Nibjar Platform | Namo Udyam" instead of just "Nibjar
+  Platform" — a real Next.js metadata-merging nuance worth remembering).
+- **Verified via `npx tsc --noEmit`** (clean throughout) **and curl against the live local dev
+  server** (namo-udyam, person mode): zero occurrences of "Member Venues"/"Grand Banquet Hall"/
+  "Wedding Venue"/"premier venue network"/"professional venues" anywhere on the homepage; "Featured
+  Members"/"professional network"/"registered members" all present; the public application form
+  section completely absent from the rendered HTML; the Hero events stat correctly shows "0+" instead
+  of the old fake "20+"; footer copyright correctly reads "© 2026 Namo Udyam"; platform title
+  correctly reads "Nibjar Platform". Full 7-route error-marker sweep across public + all three auth
+  surfaces came back clean.
+- **Follow-up round found + fixed 2 more instances of the same pattern** (user reviewed the live
+  result and flagged them): `StatsSection.tsx`'s "Events Hosted" description ("Across all member
+  venues collectively") and its bottom tagline ("Nepal's Premier Event & Venue Association · Est.
+  {year}") were both still hardcoded venue-only text despite the component already having
+  `isPersonMode` logic for its first stat card. Also found the **browser tab title itself** —
+  `app/layout.tsx`'s `generateMetadata()` — had the exact same "Kathmandu's Premier Venue
+  Association" hardcoded suffix (title showed this for `namoudyam.nibjar.com` despite it being
+  person-mode) and a hardcoded EVA-specific `description` meta-tag fallback; both now branch on
+  `settings.member_mode`.
+- **Layout bug fixed**: `About.tsx`'s floating "Members/Member Venues" stat card (positioned
+  `-bottom-6 -left-6`, deliberately overlapping the image's bottom-left corner) was visually
+  covering part of the image's own caption text in that same corner — likely pre-existing for venue
+  mode too, just more visible now since the person-mode caption text wraps to 2 lines. Fixed by
+  adding extra bottom padding (`pb-20`) to the image's caption text block so it clears the floating
+  card's footprint regardless of text length/language.
+- **Not fixed, out of scope for this pass**: this only covers the **public homepage**
+  (`app/page.tsx`'s sections). The standalone `/events`, `/news`, `/meetings`, `/committee` pages and
+  their detail pages were not audited for the same hardcoded-venue-copy pattern — worth a follow-up
+  sweep if person-mode associations report more of this. Also noted but not fixed: the "Apply for
+  Membership" CTA in `WhyJoin.tsx` still links to `/#join`, which no longer exists on the page in
+  person mode since `MembershipForm` is now hidden there — clicking it currently just does nothing
+  (no crash, dead anchor). Needs a decision on where it should point instead for person-mode
+  associations (Contact section? Removed entirely?) before fixing.
+
+---
+
+## Fix — Platform API routes blocked on the real platform domain ✓ COMPLETE (2026-08-29)
+
+Found during first real production deploy: "Create Association" failed with `Unexpected token '<',
+"<!DOCTYPE "... is not valid JSON`, and `/api/manifest/platform` threw `Manifest: Line 1, column 1,
+Syntax error` in the console. Root cause: `middleware.ts`'s platform-domain block (hostname ===
+`assoc-platform.nibjar.com`) only ever allowlisted `/platform` and `/api/platform-auth` — every other
+path, including `/api/platform/associations` (create), `/api/platform/associations/[id]` (edit/
+delete), `/api/platform/associations/[id]/reset`, and today's new `/api/manifest/platform`, got
+redirected to the `/platform/login` HTML page instead of reaching the route handler. **Pre-existing
+bug, not introduced today** — it only manifests on the real platform hostname; local dev takes a
+completely different, more permissive branch of the same middleware (`NODE_ENV !== "production"`),
+which is exactly why none of this session's extensive local curl testing of the associations
+create/delete/reset endpoints ever caught it. Fixed by allowlisting `/api/platform` (covers all
+`/api/platform/*` sub-routes) and `/api/manifest` on the platform domain, alongside the existing
+`/api/platform-auth` and `/platform` allowlist entries. Each of those API routes already
+self-protects via `getPlatformUser()` inside the handler, so this doesn't weaken auth — it just lets
+requests reach the handler that was already checking auth correctly. Verified via `npx tsc --noEmit`
+(clean) and confirmed on production after redeploy — Create Association now works.
+
+## Fix — Deprecated `apple-mobile-web-app-capable` meta tag ✓ COMPLETE (2026-08-29)
+
+Chrome console warning (not a functional bug) on every page. Next.js's `metadata.appleWebApp.capable`
+field only emits the legacy Apple-specific tag; the modern replacement (`mobile-web-app-capable`,
+also honored by Chrome/Android) has no dedicated Metadata API field. Added it manually via
+`metadata.other` in the root `app/layout.tsx`, alongside the existing `appleWebApp` block — both tags
+now render. Verified via `npx tsc --noEmit` and curl (both meta tags present in rendered HTML).
+
+---
+
 ## Feature — Reset Data (per-module, platform panel) ✓ COMPLETE (2026-08-28)
 
 Follow-up to Delete Association — user wanted a lighter-weight option: clear specific *content*
@@ -1481,6 +1624,53 @@ AnimatePresence tab transitions (fade in/out). StatCard, SectionHeader, Empty, H
 - Reads the association's real logo (from `/public`, base64-embedded), name, and description at render time — navy/gold brand colors — so every association gets a correct branded share image with no manual asset upload needed
 - Verified locally: `GET /opengraph-image` → 200, `image/png`, renders correctly (tested via local dev server on an unused port, not deployed)
 - Resolves the "Add og-image.jpg" item from Known Pending Items — no static file was added; codebase-wide search confirmed no other pending og-image reference
+
+---
+
+## Fix — Stuck-Loading-Spinner Bug Class ✓ COMPLETE (2026-08-29)
+
+Audited the codebase for a bug pattern found while fixing the Activity Log page: client components that call `fetch()` inside `useEffect` with no `try/catch` around the fetch+`.json()` parse. If the request fails (network error, 5xx, non-JSON response), `setLoading(false)` never runs and the page shows a loading spinner forever with no way to recover except a full page reload.
+
+Fixed 11 instances, all using the same pattern — `error`/`loadError` state, `try { ...; if (!json.success) throw new Error() } catch { setError(...) } finally { setLoading(false) }`, and an error-state UI block (icon + message + "Try again" button that re-runs the load function) rendered between the loading and success states:
+
+- `app/(admin)/admin/activity/page.tsx` — also added per-entity-type icons, relative `timeAgo()` formatting, manual refresh button, "…" placeholder instead of misleading "0 entries" while loading
+- `app/(admin)/admin/reports/page.tsx`
+- `app/(admin)/admin/tasks/page.tsx`
+- `app/(admin)/admin/membership/categories/page.tsx`
+- `app/(admin)/admin/membership/fees/page.tsx`
+- `app/(admin)/admin/membership/dues/page.tsx` — two fetch functions wrapped (`loadInit()`, `loadPayments()`)
+- `app/(admin)/admin/portal-accounts/page.tsx`
+- `app/(admin)/admin/applications/page.tsx` — converted inline `useEffect` fetch into a named, retryable `loadApplications()` function
+- `app/(portal)/portal/dues/page.tsx`
+- `app/(portal)/portal/events/page.tsx`
+- `app/(portal)/portal/meetings/page.tsx`
+- `app/(portal)/portal/page.tsx` (member dashboard) — this one had **no loading state at all** (silently showed an empty dashboard forever on fetch failure, not even a stuck spinner); added `loading`/`loadError` state from scratch around its `Promise.all([...])` of 4 fetches
+
+`app/(portal)/portal/profile/page.tsx` already had a `.catch(() => setLoading(false))` — safe from the stuck-forever bug, left as-is (lower-priority UX gap: silent failure with no retry, not fixed this pass).
+
+Verified: `npx tsc --noEmit` clean, dev server smoke-tested (routes resolve without 500s).
+
+**Takeaway for future work**: any new client component with `useEffect(() => { fetch(...) }, [])` must wrap the fetch in try/catch/finally with this same pattern — check for this whenever adding a new admin/portal list or dashboard page.
+
+---
+
+## Feature — Per-Association Color Preset Theming ✓ COMPLETE (2026-08-30)
+
+Each association can now pick one of 6 curated color combinations for their public site + member portal, instead of every tenant sharing the same hardcoded navy/gold. Deliberately NOT a free-form color picker — bad picks would make some association's site look worse, which is the opposite of the goal.
+
+- **Schema**: `Association.colorPreset String @default("navy-gold")` (migration `20260830061702_add_color_preset_to_association`). The pre-existing `themeColor`/`accentColor` fields are kept as synced mirrors (written alongside `colorPreset` on every save) so the 3 PWA manifest routes and the viewport `theme-color` meta tag keep working with zero code changes.
+- **Preset registry** (`lib/theme-presets.ts`): 6 presets — Navy & Gold (default, unchanged), Emerald & Amber, Burgundy & Champagne, Charcoal & Copper, Royal Blue & Coral, Plum & Terracotta — each with a full 11-step primary ramp + 10-step accent ramp mirroring the original navy/gold shade shape (mostly adapted from Tailwind's own well-tested default palette hues, one hand-tuned terracotta ramp).
+- **Theming mechanism**: `tailwind.config.ts`'s navy/gold colors now resolve via `rgb(var(--navy-900) / <alpha-value>)` (Tailwind's documented CSS-variable technique) instead of literal hex. `app/globals.css` defines the 21 default CSS vars using the exact original hex values converted to RGB triples — numerically identical output for any association still on the default preset. `app/layout.tsx` applies a non-default preset as an inline `style` attribute directly on `<html>` (not a `<style>` tag — inline style specificity can't be out-cascaded regardless of where Next.js injects the stylesheet, avoiding a document-order risk that would otherwise be silent and hard to catch).
+- **Non-Tailwind color usage** converted to the same CSS vars: `globals.css`'s ~15 raw-hex gradient/shadow rules, and inline-style gradients in `Mission.tsx`, `StatsSection.tsx`, `Timeline.tsx`, `Contact.tsx`, `MemberDirectory.tsx`, `MemberCard.tsx` (only the brand-colored "Grand" tier — the other 3 capacity tiers keep their own fixed, non-brand hues on purpose). `MemberCard.tsx`'s hex-alpha-suffix trick (`${hex}18`) was replaced with `color-mix(in srgb, ${color} 9%, transparent)` since it doesn't work when the color is a CSS `var()` reference.
+- **`app/opengraph-image.tsx`** is the one exception: renders via `next/og`'s Satori engine, not a real browser, so CSS custom properties aren't reliably supported there — it resolves the preset's literal hex server-side instead.
+- **Member portal**: portal shares the same root `<html>` shell so it inherits theming automatically; fixed the last handful of literal `bg-[#0a1040]` Tailwind arbitrary-value classes in `PortalShell.tsx` and the "Try again" retry buttons (from the stuck-loading-spinner fix above) to proper `bg-navy-800` classes.
+- **API**: `PUT /api/admin/branding` (extends the existing GET-only route) — validates the preset key against the registry, updates `colorPreset` + mirrored `themeColor`/`accentColor` in one write. Permission-gated the same way as `/api/settings`.
+- **Admin UI**: new "Branding" tab in `/admin/settings` — a grid of clickable preset swatch cards (split-color chip + name, active-selection ring) instead of the page's usual key/value text-input rows, since this is an `Association`-model field, not a `SiteSettings` KV row.
+- **Scope**: public site + member portal only, by design — admin panel and the platform operator panel keep their own fixed identity (platform's indigo theme is intentional, signals "internal tool" per the earlier visual-overhaul checkpoint plan).
+
+Verified: `npx tsc --noEmit` clean throughout. End-to-end tested via direct DB writes (temporary, reverted after): confirmed a non-default preset (Royal Blue & Coral) correctly themed the homepage, portal login page, `theme-color` meta tag, `/api/manifest` response, and `opengraph-image` — then confirmed reverting to the default preset produces **zero** `style` attribute on `<html>` (byte-identical output to before this feature existed).
+
+**Takeaway for future work**: any new brand-colored gradient/shadow (inline `style` or raw hex) must use `rgb(var(--navy-N) / alpha)` / `rgb(var(--gold-N) / alpha)`, never literal hex — otherwise it silently won't respond to preset switching. Admin panel and platform panel are intentionally excluded from this system; don't theme them without a fresh discussion.
 
 ---
 

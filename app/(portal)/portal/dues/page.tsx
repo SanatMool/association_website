@@ -32,13 +32,22 @@ function periodLabel(p: Payment) {
 export default function PortalDuesPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  useEffect(() => {
-    fetch("/api/portal/dues").then((r) => r.json()).then((json: { success: boolean; data: Payment[] }) => {
-      if (json.success) setPayments(json.data);
-      setLoading(false);
-    });
-  }, []);
+  function load() {
+    setLoading(true);
+    setLoadError("");
+    fetch("/api/portal/dues")
+      .then((r) => r.json())
+      .then((json: { success: boolean; data: Payment[] }) => {
+        if (!json.success) throw new Error();
+        setPayments(json.data);
+      })
+      .catch(() => setLoadError("Couldn't load your dues. Check your connection and try again."))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
 
   const paid    = payments.filter((p) => p.status === "paid");
   const partial = payments.filter((p) => p.status === "partial");
@@ -52,6 +61,19 @@ export default function PortalDuesPage() {
   const hasOutstanding = totalOutstanding > 0;
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Loading…</div>;
+
+  if (loadError) return (
+    <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+      <AlertCircle size={24} className="text-amber-300" />
+      <p className="text-sm text-gray-500">{loadError}</p>
+      <button
+        onClick={load}
+        className="px-3 py-1.5 text-xs font-medium text-white bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  );
 
   return (
     <div>

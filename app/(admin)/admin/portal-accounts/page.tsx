@@ -83,6 +83,7 @@ function generateStrongPassword(): string {
 export default function PortalAccountsPage() {
   const [rows,       setRows]      = useState<MemberRow[]>([]);
   const [loading,    setLoading]   = useState(true);
+  const [loadError,  setLoadError] = useState("");
   const [activeTab,  setActiveTab] = useState<"create" | "list">("list");
   const [tableSearch, setTableSearch] = useState("");
   const [tablePage,  setTablePage] = useState(1);
@@ -119,10 +120,18 @@ export default function PortalAccountsPage() {
   }
 
   async function load() {
-    const res  = await fetch("/api/admin/portal-accounts");
-    const json = await res.json() as { success: boolean; data: MemberRow[] };
-    if (json.success) setRows(json.data);
-    setLoading(false);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res  = await fetch("/api/admin/portal-accounts");
+      const json = await res.json() as { success: boolean; data: MemberRow[]; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to load portal accounts.");
+      setRows(json.data);
+    } catch {
+      setLoadError("Couldn't load portal accounts. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { void load(); }, []);
@@ -242,6 +251,19 @@ export default function PortalAccountsPage() {
   if (loading) return (
     <div className="flex items-center justify-center py-24 text-gray-400 text-sm gap-2">
       <Loader2 size={18} className="animate-spin" /> Loading portal accounts…
+    </div>
+  );
+
+  if (loadError) return (
+    <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+      <AlertCircle size={24} className="text-amber-300" />
+      <p className="text-sm text-gray-500">{loadError}</p>
+      <button
+        onClick={() => void load()}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors"
+      >
+        <RefreshCw size={12} /> Try again
+      </button>
     </div>
   );
 

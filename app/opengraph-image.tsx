@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { readFile } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/prisma";
+import { getThemePreset } from "@/lib/theme-presets";
 
 export const runtime = "nodejs";
 export const alt = "EVA Nepal";
@@ -55,6 +56,10 @@ export default async function OpengraphImage() {
     "The official association of event venues, banquet halls and wedding venues in Kathmandu.";
   const logoDataUri = await loadLogoDataUri(association?.logo ?? "/default-logo.png");
 
+  // next/og renders via Satori, not a real browser — CSS custom properties aren't reliably
+  // supported there, so resolve the preset's literal hex here instead of using var(...).
+  const preset = getThemePreset(association?.colorPreset);
+
   return new ImageResponse(
     (
       <div
@@ -66,7 +71,7 @@ export default async function OpengraphImage() {
           alignItems: "flex-start",
           justifyContent: "center",
           padding: "80px",
-          background: "linear-gradient(135deg, #0a1040 0%, #131a5c 100%)",
+          background: `linear-gradient(135deg, ${preset.primary[800]} 0%, ${preset.primary[600]} 100%)`,
           position: "relative",
         }}
       >
@@ -77,7 +82,7 @@ export default async function OpengraphImage() {
             left: 0,
             width: "100%",
             height: "10px",
-            background: "linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)",
+            background: `linear-gradient(90deg, ${preset.accent[500]} 0%, ${preset.accent[400]} 100%)`,
             display: "flex",
           }}
         />

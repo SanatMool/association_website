@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import {
   Save, CheckCircle, Phone, Share2, BarChart2, AlignLeft,
-  Image as ImageIcon, Layout, Settings, SlidersHorizontal,
+  Image as ImageIcon, Layout, Settings, SlidersHorizontal, Palette, AlertCircle, Check,
 } from "lucide-react";
+import { THEME_PRESETS, DEFAULT_THEME_PRESET } from "@/lib/theme-presets";
 
 interface Setting {
   id: string;
@@ -15,13 +16,14 @@ interface Setting {
 }
 
 const GROUP_CONFIG: { key: string; label: string; icon: React.ElementType; description: string }[] = [
-  { key: "general", label: "General",  icon: SlidersHorizontal, description: "Core platform settings: member mode and other association-wide preferences." },
-  { key: "contact", label: "Contact",  icon: Phone,      description: "Phone, email, address, and map URL shown on the public contact section." },
-  { key: "social",  label: "Social",   icon: Share2,     description: "Facebook, Instagram, YouTube and other social media links." },
-  { key: "stats",   label: "Stats",    icon: BarChart2,  description: "Statistics shown on the public homepage (member count, years active, etc.)." },
-  { key: "footer",  label: "Footer",   icon: AlignLeft,  description: "Footer text, copyright, and links shown at the bottom of the public site." },
-  { key: "hero",    label: "Hero",     icon: Layout,     description: "Homepage hero section: headline, tagline, and call-to-action text." },
-  { key: "assets",  label: "Assets",   icon: ImageIcon,  description: "Logo URLs, favicon, and other asset references used across the site." },
+  { key: "general",  label: "General",  icon: SlidersHorizontal, description: "Core platform settings: member mode and other association-wide preferences." },
+  { key: "branding", label: "Branding", icon: Palette,    description: "Pick a curated color combination for your public site and member portal." },
+  { key: "contact",  label: "Contact",  icon: Phone,      description: "Phone, email, address, and map URL shown on the public contact section." },
+  { key: "social",   label: "Social",   icon: Share2,     description: "Facebook, Instagram, YouTube and other social media links." },
+  { key: "stats",    label: "Stats",    icon: BarChart2,  description: "Statistics shown on the public homepage (member count, years active, etc.)." },
+  { key: "footer",   label: "Footer",   icon: AlignLeft,  description: "Footer text, copyright, and links shown at the bottom of the public site." },
+  { key: "hero",     label: "Hero",     icon: Layout,     description: "Homepage hero section: headline, tagline, and call-to-action text." },
+  { key: "assets",   label: "Assets",   icon: ImageIcon,  description: "Logo URLs, favicon, and other asset references used across the site." },
 ];
 
 // Settings that use a select dropdown instead of a text input
@@ -37,16 +39,47 @@ export default function SettingsPage() {
   const [values,   setValues]   = useState<Record<string, string>>({});
   const [saving,   setSaving]   = useState<Record<string, boolean>>({});
   const [saved,    setSaved]    = useState<Record<string, boolean>>({});
+  const [loadError, setLoadError] = useState("");
   const [activeTab, setActiveTab] = useState("general");
 
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((data: Setting[]) => {
-        setSettings(data);
-        setValues(Object.fromEntries(data.map((s) => [s.key, s.value])));
+  const [colorPreset,    setColorPreset]    = useState<string>(DEFAULT_THEME_PRESET);
+  const [savingBranding, setSavingBranding] = useState<string | null>(null);
+  const [brandingError,  setBrandingError]  = useState("");
+
+  function load() {
+    setLoadError("");
+    Promise.all([
+      fetch("/api/settings").then((r) => r.json()) as Promise<Setting[]>,
+      fetch("/api/admin/branding").then((r) => r.json()) as Promise<{ success: boolean; data: { colorPreset: string } }>,
+    ])
+      .then(([settingsData, brandingJson]) => {
+        setSettings(settingsData);
+        setValues(Object.fromEntries(settingsData.map((s) => [s.key, s.value])));
+        if (brandingJson.success) setColorPreset(brandingJson.data.colorPreset);
+      })
+      .catch(() => setLoadError("Couldn't load settings. Check your connection and try again."));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function selectPreset(key: string) {
+    setSavingBranding(key);
+    setBrandingError("");
+    try {
+      const res = await fetch("/api/admin/branding", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ colorPreset: key }),
       });
-  }, []);
+      const json = await res.json() as { success: boolean; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to save");
+      setColorPreset(key);
+    } catch {
+      setBrandingError("Couldn't save your color preset. Please try again.");
+    } finally {
+      setSavingBranding(null);
+    }
+  }
 
   async function saveGroup(group: string) {
     setSaving((p) => ({ ...p, [group]: true }));
@@ -102,7 +135,65 @@ export default function SettingsPage() {
       </div>
 
       {/* Tab content */}
-      {rows.length > 0 ? (
+      {loadError ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-10 text-center">
+          <AlertCircle size={28} className="text-amber-300 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">{loadError}</p>
+          <button
+            onClick={load}
+            className="mt-3 px-3 py-1.5 text-xs font-medium text-white bg-[#0a1040] rounded-lg hover:bg-[#0d1550] transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      ) : activeTab === "branding" ? (
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-900">Branding</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{activeGroup?.description}</p>
+          </div>
+
+          <div className="p-6">
+            {brandingError && (
+              <p className="mb-4 text-xs text-red-500 flex items-center gap-1.5">
+                <AlertCircle size={12} /> {brandingError}
+              </p>
+            )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Object.values(THEME_PRESETS).map((preset) => {
+                const isActive = colorPreset === preset.key;
+                const isSaving = savingBranding === preset.key;
+                return (
+                  <button
+                    key={preset.key}
+                    onClick={() => selectPreset(preset.key)}
+                    disabled={savingBranding !== null}
+                    className={`relative flex flex-col items-center gap-2.5 px-4 py-5 rounded-2xl border-2 transition-colors disabled:opacity-60 ${
+                      isActive ? "border-[#0a1040] bg-slate-50" : "border-gray-100 hover:border-gray-200"
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 rounded-full bg-[#0a1040] text-white">
+                        <Check size={11} />
+                      </span>
+                    )}
+                    <span
+                      className="w-11 h-11 rounded-full overflow-hidden flex shadow-inner"
+                      style={{ backgroundColor: preset.primary[800] }}
+                    >
+                      <span className="w-1/2 h-full" style={{ backgroundColor: preset.primary[800] }} />
+                      <span className="w-1/2 h-full" style={{ backgroundColor: preset.accent[500] }} />
+                    </span>
+                    <span className="text-xs font-medium text-gray-700 text-center leading-tight">
+                      {isSaving ? "Saving…" : preset.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : rows.length > 0 ? (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>

@@ -21,9 +21,11 @@ interface MemberDirectoryProps {
   members: MemberType[];
   defaultMemberImage?: string;
   memberCount?: number;
+  memberMode?: "venue" | "person";
 }
 
-export default function MemberDirectory({ members, defaultMemberImage, memberCount }: MemberDirectoryProps) {
+export default function MemberDirectory({ members, defaultMemberImage, memberCount, memberMode = "venue" }: MemberDirectoryProps) {
+  const isPersonMode = memberMode === "person";
   const displayCount = memberCount ?? members.length;
   const { t } = useLocale();
   const [search, setSearch] = useState("");
@@ -73,7 +75,11 @@ export default function MemberDirectory({ members, defaultMemberImage, memberCou
             <h2 className="heading-lg text-navy-900 mt-4">{t.members.title}</h2>
           </AnimatedSection>
           <AnimatedSection delay={0.15}>
-            <p className="text-body mt-3">{displayCount}+ registered event venues across Kathmandu Valley</p>
+            <p className="text-body mt-3">
+              {isPersonMode
+                ? `${displayCount}+ registered members across Kathmandu Valley`
+                : `${displayCount}+ registered event venues across Kathmandu Valley`}
+            </p>
           </AnimatedSection>
           <AnimatedSection delay={0.2}>
             <div className="gold-divider mx-auto mt-5" />
@@ -164,25 +170,27 @@ export default function MemberDirectory({ members, defaultMemberImage, memberCou
                       </div>
                     </div>
 
-                    {/* Capacity filter */}
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Capacity</p>
-                      <div className="flex flex-wrap gap-2">
-                        {CAPACITY_TIERS.map((tier, i) => (
-                          <button
-                            key={tier.label}
-                            onClick={() => setCapacityTier(i)}
-                            className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
-                              capacityTier === i
-                                ? "bg-gold-500 text-navy-900"
-                                : "bg-white border border-slate-200 text-slate-600 hover:border-gold-300"
-                            }`}
-                          >
-                            {tier.label}
-                          </button>
-                        ))}
+                    {/* Capacity filter — venue mode only */}
+                    {!isPersonMode && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Capacity</p>
+                        <div className="flex flex-wrap gap-2">
+                          {CAPACITY_TIERS.map((tier, i) => (
+                            <button
+                              key={tier.label}
+                              onClick={() => setCapacityTier(i)}
+                              className={`text-xs font-medium px-3 py-1.5 rounded-full transition-all ${
+                                capacityTier === i
+                                  ? "bg-gold-500 text-navy-900"
+                                  : "bg-white border border-slate-200 text-slate-600 hover:border-gold-300"
+                              }`}
+                            >
+                              {tier.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -197,7 +205,7 @@ export default function MemberDirectory({ members, defaultMemberImage, memberCou
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-serif font-bold text-navy-900 text-xl flex items-center gap-2">
                   <span className="w-1.5 h-5 bg-gold-500 rounded-full inline-block" />
-                  Featured Venues
+                  {isPersonMode ? "Featured Members" : "Featured Venues"}
                 </h3>
               </div>
             </AnimatedSection>
@@ -221,7 +229,7 @@ export default function MemberDirectory({ members, defaultMemberImage, memberCou
           <AnimatedSection>
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-serif font-bold text-navy-900 text-lg">
-                {filtered.length} venues found
+                {filtered.length} {isPersonMode ? "members" : "venues"} found
               </h3>
               <button
                 onClick={() => { setSearch(""); setSelectedArea("All"); setCapacityTier(0); }}
@@ -252,11 +260,11 @@ export default function MemberDirectory({ members, defaultMemberImage, memberCou
           <div className="relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-navy-900 rounded-2xl">
             {/* bg decoration */}
             <div className="absolute right-0 top-0 w-64 h-full opacity-5"
-              style={{ background: "radial-gradient(circle at right, #f59e0b, transparent 70%)" }}
+              style={{ background: "radial-gradient(circle at right, rgb(var(--gold-500)), transparent 70%)" }}
             />
             <div className="relative">
               <h3 className="font-serif font-bold text-white text-xl">
-                Browse All {displayCount}+ Member Venues
+                Browse All {displayCount}+ {isPersonMode ? "Members" : "Member Venues"}
               </h3>
               <p className="text-white/50 text-sm mt-1">
                 Full searchable directory with advanced filters

@@ -12,17 +12,19 @@ interface AboutProps {
   yearsActive?: number;
   name?: string;
   description?: string;
+  memberMode?: "venue" | "person";
 }
 
-export default function About({ foundedYear = 2011, location = "Maitidevi, Kathmandu", memberCount = 150, yearsActive = 14, name = "EVA Nepal", description }: AboutProps) {
+export default function About({ foundedYear = 2011, location = "Maitidevi, Kathmandu", memberCount = 150, yearsActive = 14, name = "EVA Nepal", description, memberMode = "venue" }: AboutProps) {
   const { t } = useLocale();
+  const isPersonMode = memberMode === "person";
   const shortName = name.split(" ")[0];
 
   const details = [
     { icon: Calendar,   label: t.about.established, value: String(foundedYear) },
     { icon: MapPin,     label: t.about.hq,          value: location },
     { icon: Globe,      label: t.about.coverage,    value: "Kathmandu Valley" },
-    { icon: Building2,  label: "Members",            value: `${memberCount}+ Venues` },
+    { icon: Building2,  label: "Members",            value: isPersonMode ? `${memberCount}+` : `${memberCount}+ Venues` },
   ];
 
   return (
@@ -85,15 +87,18 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
               <div className="relative h-[440px] rounded-3xl overflow-hidden shadow-navy-lg">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=900&auto=format&fit=crop&q=80"
-                  alt="Grand banquet hall in Kathmandu"
+                  src={isPersonMode
+                    ? "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=900&auto=format&fit=crop&q=80"
+                    : "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=900&auto=format&fit=crop&q=80"}
+                  alt={isPersonMode ? "Professional community in Kathmandu" : "Grand banquet hall in Kathmandu"}
                   className="w-full h-full object-cover"
                 />
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-navy-900/80 via-navy-900/20 to-transparent" />
 
-                {/* Bottom text overlay */}
-                <div className="absolute bottom-0 left-0 right-0 p-8">
+                {/* Bottom text overlay — extra bottom padding keeps this clear of the floating
+                    stat card below, which overlaps this same corner by design */}
+                <div className="absolute bottom-0 left-0 right-0 p-8 pb-20">
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-2 h-2 rounded-full bg-gold-400 animate-pulse" />
                     <span className="text-gold-300 text-xs font-semibold tracking-wider uppercase">
@@ -101,7 +106,9 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
                     </span>
                   </div>
                   <p className="text-white/80 text-sm leading-relaxed">
-                    Representing {shortName}&apos;s premier event venues since {foundedYear}
+                    {isPersonMode
+                      ? `Representing ${shortName}'s professional community since ${foundedYear}`
+                      : `Representing ${shortName}'s premier event venues since ${foundedYear}`}
                   </p>
                 </div>
               </div>
@@ -115,7 +122,7 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
               >
                 <div className="text-3xl font-serif font-bold text-navy-900">{memberCount}+</div>
                 <div className="text-xs text-slate-500 font-medium mt-0.5 uppercase tracking-wide">
-                  Member Venues
+                  {isPersonMode ? "Members" : "Member Venues"}
                 </div>
               </motion.div>
 

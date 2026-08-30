@@ -125,7 +125,7 @@ export default function MeetingsPublicClient({ meetings }: { meetings: Meeting[]
             onClick={() => setActiveType("all")}
             className={`px-4 py-2 rounded-xl text-xs font-medium border transition-colors ${
               activeType === "all"
-                ? "bg-[#0a1040] text-white border-[#0a1040]"
+                ? "bg-navy-800 text-white border-navy-800"
                 : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
             }`}
           >
@@ -139,7 +139,7 @@ export default function MeetingsPublicClient({ meetings }: { meetings: Meeting[]
                 onClick={() => setActiveType(type)}
                 className={`px-4 py-2 rounded-xl text-xs font-medium border transition-colors ${
                   activeType === type
-                    ? "bg-[#0a1040] text-white border-[#0a1040]"
+                    ? "bg-navy-800 text-white border-navy-800"
                     : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                 }`}
               >
@@ -192,7 +192,7 @@ export default function MeetingsPublicClient({ meetings }: { meetings: Meeting[]
           <p className="text-gray-400 text-sm">No meetings match your filter.</p>
           <button
             onClick={() => { setActiveType("all"); setActiveYear("all"); setSearch(""); }}
-            className="mt-2 text-sm text-[#0a1040] font-medium hover:underline"
+            className="mt-2 text-sm text-navy-800 font-medium hover:underline"
           >
             Clear filters
           </button>
@@ -255,7 +255,7 @@ export default function MeetingsPublicClient({ meetings }: { meetings: Meeting[]
                   {m.minutes && (
                     <button
                       onClick={() => toggle(m.id)}
-                      className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 bg-[#0a1040] text-white rounded-xl hover:bg-[#0d1655] transition-colors"
+                      className="flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 bg-navy-800 text-white rounded-xl hover:bg-navy-700 transition-colors"
                     >
                       <FileText size={12} />
                       {isOpen ? "Close" : "View Minutes"}
@@ -322,7 +322,7 @@ export default function MeetingsPublicClient({ meetings }: { meetings: Meeting[]
                   >
                     <div className="border-t border-gray-100 bg-gray-50/60 px-5 sm:px-6 py-5">
                       <div className="flex items-center gap-2 mb-4">
-                        <FileText size={14} className="text-[#0a1040]" />
+                        <FileText size={14} className="text-navy-800" />
                         <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Meeting Minutes
                         </span>
@@ -334,13 +334,13 @@ export default function MeetingsPublicClient({ meetings }: { meetings: Meeting[]
                           <div className="flex items-center gap-1 ml-3 bg-white border border-gray-200 rounded-lg p-0.5">
                             <button
                               onClick={() => setLang(m.id, "en")}
-                              className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${lang === "en" ? "bg-[#0a1040] text-white" : "text-gray-400 hover:text-gray-600"}`}
+                              className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${lang === "en" ? "bg-navy-800 text-white" : "text-gray-400 hover:text-gray-600"}`}
                             >
                               EN
                             </button>
                             <button
                               onClick={() => setLang(m.id, "ne")}
-                              className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${lang === "ne" ? "bg-[#0a1040] text-white" : "text-gray-400 hover:text-gray-600"}`}
+                              className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors ${lang === "ne" ? "bg-navy-800 text-white" : "text-gray-400 hover:text-gray-600"}`}
                             >
                               <Languages size={10} /> NE
                             </button>

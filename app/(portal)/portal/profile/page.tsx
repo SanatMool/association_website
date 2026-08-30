@@ -65,7 +65,7 @@ export default function PortalProfilePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 border-[#0a1040] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-navy-800 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -193,7 +193,7 @@ export default function PortalProfilePage() {
       <button
         onClick={handleSave}
         disabled={saving || !dirty}
-        className="flex items-center gap-2 px-5 py-2.5 bg-[#0a1040] text-white text-sm font-medium rounded-lg hover:bg-[#0d1550] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-2 px-5 py-2.5 bg-navy-800 text-white text-sm font-medium rounded-lg hover:bg-navy-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Save size={14} />
         {saving ? "Saving…" : "Save Changes"}

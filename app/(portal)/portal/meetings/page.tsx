@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users2, CheckCircle, ChevronDown, FileText, UserCheck, Globe } from "lucide-react";
+import { Users2, CheckCircle, ChevronDown, FileText, UserCheck, Globe, AlertCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import PanelCard from "@/components/ui/panel/PanelCard";
 import EmptyState from "@/components/ui/panel/EmptyState";
@@ -27,6 +27,7 @@ const RSVP_OPTIONS = [
 export default function PortalMeetingsPage() {
   const [meetings,     setMeetings]     = useState<Meeting[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [loadError,    setLoadError]    = useState("");
   const [expandedRsvp, setExpandedRsvp] = useState<string | null>(null);
   const [expandedMin,  setExpandedMin]  = useState<string | null>(null);
   const [minutesLang,  setMinutesLang]  = useState<Record<string, "en" | "ne">>({});
@@ -35,10 +36,18 @@ export default function PortalMeetingsPage() {
   const [rsvping,      setRsvping]      = useState<string | null>(null);
 
   async function load() {
-    const res  = await fetch("/api/portal/meetings");
-    const json = await res.json() as { success: boolean; data: Meeting[] };
-    if (json.success) setMeetings(json.data);
-    setLoading(false);
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res  = await fetch("/api/portal/meetings");
+      const json = await res.json() as { success: boolean; data: Meeting[] };
+      if (!json.success) throw new Error();
+      setMeetings(json.data);
+    } catch {
+      setLoadError("Couldn't load meetings. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { void load(); }, []);
@@ -62,6 +71,19 @@ export default function PortalMeetingsPage() {
   const past     = meetings.filter((m) => m.status !== "scheduled");
 
   if (loading) return <div className="text-center py-20 text-gray-400 text-sm">Loading…</div>;
+
+  if (loadError) return (
+    <div className="flex flex-col items-center justify-center py-20 text-center gap-3">
+      <AlertCircle size={24} className="text-amber-300" />
+      <p className="text-sm text-gray-500">{loadError}</p>
+      <button
+        onClick={() => void load()}
+        className="px-3 py-1.5 text-xs font-medium text-white bg-navy-800 rounded-lg hover:bg-navy-700 transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  );
 
   function MeetingCard({ m, dimmed }: { m: Meeting; dimmed?: boolean }) {
     const myRsvp = m.rsvps[0];

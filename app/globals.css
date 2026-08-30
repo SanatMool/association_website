@@ -8,10 +8,38 @@
   --font-inter:     'Inter',              system-ui, sans-serif;
   --font-dm-serif:  'DM Serif Display',   Georgia,   serif;
 
-  --color-navy:       #0a1040;
-  --color-navy-dark:  #060b2c;
-  --color-gold:       #f59e0b;
-  --color-gold-light: #fcd34d;
+  /* Brand color ramps, as "R G B" triples so Tailwind's rgb(var(--x) / <alpha-value>)
+     opacity-modifier syntax works (e.g. bg-navy-900/50). Per-association presets override
+     these same variable names via an inline <style> tag rendered in app/layout.tsx — these
+     are the default "navy-gold" values, kept numerically identical to the original hardcoded
+     hex so no association sees any change unless it explicitly picks a different preset. */
+  --navy-50:  238 240 250;
+  --navy-100: 213 217 242;
+  --navy-200: 170 179 229;
+  --navy-300: 126 141 216;
+  --navy-400: 82 103 203;
+  --navy-500: 38 64 190;
+  --navy-600: 28 51 168;
+  --navy-700: 13 22 84;
+  --navy-800: 10 16 64;
+  --navy-900: 6 11 44;
+  --navy-950: 3 6 26;
+
+  --gold-50:  255 251 235;
+  --gold-100: 254 243 199;
+  --gold-200: 253 230 138;
+  --gold-300: 252 211 77;
+  --gold-400: 251 191 36;
+  --gold-500: 245 158 11;
+  --gold-600: 217 119 6;
+  --gold-700: 180 83 9;
+  --gold-800: 146 64 14;
+  --gold-900: 120 53 15;
+
+  --color-navy:       rgb(var(--navy-800));
+  --color-navy-dark:  rgb(var(--navy-900));
+  --color-gold:       rgb(var(--gold-500));
+  --color-gold-light: rgb(var(--gold-300));
 
   --radius-card: 1.25rem;        /* 20px */
   --section-gap: 7rem;           /* 112px */
@@ -162,13 +190,13 @@ p {
 
   /* Gradient text */
   .text-gradient-gold {
-    background: linear-gradient(135deg, #f59e0b 0%, #fcd34d 50%, #d97706 100%);
+    background: linear-gradient(135deg, rgb(var(--gold-500)) 0%, rgb(var(--gold-300)) 50%, rgb(var(--gold-600)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
   .text-gradient-navy {
-    background: linear-gradient(135deg, #0a1040 0%, #1a237e 100%);
+    background: linear-gradient(135deg, rgb(var(--navy-800)) 0%, rgb(var(--navy-600)) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -193,14 +221,14 @@ p {
     position: absolute;
     inset: -1.5px;
     border-radius: inherit;
-    background: linear-gradient(135deg, rgba(245,158,11,0.4), rgba(10,16,64,0.2));
+    background: linear-gradient(135deg, rgb(var(--gold-500) / 0.4), rgb(var(--navy-800) / 0.2));
     z-index: -1;
   }
 
   /* Backgrounds */
   .bg-section-light  { @apply bg-slate-50/70; }
   .bg-section-white  { @apply bg-white; }
-  .bg-section-dark   { background: linear-gradient(160deg, #060b2c 0%, #0a1040 60%, #0d1654 100%); }
+  .bg-section-dark   { background: linear-gradient(160deg, rgb(var(--navy-900)) 0%, rgb(var(--navy-800)) 60%, rgb(var(--navy-700)) 100%); }
   .bg-section-navy   { @apply bg-navy-900; }
 
   /* Noise texture overlay */
@@ -224,7 +252,7 @@ p {
     left: 0;
     width: 0;
     height: 2px;
-    background: #f59e0b;
+    background: rgb(var(--gold-500));
     border-radius: 2px;
     transition: width 0.25s ease;
   }
@@ -254,7 +282,7 @@ p {
 
   /* Gold shimmer text */
   .shimmer-gold {
-    background: linear-gradient(90deg, #d97706 0%, #f59e0b 40%, #fcd34d 50%, #f59e0b 60%, #d97706 100%);
+    background: linear-gradient(90deg, rgb(var(--gold-600)) 0%, rgb(var(--gold-500)) 40%, rgb(var(--gold-300)) 50%, rgb(var(--gold-500)) 60%, rgb(var(--gold-600)) 100%);
     background-size: 300% 100%;
     animation: shimmer 3s linear infinite;
     -webkit-background-clip: text;
@@ -265,14 +293,14 @@ p {
   /* Mesh gradient backgrounds */
   .bg-mesh-navy {
     background:
-      radial-gradient(ellipse at 20% 40%, rgba(26,35,126,0.4) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 60%, rgba(6,11,44,0.5) 0%,  transparent 50%),
-      #060b2c;
+      radial-gradient(ellipse at 20% 40%, rgb(var(--navy-600) / 0.4) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 60%, rgb(var(--navy-900) / 0.5) 0%,  transparent 50%),
+      rgb(var(--navy-900));
   }
   .bg-mesh-light {
     background:
-      radial-gradient(ellipse at 10% 20%,  rgba(245,158,11,0.06) 0%, transparent 40%),
-      radial-gradient(ellipse at 90% 80%,  rgba(10,16,64,0.04)   0%, transparent 40%),
+      radial-gradient(ellipse at 10% 20%,  rgb(var(--gold-500) / 0.06) 0%, transparent 40%),
+      radial-gradient(ellipse at 90% 80%,  rgb(var(--navy-800) / 0.04)   0%, transparent 40%),
       #f8fafc;
   }
   /* Indigo mesh — Platform panel's distinct accent, same technique as bg-mesh-navy */
@@ -296,7 +324,7 @@ p {
 
   /* Glow ring */
   .ring-gold-glow {
-    box-shadow: 0 0 0 1px rgba(245,158,11,0.25), 0 0 12px rgba(245,158,11,0.15);
+    box-shadow: 0 0 0 1px rgb(var(--gold-500) / 0.25), 0 0 12px rgb(var(--gold-500) / 0.15);
   }
 }
 
@@ -334,8 +362,8 @@ p {
 }
 
 @keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(245,158,11,0.15), 0 0 40px rgba(245,158,11,0.08); }
-  50%       { box-shadow: 0 0 40px rgba(245,158,11,0.30), 0 0 80px rgba(245,158,11,0.15); }
+  0%, 100% { box-shadow: 0 0 20px rgb(var(--gold-500) / 0.15), 0 0 40px rgb(var(--gold-500) / 0.08); }
+  50%       { box-shadow: 0 0 40px rgb(var(--gold-500) / 0.30), 0 0 80px rgb(var(--gold-500) / 0.15); }
 }
 
 @keyframes glowPulseIndigo {
@@ -357,7 +385,7 @@ p {
 /* ─── Animated gradient border ──────────────────────── */
 .animated-gradient-border {
   position: relative;
-  background: linear-gradient(135deg, #f59e0b, #d97706, #f59e0b, #fcd34d);
+  background: linear-gradient(135deg, rgb(var(--gold-500)), rgb(var(--gold-600)), rgb(var(--gold-500)), rgb(var(--gold-300)));
   background-size: 200% 200%;
   animation: gradientShift 4s ease infinite;
 }
@@ -379,15 +407,15 @@ p {
   position: absolute;
   top: 0; bottom: 0;
   width: 40%;
-  background: linear-gradient(90deg, transparent, rgba(245,158,11,0.04), transparent);
+  background: linear-gradient(90deg, transparent, rgb(var(--gold-500) / 0.04), transparent);
   animation: scanLine 8s linear infinite;
   pointer-events: none;
 }
 
 /* ─── Section transition fades ──────────────────────── */
 .section-fade-into-dark {
-  background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 60%, #060b2c 100%);
+  background: linear-gradient(to bottom, #ffffff 0%, #f8fafc 60%, rgb(var(--navy-900)) 100%);
 }
 .section-fade-into-light {
-  background: linear-gradient(to bottom, #060b2c 0%, #0a1040 40%, #f8fafc 100%);
+  background: linear-gradient(to bottom, rgb(var(--navy-900)) 0%, rgb(var(--navy-800)) 40%, #f8fafc 100%);
 }
