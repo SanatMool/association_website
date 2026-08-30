@@ -12,6 +12,7 @@ import { autoArchivePastEvents } from "@/lib/eventStatus";
 import DescriptionSection from "./DescriptionSection";
 import TicketSection from "./TicketSection";
 import ImageLightboxGallery from "@/components/ui/ImageLightboxGallery";
+import SmartImage from "@/components/ui/SmartImage";
 
 export const revalidate = 60;
 
@@ -146,7 +147,7 @@ export default async function EventDetailPage({ params }: Props) {
       {event.image && (
         <div className="max-w-4xl mx-auto px-4 -mt-6">
           <div className="h-64 sm:h-80 rounded-2xl overflow-hidden shadow-lg bg-navy-900">
-            <img src={event.image} alt={event.title} className="w-full h-full object-contain" />
+            <SmartImage src={event.image} alt={event.title} className="w-full h-full" fit="contain" />
           </div>
         </div>
       )}

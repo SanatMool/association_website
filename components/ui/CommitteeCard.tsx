@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { CommitteeType } from "@/lib/types";
 import { useLocale } from "@/context/LocaleContext";
 import { cn } from "@/lib/utils";
+import SmartImage from "@/components/ui/SmartImage";
 
 interface CommitteeCardProps {
   member: CommitteeType;
@@ -65,12 +66,11 @@ export default function CommitteeCard({ member, highlighted = false, onSelect }:
       {/* Avatar */}
       <div className="relative mx-auto mb-4 w-[72px] h-[72px]">
         {member.image ? (
-          <img
+          <SmartImage
             src={member.image}
             alt={member.name}
-            loading="lazy"
-            decoding="async"
-            className="w-[72px] h-[72px] rounded-2xl object-cover shadow-md"
+            className="w-[72px] h-[72px] rounded-2xl shadow-md"
+            fit="cover"
           />
         ) : (
           <div className={cn(

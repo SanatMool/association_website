@@ -1780,6 +1780,68 @@ Verified end-to-end against real local data (not synthetic): created one artific
 
 ---
 
+## Fix — Self-Service Logo Upload + Better Placeholder ✓ COMPLETE (2026-08-30)
+
+Live production screenshots showed the site header and footer logo circle rendering completely empty for a newly-created person-mode association (Namo:Udyam). Root cause: two separate gaps, both fixed.
+
+1. **`Association.logo` had no self-service admin UI at all** — it was only editable via the Platform panel's "Edit Association" form (a plain text "Logo Path" field, platform-super-admin only), even though every other branding field (color preset, hero images, about photo, etc.) already has a self-service editor in the association's own `/admin/settings`. Extended `PUT /api/admin/branding` to accept `logo`, and added a new `LogoEditor` to the existing Assets tab using the same `ImageUpload` component already used everywhere else — an association's own admin can now upload their logo directly, no platform access required.
+2. **The fallback placeholder (`public/default-logo.png`) was a blank navy circle with zero visual content** — technically working exactly as designed (deliberately generic so one association's logo never leaks onto another's site, per the 2026-08-28 fix), but a flat, empty circle just looks broken rather than like an intentional placeholder. Regenerated it via `sharp` rendering an SVG of the same `Landmark` icon already used as `AdminShell.tsx`'s own sidebar-logo fallback (same icon, same navy/gold brand colors) — now reads clearly as "no logo set yet" instead of "something's broken."
+
+Verified end-to-end: `GET /api/admin/branding` now returns `logo`; set a test value directly in the database and confirmed it renders correctly on the live homepage (Navbar + Footer) and is returned by the API; reverted after. `npx tsc --noEmit` and full `npm run build` clean.
+
+**Same-day follow-up — "Powered by Nibjar" credit added to the public footer**: `components/layout/Footer.tsx`'s bottom bar now includes a small, subtle "Powered by [Nibjar logo]" credit linking to `https://www.nibjar.com`, next to the existing "Established {year} · {location}" text. Reuses the exact styling pattern already established on the admin/portal/platform login pages (`components/ui/panel/AuthCard.tsx`) rather than inventing a new one — same logo file (`public/nibjar/nibjar_white_logo.png`), same low-opacity/hover-brighten treatment. Verified live: text, link, and logo all confirmed present in the rendered homepage HTML.
+
+---
+
+## Feature — SmartImage (Loading Skeleton + Auto-Retry) + Public Route Loading States ✓ COMPLETE (2026-08-30)
+
+Live production screenshot from mobile PWA use showed a broken-image icon on an event page. Root cause: every dynamic (uploaded/DB-driven) `<img>` on the public site was a plain tag with zero error handling — a single failed network request (flaky mobile connection, cold CDN edge, etc.) rendered the browser's native broken-image icon permanently, with no way to recover since installed PWAs have no pull-to-refresh gesture to fall back on.
+
+1. **`components/ui/SmartImage.tsx`** (new) — drop-in `<img>` replacement: shows a shimmer loading skeleton while the image loads, automatically retries twice (1.5s apart, cache-busted via `?_retry=N` so a flaky CDN/proxy response isn't served from a broken cache entry) before giving up, and falls back to a clean "Tap to retry" button (not the native broken-image icon) if all retries fail — clicking it restarts the whole cycle. Takes `fit` ("cover"/"contain") and an optional `imgClassName` for per-instance effects (e.g. hover-scale) that must land on the `<img>` itself rather than the wrapper.
+2. **Rolled out to every dynamic-image callsite on the public site**: `app/events/[slug]/page.tsx` (cover image), `EventCard.tsx`, `MemberCard.tsx`, `CommitteeCard.tsx`, `NewsCard.tsx`, `ImageLightboxGallery.tsx` (thumbnail strip — the full-screen lightbox image was deliberately left as a plain `<img>` since it has no fixed container size to anchor SmartImage's absolute-fill approach, and by the time it's shown the same image already loaded successfully as a thumbnail).
+3. **`components/ui/PageSkeleton.tsx`** (new) — three shared skeleton layouts (`ListPageSkeleton`, `DetailPageSkeleton`, `SimplePageSkeleton`) matching each page family's real navy-header + content structure, wired into new `loading.tsx` files for every public route that fetches from the DB: `/events`, `/events/[slug]`, `/members`, `/members/[slug]`, `/news`, `/news/[slug]`, `/meetings`, `/committee/history`. This is the "text/pages" half of the request — Next.js App Router shows these automatically during navigation instead of a blank/frozen page, using the framework's built-in mechanism rather than a bespoke one.
+
+Verified end-to-end: `npx tsc --noEmit` and full `npm run build` both clean. Live-tested via a temporary dev server + a real event row temporarily pointed at an unreachable URL (`https://example.invalid/...`) — confirmed in a real browser (screenshots) that the shimmer skeleton shows first, the image auto-retries twice, then the clean "Tap to retry" fallback appears (no native broken-image icon), and clicking Retry correctly restarts the loading cycle; reverted the test row afterward and confirmed the real image loads and fades in normally.
+
+**Not addressed in this pass**: a manual pull-to-refresh affordance for the installed PWA itself (SmartImage's auto-retry closes the gap for images specifically; a page-level stuck-fetch still has no manual recovery gesture beyond force-closing the app) — flagged as a possible follow-up, not built since the user's report was specifically about broken images.
+
+---
+
+## Fix — Homepage "What We Do" Events Section Not Clickable ✓ COMPLETE (2026-08-30)
+
+Screenshot report: clicking an event card in the homepage's "What We Do" section (`components/sections/Events.tsx`) did nothing — both upcoming-event cards and past-event rows were plain `motion.div`s with no `Link`/`onClick`, unlike every other card component on the site (`EventCard.tsx` etc., which all wrap in `Link`). The only way to reach an event's detail page from the homepage was "View All Events" → `/events` → click the card again there.
+
+Fix: wrapped `UpcomingEventCard`'s and `PastEventRow`'s inner content in `<Link href={`/events/${event.slug}`}>`, keeping the outer `motion.div` for the existing scroll-reveal/hover animations (same split-responsibility pattern already used in `EventCard.tsx` — `Link` owns navigation + the visual box, `motion.div` owns the animation). `EventType` already carries `slug`, so no data-layer change was needed.
+
+Verified end-to-end: `npx tsc --noEmit` and full `npm run build` clean; live-tested in a real browser via a temporary dev server — clicked a past-event row on the actual homepage and confirmed it navigated straight to `/events/koba` (its real detail page) in one click, no intermediate "View All Events" step required.
+
+---
+
+## Fix — Homepage Events Section: Overflowing Location Text + Event Types Redesign ✓ COMPLETE (2026-08-30)
+
+Two more screenshot reports on the same homepage "What We Do" section:
+
+1. **Past-event location text overflowing its card**: `PastEventRow`'s location line (`event.location.split(",")[0]`) sat in a flex row alongside the year, with no `min-w-0`/`flex-1` on the location wrapper — flex items don't shrink below their content size by default, so a long comma-less location (e.g. "Bhaktapur Chamber of Commerce & Industry (BCCI)") pushed past the card boundary instead of truncating. Fixed by giving the location wrapper `min-w-0 flex-1` (so it can actually shrink to the available space and let its existing `truncate` class take effect) and the year block `flex-shrink-0` (so it never gets compressed).
+2. **"Event Types" legend redesigned**: was a plain vertical icon+text list. Replaced with a 2-column animated pill grid (`framer-motion` staggered fade/scale-in on scroll into view, subtle hover lift) — each type gets a colored chip matching its existing badge palette. A literal slider/carousel was considered per the request but rejected as the wrong fit: 5 static category labels don't need paging or auto-advance, that would add interaction overhead without benefit. `last:odd:col-span-2` makes the 5th (odd-count) chip span the full row instead of leaving a lopsided gap — same CSS technique already used elsewhere for variable-count grids.
+
+Also answered a question from the same round: the homepage caps upcoming events at 3 and past events at 5 (`Events.tsx`'s `.slice(0, 3)` / `.slice(0, 5)`) — informational, no code change requested.
+
+Verified end-to-end: `npx tsc --noEmit` and full `npm run build` clean. Live-verified via a temporary dev server + a real past event's location/date temporarily overridden to reproduce the exact reported overflow string — confirmed via computed-style checks (`scrollWidth > clientWidth` and the text's right edge staying inside the card's right edge) that the truncation now holds, and confirmed the Event Types grid's `grid-template-columns` and the last chip's full-width span render as designed. (Pixel screenshots were unreliable at this scroll depth in the verification session — a capture-tooling issue, not an app bug — so this round leaned on DOM/computed-style assertions instead.) Test event reverted after — note its date was reset to a best-guess value since the original wasn't recorded before the temporary edit; low-risk since this is local dev-only data, not production.
+
+---
+
+## Fix — Login Pages: Hardcoded "KTM" + Hardcoded Fallback Description ✓ COMPLETE (2026-08-30)
+
+Follow-up to the logo fix, same screenshot round: the admin login page's left-panel stat row hardcoded `{ value: "KTM", label: "Based in" }` literally — never per-association. Grepping for the same literal found the identical hardcoded `"KTM"` in the portal login page (`app/(portal)/portal/login/page.tsx`) too; platform login has no stat tiles at all (correctly, since it's cross-tenant) so nothing to fix there.
+
+Also flagged: the admin login's fallback description (`"The official industry body for event venues in Kathmandu Valley."`, shown only when `association.description` is empty) was EVA-Nepal's own venue-mode wording hardcoded as the default — inconsistent with the portal/platform login pages, which already use generic, mode-neutral fallback copy. Fixed to `"Sign in to manage your association's members, events, and content."`.
+
+Fix: `GET /api/admin/branding` now also returns `hqLocation`, computed the same way `app/page.tsx`/`FooterWrapper.tsx` already derive it for the public site — first line of the `contact_address` SiteSettings value, falling back to `"Kathmandu"` (same established pattern, not a new one). Both login pages (and the shared `AuthCard.tsx` component's stat-tile rendering, used by portal/platform) now use this real value instead of the literal. Added `truncate` + a `title` tooltip to the stat-tile value div as a safety net since a real city name can run longer than the "KTM"/"150+" abbreviations the layout was originally sized for.
+
+Verified: `npx tsc --noEmit` + full `npm run build` clean. Live-verified against `namo-udyam` (whose `description` is genuinely set to "new test association data" and whose `contact_address` is empty) — confirmed via the API response and a live screenshot that the description now shows the real per-association text and "Based in" shows "Kathmandu" (truncated to "Kath…" with a hover tooltip) instead of the hardcoded literal.
+
+---
+
 ## Pending (real-world content, not code)
 
 Superseded by the consolidated "Known Pending Items" section near the top of this file (re-verified 2026-08-27) — see there instead of this stale duplicate.

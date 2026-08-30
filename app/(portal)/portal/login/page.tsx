@@ -17,6 +17,7 @@ export default function PortalLoginPage() {
   const [description, setDescription] = useState<string>("Sign in to view your membership, meetings, events, and dues.");
   const [memberCount, setMemberCount] = useState<string>("150+");
   const [yearsActive, setYearsActive] = useState<string>("13+");
+  const [hqLocation, setHqLocation] = useState<string>("Kathmandu");
 
   useEffect(() => {
     fetch("/api/admin/branding")
@@ -28,6 +29,7 @@ export default function PortalLoginPage() {
         if (d.logo) setLogoUrl(d.logo);
         if (d.memberCount) setMemberCount(`${d.memberCount}+`);
         if (d.yearsActive) setYearsActive(`${d.yearsActive}+`);
+        if (d.hqLocation) setHqLocation(d.hqLocation);
         setDescription(`Sign in to your ${d.name} member account.`);
       })
       .catch(() => {});
@@ -55,7 +57,7 @@ export default function PortalLoginPage() {
       statTiles={[
         { value: memberCount, label: "Members" },
         { value: yearsActive, label: "Years" },
-        { value: "KTM", label: "Based in" },
+        { value: hqLocation,  label: "Based in" },
       ]}
       panelTitle="Member Portal"
       panelSubtitle={`Sign in to your ${assocName} account`}

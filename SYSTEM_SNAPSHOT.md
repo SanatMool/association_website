@@ -626,7 +626,7 @@ Last verified: 2026-06-10
 | /api/admin/portal-accounts | GET, POST | Admin | List members with portal status; create account |
 | /api/admin/portal-accounts/[id] | PATCH, DELETE | Admin | Reset password / delete account |
 | /api/admin/reports | GET | Admin | All reporting metrics in one call |
-| /api/admin/branding | GET, PUT | Admin | GET returns name/logo/description/colorPreset/homepageContent; PUT sets colorPreset (+ mirrors themeColor/accentColor) and/or homepageContent (validated via lib/homepage-content.ts sanitizeHomepageContent) |
+| /api/admin/branding | GET, PUT | Admin | GET returns name/logo/description/colorPreset/homepageContent; PUT sets logo and/or colorPreset (+ mirrors themeColor/accentColor) and/or homepageContent (validated via lib/homepage-content.ts sanitizeHomepageContent) |
 | /api/platform/uploads-cleanup | POST | Platform | Scans/deletes orphaned public/uploads files (lib/uploadsCleanup.ts); body `{ dryRun }`, defaults to `true` |
 
 ## Known Issues / Watch Points

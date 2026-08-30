@@ -80,7 +80,7 @@ export default function AuthCard({
               <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-3 gap-3">
                 {statTiles.map(({ value, label }) => (
                   <motion.div key={label} variants={fadeUp} className="card-glass p-4 text-center">
-                    <div className={`text-xl font-bold mb-0.5 ${a.solidText}`}>{value}</div>
+                    <div className={`text-xl font-bold mb-0.5 truncate ${a.solidText}`} title={value}>{value}</div>
                     <div className="text-[10px] text-white/30 uppercase tracking-widest">{label}</div>
                   </motion.div>
                 ))}

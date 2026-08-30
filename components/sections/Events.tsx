@@ -32,7 +32,11 @@ function UpcomingEventCard({ event, index }: { event: EventType; index: number }
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.45, delay: index * 0.1 }}
       whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      className="group relative bg-white rounded-2xl border border-slate-100 overflow-hidden"
+      className="group relative"
+    >
+    <Link
+      href={`/events/${event.slug}`}
+      className="relative block bg-white rounded-2xl border border-slate-100 overflow-hidden"
       style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}
     >
       {/* Hover glow */}
@@ -90,6 +94,7 @@ function UpcomingEventCard({ event, index }: { event: EventType; index: number }
           </div>
         </div>
       </div>
+    </Link>
     </motion.div>
   );
 }
@@ -103,6 +108,9 @@ function PastEventRow({ event, index }: { event: EventType; index: number }) {
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.4, delay: index * 0.07 }}
+    >
+    <Link
+      href={`/events/${event.slug}`}
       className="flex items-start gap-4 p-4 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all group"
     >
       {/* Month/Day block */}
@@ -126,16 +134,17 @@ function PastEventRow({ event, index }: { event: EventType; index: number }) {
           </span>
         </div>
         <div className="flex items-center gap-3 mt-1.5">
-          <div className="flex items-center gap-1 text-slate-400 text-xs">
-            <MapPin size={10} />
+          <div className="flex items-center gap-1 text-slate-400 text-xs min-w-0 flex-1">
+            <MapPin size={10} className="flex-shrink-0" />
             <span className="truncate">{event.location.split(",")[0]}</span>
           </div>
-          <div className="flex items-center gap-1 text-slate-400 text-xs">
+          <div className="flex items-center gap-1 text-slate-400 text-xs flex-shrink-0">
             <Clock size={10} />
             <span>{new Date(event.date).getFullYear()}</span>
           </div>
         </div>
       </div>
+    </Link>
     </motion.div>
   );
 }
@@ -233,12 +242,20 @@ export default function Events({ events }: EventsProps) {
                   <Tag size={13} className="text-gold-500" />
                   Event Types
                 </h4>
-                <div className="space-y-2">
-                  {Object.entries(typeConfig).map(([type, cfg]) => (
-                    <div key={type} className="flex items-center gap-2.5">
-                      <span className="text-base leading-none">{cfg.icon}</span>
-                      <span className="text-sm text-slate-600 capitalize">{type}</span>
-                    </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(typeConfig).map(([type, cfg], i) => (
+                    <motion.div
+                      key={type}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      whileInView={{ opacity: 1, scale: 1 }}
+                      viewport={{ once: true, margin: "-20px" }}
+                      transition={{ duration: 0.3, delay: i * 0.06 }}
+                      whileHover={{ y: -2, transition: { duration: 0.15 } }}
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border ${cfg.bg} last:odd:col-span-2`}
+                    >
+                      <span className="text-sm leading-none">{cfg.icon}</span>
+                      <span className={`text-xs font-medium capitalize truncate ${cfg.color}`}>{type}</span>
+                    </motion.div>
                   ))}
                 </div>
               </div>

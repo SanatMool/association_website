@@ -6,6 +6,7 @@ import { Calendar, ArrowRight } from "lucide-react";
 import { NewsType } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import SmartImage from "@/components/ui/SmartImage";
 
 const categoryConfig: Record<string, { label: string; bg: string; text: string; bar: string }> = {
   announcement: { label: "Announcement", bg: "bg-blue-50",   text: "text-blue-700",   bar: "from-blue-500 to-blue-400"    },
@@ -37,12 +38,12 @@ export default function NewsCard({ item, compact = false }: NewsCardProps) {
       {/* Cover image */}
       {item.image && (
         <div className="h-40 overflow-hidden">
-          <img
+          <SmartImage
             src={item.image}
             alt={item.title}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full"
+            imgClassName="group-hover:scale-105 transition-transform duration-500"
+            fit="cover"
           />
         </div>
       )}

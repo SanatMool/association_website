@@ -163,9 +163,27 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
           <p className="text-slate-500 text-xs">
             &copy; {new Date().getFullYear()} {settings?.name ?? "Association"}. {t.footer.rights}
           </p>
-          <p className="text-slate-600 text-xs">
-            Established {foundedYear} &middot; {hqLocation}
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-slate-600 text-xs">
+              Established {foundedYear} &middot; {hqLocation}
+            </p>
+            <span className="hidden sm:block w-px h-3 bg-white/10" />
+            <a
+              href="https://www.nibjar.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 group"
+            >
+              <span className="text-slate-600 group-hover:text-slate-400 text-xs transition-colors">Powered by</span>
+              <Image
+                src="/nibjar/nibjar_white_logo.png"
+                alt="Nibjar Solutions"
+                width={72}
+                height={24}
+                className="h-4 w-auto opacity-40 group-hover:opacity-70 transition-opacity"
+              />
+            </a>
+          </div>
         </div>
       </div>
     </footer>

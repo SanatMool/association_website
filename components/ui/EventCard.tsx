@@ -6,6 +6,7 @@ import { MapPin, ArrowRight, Clock } from "lucide-react";
 import { EventType } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import SmartImage from "@/components/ui/SmartImage";
 
 const typeConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   networking: { label: "Networking",  bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-400" },
@@ -59,7 +60,7 @@ export default function EventCard({ event, compact = false }: EventCardProps) {
         isUpcoming ? "bg-navy-900" : "bg-slate-100"
       )}>
         {event.image ? (
-          <img src={event.image} alt={event.title} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-contain" />
+          <SmartImage src={event.image} alt={event.title} className="absolute inset-0 w-full h-full" fit="contain" />
         ) : (
           <>
             <div className={cn(

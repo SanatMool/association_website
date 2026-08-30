@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import SmartImage from "@/components/ui/SmartImage";
 
 interface Props {
   images: string[];
@@ -51,8 +52,7 @@ export default function ImageLightboxGallery({ images, title }: Props) {
             onClick={() => setOpenIndex(i)}
             className="flex-shrink-0 w-32 h-32 sm:w-36 sm:h-36 rounded-xl overflow-hidden bg-slate-100 border border-gray-100 hover:opacity-90 hover:border-gold-300 transition-all snap-start"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={img} alt={`${title} ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+            <SmartImage src={img} alt={`${title} ${i + 1}`} className="w-full h-full" fit="cover" />
           </button>
         ))}
       </div>

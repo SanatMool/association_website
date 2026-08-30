@@ -5,6 +5,7 @@ import { getAdminContext } from "@/lib/adminAuth";
 import { hasPermission } from "@/lib/permissions";
 import { THEME_PRESETS, DEFAULT_THEME_PRESET } from "@/lib/theme-presets";
 import { sanitizeHomepageContent } from "@/lib/homepage-content";
+import { getSettings } from "@/lib/settings";
 import type { Prisma } from "@prisma/client";
 
 export async function GET() {
@@ -40,13 +41,18 @@ export async function GET() {
     return NextResponse.json({ success: false, error: "Association not found" }, { status: 404 });
   }
 
-  const memberCount = await prisma.memberAssociation.count({
-    where: { associationId: association.id, visible: true },
-  });
+  const [memberCount, siteSettings] = await Promise.all([
+    prisma.memberAssociation.count({
+      where: { associationId: association.id, visible: true },
+    }),
+    getSettings(association.id),
+  ]);
 
   const yearsActive = association.foundedYear
     ? new Date().getFullYear() - association.foundedYear
     : null;
+
+  const hqLocation = siteSettings.contact_address?.split("\n")[0] || "Kathmandu";
 
   return NextResponse.json({
     success: true,
@@ -57,6 +63,7 @@ export async function GET() {
       foundedYear: association.foundedYear ?? null,
       yearsActive,
       memberCount,
+      hqLocation,
       colorPreset: association.colorPreset ?? DEFAULT_THEME_PRESET,
       homepageContent: sanitizeHomepageContent(association.homepageContent),
     },
@@ -76,13 +83,17 @@ export async function PUT(req: Request) {
   }
 
   const body = await req.json();
-  const { colorPreset, homepageContent } = body as { colorPreset?: string; homepageContent?: unknown };
+  const { colorPreset, homepageContent, logo } = body as { colorPreset?: string; homepageContent?: unknown; logo?: string | null };
 
-  if (colorPreset === undefined && homepageContent === undefined) {
+  if (colorPreset === undefined && homepageContent === undefined && logo === undefined) {
     return NextResponse.json({ success: false, error: "Nothing to update" }, { status: 400 });
   }
 
   const data: Prisma.AssociationUpdateInput = {};
+
+  if (logo !== undefined) {
+    data.logo = typeof logo === "string" && logo.trim() ? logo.trim().slice(0, 500) : null;
+  }
 
   if (colorPreset !== undefined) {
     if (!(colorPreset in THEME_PRESETS)) {
@@ -108,6 +119,7 @@ export async function PUT(req: Request) {
   return NextResponse.json({
     success: true,
     data: {
+      logo: association.logo ?? null,
       colorPreset: association.colorPreset,
       homepageContent: sanitizeHomepageContent(association.homepageContent),
     },

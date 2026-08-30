@@ -189,6 +189,24 @@ function EventsHeaderEditor({ eventsHeadline, eventsSubtitle, onChange, ...saveB
   );
 }
 
+function LogoEditor({ logo, onChange, ...saveBarProps }: {
+  logo: string;
+  onChange: (logo: string) => void;
+} & Omit<Parameters<typeof SaveBar>[0], "tabKey">) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <SaveBar tabKey="logo" {...saveBarProps} />
+      <div className="p-6">
+        <label className="text-sm font-medium text-gray-700 block mb-2">Association Logo</label>
+        <p className="text-xs text-gray-400 mb-2">
+          Shown in the site header and footer. Leave blank to use a plain placeholder — nothing that resembles another association&apos;s branding is ever shown by default.
+        </p>
+        <ImageUpload value={logo} onChange={onChange} />
+      </div>
+    </div>
+  );
+}
+
 function AboutEditor({ aboutImage, aboutHeadline, aboutBadge, onChange, ...saveBarProps }: {
   aboutImage: string;
   aboutHeadline: string;
@@ -305,6 +323,8 @@ export default function SettingsPage() {
   const [savingBranding, setSavingBranding] = useState<string | null>(null);
   const [brandingError,  setBrandingError]  = useState("");
 
+  const [logo, setLogo] = useState("");
+
   // Hero/About/Mission/WhyJoin all live in one Association.homepageContent JSON blob — this is
   // the last-loaded/saved server state; each tab keeps its own draft and merges into this on save
   // so saving one tab never clobbers another tab's unsaved-elsewhere fields.
@@ -317,12 +337,13 @@ export default function SettingsPage() {
     setLoadError("");
     Promise.all([
       fetch("/api/settings").then((r) => r.json()) as Promise<Setting[]>,
-      fetch("/api/admin/branding").then((r) => r.json()) as Promise<{ success: boolean; data: { colorPreset: string; homepageContent: HomepageContent } }>,
+      fetch("/api/admin/branding").then((r) => r.json()) as Promise<{ success: boolean; data: { logo: string | null; colorPreset: string; homepageContent: HomepageContent } }>,
     ])
       .then(([settingsData, brandingJson]) => {
         setSettings(settingsData);
         setValues(Object.fromEntries(settingsData.map((s) => [s.key, s.value])));
         if (brandingJson.success) {
+          setLogo(brandingJson.data.logo ?? "");
           setColorPreset(brandingJson.data.colorPreset);
           setHomepageContent(brandingJson.data.homepageContent ?? {});
         }
@@ -348,6 +369,27 @@ export default function SettingsPage() {
       setBrandingError("Couldn't save your color preset. Please try again.");
     } finally {
       setSavingBranding(null);
+    }
+  }
+
+  async function saveLogo() {
+    setSavingContent("logo");
+    setContentError("");
+    try {
+      const res = await fetch("/api/admin/branding", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logo }),
+      });
+      const json = await res.json() as { success: boolean; data?: { logo: string | null }; error?: string };
+      if (!json.success) throw new Error(json.error ?? "Failed to save");
+      setLogo(json.data?.logo ?? "");
+      setSavedContent("logo");
+      setTimeout(() => setSavedContent(null), 2500);
+    } catch {
+      setContentError("Couldn't save the logo. Please try again.");
+    } finally {
+      setSavingContent(null);
     }
   }
 
@@ -603,6 +645,18 @@ export default function SettingsPage() {
           contentError={contentError}
           onSave={() => saveHomepageContent("whyjoin")}
         />
+      ) : activeTab === "assets" ? (
+        <div className="space-y-6">
+          <LogoEditor
+            logo={logo}
+            onChange={setLogo}
+            savingContent={savingContent}
+            savedContent={savedContent}
+            contentError={contentError}
+            onSave={saveLogo}
+          />
+          {genericRowsBlock}
+        </div>
       ) : genericRowsBlock ? (
         genericRowsBlock
       ) : (

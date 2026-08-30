@@ -25,9 +25,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [logoUrl, setLogoUrl]       = useState<string | null>(null);
   const [assocName, setAssocName]   = useState<string>("EVA Nepal");
-  const [description, setDescription] = useState<string>("The official industry body for event venues in Kathmandu Valley.");
+  const [description, setDescription] = useState<string>("Sign in to manage your association's members, events, and content.");
   const [memberCount, setMemberCount] = useState<string>("150+");
   const [yearsActive, setYearsActive] = useState<string>("13+");
+  const [hqLocation, setHqLocation] = useState<string>("Kathmandu");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -45,6 +46,7 @@ export default function LoginPage() {
         if (d.description) setDescription(d.description);
         if (d.memberCount) setMemberCount(`${d.memberCount}+`);
         if (d.yearsActive) setYearsActive(`${d.yearsActive}+`);
+        if (d.hqLocation) setHqLocation(d.hqLocation);
       })
       .catch(() => {});
   }, []);
@@ -159,14 +161,14 @@ export default function LoginPage() {
               {[
                 { value: memberCount, label: "Members" },
                 { value: yearsActive, label: "Years" },
-                { value: "KTM",       label: "Based in" },
+                { value: hqLocation,  label: "Based in" },
               ].map(({ value, label }) => (
                 <motion.div
                   key={label}
                   variants={fadeUp}
                   className="card-glass p-4 text-center"
                 >
-                  <div className="text-xl font-bold text-amber-400 mb-0.5 animate-pulse-gold">{value}</div>
+                  <div className="text-xl font-bold text-amber-400 mb-0.5 animate-pulse-gold truncate" title={value}>{value}</div>
                   <div className="text-[10px] text-white/30 uppercase tracking-widest">{label}</div>
                 </motion.div>
               ))}
