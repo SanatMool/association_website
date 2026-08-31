@@ -288,6 +288,35 @@ async function collectFileReferences(): Promise<Map<string, FileReference[]>> {
   return map;
 }
 
+export interface MissingUploadResult {
+  filename: string;
+  references: string[]; // describe strings for every DB record pointing at this missing file
+}
+
+/**
+ * Finds every /uploads/* reference in the database whose file is NOT present on disk —
+ * the inverse of the orphan check above (which finds files with no reference). Used for
+ * incident triage after something has deleted real files out from under the DB (e.g. an
+ * unsafe rsync), not for routine cleanup.
+ */
+export async function findMissingUploads(): Promise<MissingUploadResult[]> {
+  const referencesByFile = await collectFileReferences();
+
+  let onDisk: Set<string>;
+  try {
+    onDisk = new Set(await readdir(UPLOADS_DIR));
+  } catch {
+    onDisk = new Set();
+  }
+
+  const missing: MissingUploadResult[] = [];
+  for (const [filename, refs] of referencesByFile) {
+    if (onDisk.has(filename)) continue;
+    missing.push({ filename, references: refs.map((r) => r.describe) });
+  }
+  return missing;
+}
+
 function sha256(filepath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = createHash("sha256");

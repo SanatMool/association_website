@@ -83,9 +83,9 @@ export async function PUT(req: Request) {
   }
 
   const body = await req.json();
-  const { colorPreset, homepageContent, logo } = body as { colorPreset?: string; homepageContent?: unknown; logo?: string | null };
+  const { colorPreset, homepageContent, logo, foundedYear } = body as { colorPreset?: string; homepageContent?: unknown; logo?: string | null; foundedYear?: number | null };
 
-  if (colorPreset === undefined && homepageContent === undefined && logo === undefined) {
+  if (colorPreset === undefined && homepageContent === undefined && logo === undefined && foundedYear === undefined) {
     return NextResponse.json({ success: false, error: "Nothing to update" }, { status: 400 });
   }
 
@@ -93,6 +93,16 @@ export async function PUT(req: Request) {
 
   if (logo !== undefined) {
     data.logo = typeof logo === "string" && logo.trim() ? logo.trim().slice(0, 500) : null;
+  }
+
+  if (foundedYear !== undefined) {
+    if (foundedYear !== null) {
+      const currentYear = new Date().getFullYear();
+      if (typeof foundedYear !== "number" || !Number.isInteger(foundedYear) || foundedYear < 1950 || foundedYear > currentYear) {
+        return NextResponse.json({ success: false, error: `Founding year must be a whole number between 1950 and ${currentYear}` }, { status: 400 });
+      }
+    }
+    data.foundedYear = foundedYear;
   }
 
   if (colorPreset !== undefined) {
@@ -122,6 +132,7 @@ export async function PUT(req: Request) {
       logo: association.logo ?? null,
       colorPreset: association.colorPreset,
       homepageContent: sanitizeHomepageContent(association.homepageContent),
+      foundedYear: association.foundedYear ?? null,
     },
   });
 }

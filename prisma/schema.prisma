@@ -166,6 +166,7 @@ model Event {
   promoImages   String[] @default([]) // shown while event is upcoming — max 4, enforced in API
   recapImages   String[] @default([]) // shown once event is past — max 6, enforced in API
   recapVideoUrl String?               // optional highlights video link, shown alongside recapImages
+  externalLink  String?               // optional external URL shown as a "Visit Link" button
   associationId String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -190,6 +191,8 @@ model News {
   author        String
   category      String   // announcement | training | event | industry | member
   image         String?
+  galleryImages String[] @default([]) // additional gallery photos, max 6, enforced in admin UI
+  externalLink  String?  // optional external URL shown as a "Visit Link" button on the article
   featured      Boolean  @default(false)
   status        String   @default("published") // published | scheduled | draft
   publishedAt   DateTime

@@ -553,8 +553,12 @@ export default function CommitteeForm({ member, members = [], designations = [],
                     placeholder="auto-fills from English name"
                     className={inputCls}
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    {translatingName ? "Auto-translating…" : "Auto-filled when you type the English name."}
+                  <p className={`text-[11px] mt-1 ${!translatingName && form.name.trim() && !form.nameNe && !nameNeManualRef.current ? "text-amber-600" : "text-gray-400"}`}>
+                    {translatingName
+                      ? "Auto-translating…"
+                      : (form.name.trim() && !form.nameNe && !nameNeManualRef.current)
+                        ? "Couldn't auto-translate — please type it in yourself."
+                        : "Auto-filled when you type the English name."}
                   </p>
                 </div>
               </div>
@@ -584,8 +588,12 @@ export default function CommitteeForm({ member, members = [], designations = [],
                     placeholder="auto-fills from English role"
                     className={inputCls}
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">
-                    {translatingRole ? "Auto-translating…" : "Auto-filled when role title is set."}
+                  <p className={`text-[11px] mt-1 ${!translatingRole && form.role.trim() && !form.roleNe && !roleNeManualRef.current ? "text-amber-600" : "text-gray-400"}`}>
+                    {translatingRole
+                      ? "Auto-translating…"
+                      : (form.role.trim() && !form.roleNe && !roleNeManualRef.current)
+                        ? "Couldn't auto-translate — please type it in yourself."
+                        : "Auto-filled when role title is set."}
                   </p>
                 </div>
               </div>
@@ -756,7 +764,9 @@ export default function CommitteeForm({ member, members = [], designations = [],
                     placeholder="e.g. Grand Palace Pvt. Ltd."
                     className={inputCls}
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">Legal entity name. Leave blank if same as venue.</p>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {isPersonMode ? "Legal entity name, if applicable." : "Legal entity name. Leave blank if same as venue."}
+                  </p>
                 </div>
                 <div>
                   <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
@@ -933,7 +943,9 @@ export default function CommitteeForm({ member, members = [], designations = [],
                   value={form.bio}
                   onChange={(e) => { bioNeManualRef.current = false; set("bio", e.target.value); }}
                   rows={5}
-                  placeholder="A brief introduction — background, experience, and their role at the venue…"
+                  placeholder={isPersonMode
+                    ? "A brief introduction — background, experience, and their role in the association…"
+                    : "A brief introduction — background, experience, and their role at the venue…"}
                   className={`${inputCls} resize-none`}
                 />
                 <p className="text-[11px] text-gray-400 mt-1">

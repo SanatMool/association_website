@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { MemberType } from "@/lib/types";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 import { getSettings } from "@/lib/settings";
+import { sanitizeHomepageContent } from "@/lib/homepage-content";
 import MembersClient from "./MembersClient";
 
 export const revalidate = 3600;
@@ -24,6 +25,7 @@ export default async function MembersPage() {
   ]);
 
   const memberMode = siteSettings.member_mode ?? "venue";
+  const coverageArea = sanitizeHomepageContent(association.homepageContent).coverageArea ?? "Kathmandu Valley";
 
   const members: MemberType[] = dbMembers.map((m) => {
     const link = m.associations[0];
@@ -51,5 +53,5 @@ export default async function MembersPage() {
     };
   });
 
-  return <MembersClient members={members} defaultMemberImage={siteSettings.default_member_image} memberMode={memberMode} />;
+  return <MembersClient members={members} defaultMemberImage={siteSettings.default_member_image} memberMode={memberMode} coverageArea={coverageArea} />;
 }

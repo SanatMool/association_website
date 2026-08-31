@@ -11,11 +11,12 @@ interface MembersClientProps {
   members: MemberType[];
   defaultMemberImage?: string;
   memberMode?: string;
+  coverageArea?: string;
 }
 
 const PAGE_SIZE = 24;
 
-export default function MembersClient({ members, defaultMemberImage, memberMode = "venue" }: MembersClientProps) {
+export default function MembersClient({ members, defaultMemberImage, memberMode = "venue", coverageArea = "Kathmandu Valley" }: MembersClientProps) {
   const { t } = useLocale();
   const [search, setSearch] = useState("");
   const [selectedArea, setSelectedArea] = useState("All");
@@ -59,7 +60,7 @@ export default function MembersClient({ members, defaultMemberImage, memberMode 
               {t.members.title}
             </h1>
             <p className="text-white/60 text-lg">
-              {members.length}+ registered {memberMode === "person" ? "members" : "event venues"} across Kathmandu Valley
+              {members.length}+ registered {memberMode === "person" ? "members" : "event venues"} across {coverageArea}
             </p>
           </motion.div>
         </div>

@@ -207,11 +207,15 @@ function LogoEditor({ logo, onChange, ...saveBarProps }: {
   );
 }
 
-function AboutEditor({ aboutImage, aboutHeadline, aboutBadge, onChange, ...saveBarProps }: {
+function AboutEditor({ aboutImage, aboutHeadline, aboutBadge, aboutGrowingLabel, coverageArea, foundedYear, onChange, onFoundedYearChange, ...saveBarProps }: {
   aboutImage: string;
   aboutHeadline: string;
   aboutBadge: string;
-  onChange: (patch: { aboutImage?: string; aboutHeadline?: string; aboutBadge?: string }) => void;
+  aboutGrowingLabel: string;
+  coverageArea: string;
+  foundedYear: string;
+  onChange: (patch: { aboutImage?: string; aboutHeadline?: string; aboutBadge?: string; aboutGrowingLabel?: string; coverageArea?: string }) => void;
+  onFoundedYearChange: (value: string) => void;
 } & Omit<Parameters<typeof SaveBar>[0], "tabKey">) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
@@ -239,6 +243,90 @@ function AboutEditor({ aboutImage, aboutHeadline, aboutBadge, onChange, ...saveB
             placeholder="Official Industry Body"
             value={aboutBadge}
             onChange={(e) => onChange({ aboutBadge: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-5">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Founded year</label>
+            <p className="text-xs text-gray-400 mb-2">Drives "Years Active" everywhere on the site — homepage stats, About tile, footer.</p>
+            <input
+              type="number"
+              placeholder="2011"
+              value={foundedYear}
+              onChange={(e) => onFoundedYearChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Coverage area</label>
+            <p className="text-xs text-gray-400 mb-2">Region shown on the About tile, stats card, and Members page.</p>
+            <input
+              type="text"
+              placeholder="Kathmandu Valley"
+              value={coverageArea}
+              onChange={(e) => onChange({ coverageArea: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-2">"Growing" badge label</label>
+          <p className="text-xs text-gray-400 mb-2">Small label above the years-active badge on the About photo.</p>
+          <input
+            type="text"
+            placeholder="Growing"
+            value={aboutGrowingLabel}
+            onChange={(e) => onChange({ aboutGrowingLabel: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatsEditor({ statsHeadlinePrefix, statsHeadlineAccent, statsTagline, onChange, ...saveBarProps }: {
+  statsHeadlinePrefix: string;
+  statsHeadlineAccent: string;
+  statsTagline: string;
+  onChange: (patch: { statsHeadlinePrefix?: string; statsHeadlineAccent?: string; statsTagline?: string }) => void;
+} & Omit<Parameters<typeof SaveBar>[0], "tabKey">) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <SaveBar tabKey="stats-headline" {...saveBarProps} />
+      <div className="p-6 space-y-5">
+        <p className="text-xs text-gray-400">Big headline shown above the homepage stats grid.</p>
+        <div className="grid sm:grid-cols-2 gap-5">
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Headline — first line</label>
+            <input
+              type="text"
+              placeholder="A Decade of Impact,"
+              value={statsHeadlinePrefix}
+              onChange={(e) => onChange({ statsHeadlinePrefix: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Headline — second line (accent)</label>
+            <input
+              type="text"
+              placeholder="By the Numbers"
+              value={statsHeadlineAccent}
+              onChange={(e) => onChange({ statsHeadlineAccent: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-sm font-medium text-gray-700 block mb-2">Bottom tagline</label>
+          <p className="text-xs text-gray-400 mb-2">Shown below the stats grid, followed automatically by " · Est. {"{"}founded year{"}"}".</p>
+          <input
+            type="text"
+            placeholder="Nepal's Premier Professional Association"
+            value={statsTagline}
+            onChange={(e) => onChange({ statsTagline: e.target.value })}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
         </div>
@@ -324,6 +412,7 @@ export default function SettingsPage() {
   const [brandingError,  setBrandingError]  = useState("");
 
   const [logo, setLogo] = useState("");
+  const [foundedYear, setFoundedYear] = useState("");
 
   // Hero/About/Mission/WhyJoin all live in one Association.homepageContent JSON blob — this is
   // the last-loaded/saved server state; each tab keeps its own draft and merges into this on save
@@ -337,7 +426,7 @@ export default function SettingsPage() {
     setLoadError("");
     Promise.all([
       fetch("/api/settings").then((r) => r.json()) as Promise<Setting[]>,
-      fetch("/api/admin/branding").then((r) => r.json()) as Promise<{ success: boolean; data: { logo: string | null; colorPreset: string; homepageContent: HomepageContent } }>,
+      fetch("/api/admin/branding").then((r) => r.json()) as Promise<{ success: boolean; data: { logo: string | null; colorPreset: string; homepageContent: HomepageContent; foundedYear: number | null } }>,
     ])
       .then(([settingsData, brandingJson]) => {
         setSettings(settingsData);
@@ -346,6 +435,7 @@ export default function SettingsPage() {
           setLogo(brandingJson.data.logo ?? "");
           setColorPreset(brandingJson.data.colorPreset);
           setHomepageContent(brandingJson.data.homepageContent ?? {});
+          setFoundedYear(brandingJson.data.foundedYear != null ? String(brandingJson.data.foundedYear) : "");
         }
       })
       .catch(() => setLoadError("Couldn't load settings. Check your connection and try again."));
@@ -409,6 +499,33 @@ export default function SettingsPage() {
       setTimeout(() => setSavedContent(null), 2500);
     } catch {
       setContentError("Couldn't save. Please try again.");
+    } finally {
+      setSavingContent(null);
+    }
+  }
+
+  async function saveAbout() {
+    setSavingContent("about");
+    setContentError("");
+    try {
+      const trimmed = foundedYear.trim();
+      const parsedYear = trimmed === "" ? null : Number(trimmed);
+      if (trimmed !== "" && (!Number.isInteger(parsedYear) || parsedYear === null)) {
+        throw new Error("Founding year must be a whole number.");
+      }
+      const res = await fetch("/api/admin/branding", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ homepageContent, foundedYear: parsedYear }),
+      });
+      const json = await res.json() as { success: boolean; data?: { homepageContent: HomepageContent; foundedYear: number | null }; error?: string };
+      if (!json.success || !json.data) throw new Error(json.error ?? "Failed to save");
+      setHomepageContent(json.data.homepageContent);
+      setFoundedYear(json.data.foundedYear != null ? String(json.data.foundedYear) : "");
+      setSavedContent("about");
+      setTimeout(() => setSavedContent(null), 2500);
+    } catch (err) {
+      setContentError(err instanceof Error ? err.message : "Couldn't save. Please try again.");
     } finally {
       setSavingContent(null);
     }
@@ -619,12 +736,30 @@ export default function SettingsPage() {
           aboutImage={homepageContent.aboutImage ?? ""}
           aboutHeadline={homepageContent.aboutHeadline ?? ""}
           aboutBadge={homepageContent.aboutBadge ?? ""}
+          aboutGrowingLabel={homepageContent.aboutGrowingLabel ?? ""}
+          coverageArea={homepageContent.coverageArea ?? ""}
+          foundedYear={foundedYear}
           onChange={(patch) => setHomepageContent((p) => ({ ...p, ...patch }))}
+          onFoundedYearChange={setFoundedYear}
           savingContent={savingContent}
           savedContent={savedContent}
           contentError={contentError}
-          onSave={() => saveHomepageContent("about")}
+          onSave={saveAbout}
         />
+      ) : activeTab === "stats" ? (
+        <div className="space-y-6">
+          <StatsEditor
+            statsHeadlinePrefix={homepageContent.statsHeadlinePrefix ?? ""}
+            statsHeadlineAccent={homepageContent.statsHeadlineAccent ?? ""}
+            statsTagline={homepageContent.statsTagline ?? ""}
+            onChange={(patch) => setHomepageContent((p) => ({ ...p, ...patch }))}
+            savingContent={savingContent}
+            savedContent={savedContent}
+            contentError={contentError}
+            onSave={() => saveHomepageContent("stats-headline")}
+          />
+          {genericRowsBlock}
+        </div>
       ) : activeTab === "mission" ? (
         <ContentItemsEditor
           tabKey="mission"

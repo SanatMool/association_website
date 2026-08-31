@@ -6,13 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { Event } from "@prisma/client";
 import ImageUpload from "./ImageUpload";
+import MultiImageUpload from "./MultiImageUpload";
 import {
   CalendarDays, MapPin, FileText,
   ChevronRight, ChevronLeft, Check, Info,
   Loader2, Users, GraduationCap, Handshake,
   LayoutGrid, Presentation, Sparkles,
   Navigation, AlertCircle, Clock, RefreshCw,
-  Tag, Crosshair, Languages, X, Plus,
+  Tag, Crosshair, Languages,
 } from "lucide-react";
 
 const MapPicker = dynamic(() => import("@/components/admin/MapPicker"), { ssr: false });
@@ -152,6 +153,7 @@ export default function EventForm({ event }: Props) {
     attendees:   String(event?.attendees ?? ""),
     image:       event?.image       ?? "",
     recapVideoUrl: event?.recapVideoUrl ?? "",
+    externalLink: event?.externalLink ?? "",
   });
 
   const [promoImages, setPromoImages] = useState<string[]>(event?.promoImages ?? []);
@@ -346,6 +348,7 @@ export default function EventForm({ event }: Props) {
       latitude:   form.latitude   ? parseFloat(form.latitude)   : null,
       longitude:  form.longitude  ? parseFloat(form.longitude)  : null,
       recapVideoUrl: form.recapVideoUrl || null,
+      externalLink: form.externalLink || null,
       promoImages,
       recapImages,
     };
@@ -858,6 +861,17 @@ export default function EventForm({ event }: Props) {
                 <ImageUpload value={form.image} onChange={(url) => set("image", url)} />
               </div>
 
+              {/* External link */}
+              <div>
+                <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-1">
+                  External Link
+                  <span className="text-gray-400 font-normal text-xs">(optional)</span>
+                  <HelperTip text="Registration form, ticket page, or any related link — shown as a button on the public event page." />
+                </label>
+                <input type="url" value={form.externalLink} onChange={(e) => set("externalLink", e.target.value)}
+                  placeholder="https://…" className={inputCls} />
+              </div>
+
               {/* Promo gallery */}
               <div>
                 <label className="flex items-center gap-1 text-sm font-semibold text-gray-700 mb-1">
@@ -868,23 +882,7 @@ export default function EventForm({ event }: Props) {
                 <p className="text-[11px] text-indigo-500 mb-2">
                   Shown on the public event page only while this event is <strong>Upcoming</strong>.
                 </p>
-                <div className="space-y-3">
-                  {promoImages.map((img, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="flex-1"><ImageUpload value={img} onChange={(url) => setPromoImages((p) => p.map((x, idx) => (idx === i ? url : x)))} /></div>
-                      <button type="button" onClick={() => setPromoImages((p) => p.filter((_, idx) => idx !== i))}
-                        className="mt-2 text-red-400 hover:text-red-600 flex-shrink-0" title="Remove image">
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {promoImages.length < 4 && (
-                  <button type="button" onClick={() => setPromoImages((p) => [...p, ""])}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 border border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors">
-                    <Plus size={14} /> Add promo image
-                  </button>
-                )}
+                <MultiImageUpload values={promoImages} onChange={setPromoImages} max={4} />
               </div>
 
               {/* Recap gallery */}
@@ -897,23 +895,7 @@ export default function EventForm({ event }: Props) {
                 <p className="text-[11px] text-indigo-500 mb-2">
                   Shown once this event is marked <strong>Past</strong> (replaces the Promo Gallery above). If left empty, the Promo Gallery is shown instead so your photos are never hidden entirely.
                 </p>
-                <div className="space-y-3">
-                  {recapImages.map((img, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="flex-1"><ImageUpload value={img} onChange={(url) => setRecapImages((p) => p.map((x, idx) => (idx === i ? url : x)))} /></div>
-                      <button type="button" onClick={() => setRecapImages((p) => p.filter((_, idx) => idx !== i))}
-                        className="mt-2 text-red-400 hover:text-red-600 flex-shrink-0" title="Remove image">
-                        <X size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {recapImages.length < 6 && (
-                  <button type="button" onClick={() => setRecapImages((p) => [...p, ""])}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-indigo-600 border border-dashed border-gray-300 rounded-xl hover:border-indigo-400 transition-colors">
-                    <Plus size={14} /> Add recap image
-                  </button>
-                )}
+                <MultiImageUpload values={recapImages} onChange={setRecapImages} max={6} />
                 <div className="mt-3">
                   <label className="text-xs font-medium text-gray-600 block mb-1">Recap video link (optional)</label>
                   <input

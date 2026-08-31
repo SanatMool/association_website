@@ -158,6 +158,10 @@ export default async function Home() {
         foundedYear={foundedYear}
         shortName={shortName}
         memberMode={memberMode}
+        coverageArea={homepageContent.coverageArea}
+        statsHeadlinePrefix={homepageContent.statsHeadlinePrefix}
+        statsHeadlineAccent={homepageContent.statsHeadlineAccent}
+        statsTagline={homepageContent.statsTagline}
       />
       <About
         foundedYear={foundedYear}
@@ -170,6 +174,8 @@ export default async function Home() {
         aboutImage={homepageContent.aboutImage}
         aboutHeadline={homepageContent.aboutHeadline}
         aboutBadge={homepageContent.aboutBadge}
+        aboutGrowingLabel={homepageContent.aboutGrowingLabel}
+        coverageArea={homepageContent.coverageArea}
       />
       <Mission items={homepageContent.missionItems} />
       <MemberDirectory members={members} defaultMemberImage={siteSettings.default_member_image} memberCount={memberCount} memberMode={memberMode} />

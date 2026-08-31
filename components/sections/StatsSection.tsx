@@ -11,6 +11,10 @@ interface StatsSectionProps {
   foundedYear?: number;
   shortName?: string;
   memberMode?: string;
+  coverageArea?: string;
+  statsHeadlinePrefix?: string;
+  statsHeadlineAccent?: string;
+  statsTagline?: string;
 }
 
 function Counter({
@@ -51,13 +55,13 @@ function Counter({
   );
 }
 
-export default function StatsSection({ memberCount = 150, eventsHosted = 20000, yearsActive = 14, foundedYear = 2011, shortName = "EVA", memberMode = "venue" }: StatsSectionProps) {
+export default function StatsSection({ memberCount = 150, eventsHosted = 20000, yearsActive = 14, foundedYear = 2011, shortName = "EVA", memberMode = "venue", coverageArea = "Kathmandu Valley", statsHeadlinePrefix, statsHeadlineAccent, statsTagline }: StatsSectionProps) {
   const isPersonMode = memberMode === "person";
   const stats = [
     { value: memberCount, suffix: "+", label: isPersonMode ? "Members" : "Member Venues",  desc: isPersonMode ? "Registered members of the association" : "Registered banquet halls & event spaces", icon: Building2, delay: 0   },
     { value: yearsActive, suffix: "+", label: "Years Leading",  desc: isPersonMode ? `Serving Nepal's professional community since ${foundedYear}` : `Serving Nepal's event industry since ${foundedYear}`, icon: Award, delay: 0.1 },
     { value: eventsHosted, suffix: "+", label: "Events Hosted", desc: isPersonMode ? "Across all members collectively" : "Across all member venues collectively", icon: Calendar,  delay: 0.2 },
-    { value: 100,         suffix: "%", label: "Valley Coverage",desc: isPersonMode ? "Kathmandu's largest professional network" : "Kathmandu's largest venue network",          icon: MapPin,    delay: 0.3 },
+    { value: 100,         suffix: "%", label: "Valley Coverage",desc: isPersonMode ? `${coverageArea}'s largest professional network` : `${coverageArea}'s largest venue network`, icon: MapPin,    delay: 0.3 },
   ];
 
   return (
@@ -98,8 +102,8 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
             <span className="w-8 h-px bg-gold-500" />
           </span>
           <h2 className="font-serif font-bold text-white text-3xl sm:text-4xl mt-4 leading-tight">
-            A Decade of Impact,<br />
-            <span className="text-gold-400">By the Numbers</span>
+            {statsHeadlinePrefix || "A Decade of Impact,"}<br />
+            <span className="text-gold-400">{statsHeadlineAccent || "By the Numbers"}</span>
           </h2>
         </motion.div>
 
@@ -156,7 +160,7 @@ export default function StatsSection({ memberCount = 150, eventsHosted = 20000, 
           className="text-center mt-12"
         >
           <p className="text-white/35 text-sm font-medium tracking-wider uppercase">
-            {isPersonMode ? "Nepal's Premier Professional Association" : "Nepal's Premier Event & Venue Association"} · Est. {foundedYear}
+            {statsTagline || (isPersonMode ? "Nepal's Premier Professional Association" : "Nepal's Premier Event & Venue Association")} · Est. {foundedYear}
           </p>
         </motion.div>
       </div>

@@ -25,6 +25,11 @@ export interface HomepageContent {
   whyjoinItems?: ContentItem[];  // 1-6 items; empty/absent -> fall back to t.whyjoin.benefits
   eventsHeadline?: string;       // /events page header; falls back to t.events.title
   eventsSubtitle?: string;       // /events page header; falls back to t.events.subtitle
+  coverageArea?: string;         // region text — About's "Coverage" tile, Stats' valley-coverage card, /members subtitle; falls back to "Kathmandu Valley"
+  aboutGrowingLabel?: string;    // About section's floating "Growing" badge label; falls back to "Growing"
+  statsHeadlinePrefix?: string;  // Stats section big headline, first line; falls back to "A Decade of Impact,"
+  statsHeadlineAccent?: string;  // Stats section big headline, second (gold) line; falls back to "By the Numbers"
+  statsTagline?: string;         // Stats section bottom line (before " · Est. {year}"); falls back to mode-based default
 }
 
 /**
@@ -98,6 +103,12 @@ export function sanitizeHomepageContent(input: unknown): HomepageContent {
 
   if (typeof body.eventsHeadline === "string") result.eventsHeadline = body.eventsHeadline.slice(0, 150);
   if (typeof body.eventsSubtitle === "string") result.eventsSubtitle = body.eventsSubtitle.slice(0, 200);
+
+  if (typeof body.coverageArea === "string") result.coverageArea = body.coverageArea.slice(0, 80);
+  if (typeof body.aboutGrowingLabel === "string") result.aboutGrowingLabel = body.aboutGrowingLabel.slice(0, 30);
+  if (typeof body.statsHeadlinePrefix === "string") result.statsHeadlinePrefix = body.statsHeadlinePrefix.slice(0, 80);
+  if (typeof body.statsHeadlineAccent === "string") result.statsHeadlineAccent = body.statsHeadlineAccent.slice(0, 80);
+  if (typeof body.statsTagline === "string") result.statsTagline = body.statsTagline.slice(0, 120);
 
   return result;
 }

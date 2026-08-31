@@ -247,6 +247,17 @@ export default async function EventDetailPage({ params }: Props) {
                   <ArrowUpRight size={14} /> Get Directions
                 </a>
               )}
+
+              {event.externalLink && (
+                <a
+                  href={event.externalLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-gold-500 text-navy-900 text-sm font-semibold rounded-xl hover:bg-gold-400 transition-colors mt-2"
+                >
+                  <ExternalLink size={14} /> Visit Link
+                </a>
+              )}
             </div>
 
             {/* Map embed if coordinates available */}

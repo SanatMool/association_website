@@ -1894,6 +1894,77 @@ Discussed the key difference before building (LAW 1): deleting an *unused* file 
 
 ---
 
+## Incident — Production Uploads Wiped by Unsafe Deploy Command ✓ RESPONSE COMPLETE, RECOVERY PENDING (2026-08-31)
+
+User reported images (event covers, recap galleries, favicon, logo) failing to load specifically on a hard refresh of `namoudyam.nibjar.com` — normal navigation showed cached 200s, but a genuine hard refresh hit the origin and got real 404s. Root cause traced to the deploy command itself: `DEPLOY.md`'s documented `rsync --delete` line was missing `--exclude public/uploads`, and the user's local `public/uploads` (git-ignored, never emptied) held ~21 old files unrelated to this project. Running that command synced the stale local files up and `--delete` removed every real production upload in the same pass — confirmed via SSH: the server's `public/uploads` now held exactly those same 21 old files. No VPS snapshot backup existed.
+
+`npm run report:missing-uploads` (new script, see below) confirmed 24 affected DB records: Namo:Udyam logo, favicon, default-member-image, 3 Hero slides, About section image, 4 events' cover+recap galleries (16 images total), and 2 committee member photos.
+
+Fixed/added:
+- **`DEPLOY.md`**: rsync command now includes `--exclude public/uploads`, with an explicit warning comment.
+- **`lib/uploadsCleanup.ts`**: new `findMissingUploads()` — inverse of the existing orphan-file check, finds DB references pointing at files NOT on disk.
+- **`scripts/report-missing-uploads.ts`** (`npm run report:missing-uploads`): read-only CLI, lists every missing file with a human-readable description of what references it.
+- **`scripts/backup-uploads.sh`**: daily cron (`0 1 * * *`, installed on production 2026-08-31), tars `public/uploads` to `/var/backups/eva-nepal-uploads/` (outside the deploy path), keeps 14 days.
+
+**Not recovered**: the 24 files themselves — no backup existed before this incident, so they need manual re-upload through the admin panel. This tooling only prevents recurrence, not the original loss.
+
+Also confirmed while investigating (unrelated to this incident, but discovered alongside it): the pre-existing weekly `cleanup:uploads` cron documented in `DEPLOY.md` had never actually been installed on production — `crontab -l` only showed unrelated Postgres/arena-manager backup jobs.
+
+---
+
+## Feature — Multi-Select Gallery Upload (Event Promo/Recap galleries) ✓ COMPLETE (2026-08-31)
+
+User asked why event gallery images had to be uploaded one at a time (click "Add" → click "Upload" → pick one file, repeated up to 6 times for the Recap gallery) and whether a multi-select picker would be better. Investigation (background agent) confirmed there was no deliberate reasoning — each gallery slot just reused the existing single-file `ImageUpload` component, and `/api/upload` itself only ever accepted one file per request.
+
+Built `components/admin/MultiImageUpload.tsx` — a new gallery-specific picker (`values: string[], onChange, max`) that accepts a native multi-file selection (`<input type="file" multiple>`) and uploads them sequentially against the unchanged single-file `/api/upload` route, capped at however many slots remain. Wired into `EventForm.tsx`'s Promo Gallery (max 4) and Recap Gallery (max 6), replacing the old per-slot add-button loop; removed the now-unused `X`/`Plus` icon imports along with it. The original single-image `ImageUpload` is untouched and still used everywhere else (logo, cover image, member/committee photos) where multi-select doesn't apply.
+
+**Bug caught during live testing, fixed before shipping**: the first version's upload loop called `onChange([...values, url])` per file — but `values` is a prop captured once when the batch started and doesn't update mid-loop (the component doesn't re-render between `await` calls), so each successive file's `onChange` overwrote the previous one instead of accumulating. Selecting 3 files at once silently kept only the last one. Fixed by accumulating into a local `next` array within the handler and calling `onChange([...next])` after each successful upload, instead of reading the stale `values` prop.
+
+Verified live in a real browser (local dev, `localhost:3099`, existing Namo:Udyam admin session): selected 3 files at once via the native picker → all 3 uploaded and appeared as distinct thumbnails, counter correctly read "3/4 added". Also tested the cap: selected 2 more files with only 1 slot remaining → correctly kept only 1, showed "Only added the first 1 — gallery is full.", counter read "4/4", Add button correctly hidden once full. Test event was never saved (navigated away instead); test upload artifacts deleted from local `public/uploads` afterward. `npx tsc --noEmit` clean throughout.
+
+---
+
+## Feature — Per-Association Dynamic Copy (Founded Year, Coverage Area, Stats Headline) + Committee Star Fix + Event/News External Links + News Gallery ✓ COMPLETE (2026-08-31)
+
+User audit (multiple screenshots) found several pieces of public homepage/footer text that looked hardcoded with no admin control: the "2025" founding year, "Kathmandu Valley" region text (About tile, Stats card, Members page subtitle), the Stats section's "A Decade of Impact, By the Numbers" headline and bottom tagline, and the About section's "Growing" badge label. Separately: whether the Committee star badge and the Members-directory star were real toggles or hardcoded; and requests for external links on Events/News plus a News image gallery matching Event's pattern.
+
+**Investigation first (3 parallel background agents, read-only)** confirmed:
+- `Association.foundedYear Int?` already existed and was already wired end-to-end into `yearsActive`/`Est. {year}` computations — it just wasn't exposed in tenant `/admin/settings` (platform-super-admin-only until now). Not a dead literal, just missing a tenant-facing editor.
+- No "coverage area / region" concept existed anywhere — `"Kathmandu Valley"` was a genuine hardcoded literal in 3 places (`About.tsx`, `StatsSection.tsx`, `MembersClient.tsx`).
+- `t.about.established`/`t.about.hq`/`t.about.coverage` were referenced in `About.tsx` but never defined in `lib/i18n.ts` — real bug, rendered as `undefined` in the UI.
+- The **Members-directory star** (`Member.featured`) is a real, correctly-wired DB field with a working checkbox in both `MemberForm.tsx` and `PersonMemberForm.tsx` — not a bug, no fix needed.
+- The **Committee star** was the previously-scoped-but-unimplemented bug from earlier this session (`ExecutiveCommittee.tsx` used `member.order <= 2` instead of the real `CommitteeMember.highlighted` field) — now fixed.
+- `News` had only a single `image` field, no gallery, and both its card (`fit="cover"`) and detail-page (`object-cover`, plain `<img>`) cropped images — unlike `Event`, which already uses `fit="contain"`/`SmartImage` everywhere.
+
+**Schema** (`prisma/schema.prisma`, additive): `Event.externalLink String?`, `News.externalLink String?`, `News.galleryImages String[] @default([])`. Migration `add_external_link_and_news_gallery`.
+
+**`lib/homepage-content.ts`**: `HomepageContent` gained `coverageArea`, `aboutGrowingLabel`, `statsHeadlinePrefix`, `statsHeadlineAccent`, `statsTagline` — all optional, all sanitized the same way as existing fields (string-slice caps), all falling back to today's exact hardcoded text when unset (zero-diff by default).
+
+**`lib/i18n.ts`**: added the missing `established`/`hq`/`coverage` label keys to both `venue` and `person` variants of `about`, EN + NE — fixes the `undefined` label bug.
+
+**API** (`app/api/admin/branding/route.ts`): `PUT` now also accepts `foundedYear` (validated as an integer 1950–current year), returned in both `GET` and `PUT` responses.
+
+**Admin UI** (`app/(admin)/admin/settings/page.tsx`): `AboutEditor` gained Founded Year + Coverage Area + Growing-badge-label fields (new `saveAbout()` sends `foundedYear` + `homepageContent` together in one PUT); new `StatsEditor` component (headline prefix/accent + bottom tagline) wired into the previously-generic "Stats" tab, sitting alongside the pre-existing `stats_events_hosted` SiteSettings row.
+
+**Public wiring**: `app/page.tsx` passes the new `homepageContent` fields into `About.tsx`/`StatsSection.tsx`; `app/members/page.tsx` → `MembersClient.tsx` gets `coverageArea` for its subtitle. Every new prop has a default parameter matching today's exact hardcoded value, so an association with no `homepageContent` set renders pixel-identical to before.
+
+**Committee star fix**: `ExecutiveCommittee.tsx` — `highlighted={member.order <= 2}` → `highlighted={member.highlighted}` for the leadership grid, and added the previously-missing `highlighted={member.highlighted}` prop to the non-leadership `rest.map` card (it had none before, so a non-leadership member could never show a star regardless of the DB field).
+
+**Event external link**: `EventForm.tsx` (form field + submit payload) → `app/events/[slug]/page.tsx` (gold "Visit Link" button in the sidebar, next to "Get Directions", shown only when set).
+
+**News gallery + external link**: `NewsForm.tsx` gained a `MultiImageUpload` gallery picker (max 6, same component built for Events earlier this session) and an External Link input in Step 4; `NewsCard.tsx` and the news detail page (`app/news/[slug]/page.tsx`) switched from `object-cover`/plain `<img>` to `SmartImage fit="contain"` (matching Event's treatment exactly) with a `bg-navy-900` letterbox background; the detail page gained an `ImageLightboxGallery` for `galleryImages` and a "Visit Link" button, both shown only when set. `app/api/news/route.ts`/`[id]/route.ts` needed no changes — both already do a raw `{...data}` passthrough into `prisma.news.create/update`, so the two new fields persist without any route-level work (confirmed by checking `Event`'s equivalent routes, which have the identical passthrough pattern).
+
+**Verified live** (local dev, real DB writes + browser testing, all reverted after):
+- Set `foundedYear`/`coverageArea`/`aboutGrowingLabel`/`statsHeadlinePrefix`/`statsHeadlineAccent`/`statsTagline` directly via `psql` on the `namo-udyam` row — confirmed every single value flowed through correctly on the live homepage (About tile, Stats headline/cards/tagline, `/members` subtitle), then reverted the row to its original state.
+- Confirmed zero-diff default rendering (no `homepageContent` set) matches the original hardcoded text exactly, including the new `established`/`hq`/`coverage` labels now showing real text instead of `undefined`.
+- Admin Settings → About tab and Stats tab both render correctly, pre-filled with real DB values.
+- News admin form's new Gallery picker: uploaded 2 files at once via the native multi-select picker, both landed as distinct thumbnails ("2/6 added") — confirmed the `MultiImageUpload` component (and its earlier stale-closure fix) works identically in this second integration.
+- **Pre-existing bug found, NOT caused by this work, left as-is**: `NewsForm.tsx`'s step wizard has a `AnimatePresence mode="wait"` transition that can get permanently stuck showing the previous step's content while the step-indicator header has already advanced — reproduced on the file's original unmodified state via `git stash` (confirmed before touching anything), so this predates today's changes. Worked around for verification by temporarily setting the wizard's initial `step` state to 4, screenshotting, then reverting — a real fix for the wizard itself would need its own investigation session.
+
+`npx tsc --noEmit` clean after every step. Full `npm run build` intentionally skipped per established local-testing convention (multiple other dev servers, possibly including the user's own, were running against this same directory) — `tsc` + extensive live-browser verification with real DB writes was used instead.
+
+---
+
 ## Pending (real-world content, not code)
 
 Superseded by the consolidated "Known Pending Items" section near the top of this file (re-verified 2026-08-27) — see there instead of this stale duplicate.

@@ -40,11 +40,17 @@ export const translations = {
         title: "Leading Nepal's Event Industry Forward",
         description:
           "This association is the premier body representing event venues and infrastructure providers in the region — a unified voice for our members' shared growth and industry standards.",
+        established: "Established",
+        hq: "Headquarters",
+        coverage: "Coverage",
       },
       person: {
         title: "Leading Nepal's Professional Community Forward",
         description:
           "This association is the premier body representing individual professionals and industry experts in the region — a unified voice for our members' shared growth and recognition.",
+        established: "Established",
+        hq: "Headquarters",
+        coverage: "Coverage",
       },
     },
     mission: {
@@ -215,11 +221,17 @@ export const translations = {
         title: "नेपालको इभेन्ट उद्योगलाई अगाडि लैजाँदै",
         description:
           "यो संघ यस क्षेत्रका इभेन्ट भेन्यू र पूर्वाधार प्रदायकहरूको प्रमुख प्रतिनिधि निकाय हो — हाम्रा सदस्यहरूको साझा विकास र उद्योग मापदण्डका लागि एकीकृत आवाज।",
+        established: "स्थापना",
+        hq: "मुख्य कार्यालय",
+        coverage: "क्षेत्र",
       },
       person: {
         title: "नेपालको व्यावसायिक समुदायलाई अगाडि लैजाँदै",
         description:
           "यो संघ यस क्षेत्रका व्यक्तिगत पेशेवरहरू र उद्योग विशेषज्ञहरूको प्रमुख प्रतिनिधि निकाय हो — हाम्रा सदस्यहरूको साझा विकास र मान्यताका लागि एकीकृत आवाज।",
+        established: "स्थापना",
+        hq: "मुख्य कार्यालय",
+        coverage: "क्षेत्र",
       },
     },
     mission: {

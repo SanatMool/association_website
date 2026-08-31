@@ -173,6 +173,7 @@ Relations: `associations MemberAssociation[]`, `committeeMemberships CommitteeMe
 | associationId  | String? FK → Association     |
 | date           | DateTime — **date anchor**   |
 | endDate        | DateTime?                    |
+| externalLink   | String? — optional URL, shown as "Visit Link" button on public detail page (migration `20260831132158`) |
 
 ### TicketType (event ticketing — migration `20260612110421`)
 
@@ -205,6 +206,8 @@ No separate `TicketPurchase`/`EventAttendance` models — buyer/payment fields a
 | associationId  | String? FK → Association          |
 | publishedAt    | DateTime — **date anchor**        |
 | createdAt      | DateTime — added in multi-tenancy |
+| galleryImages  | String[] @default([]) — up to 6, admin UI via `MultiImageUpload` (migration `20260831132158`) |
+| externalLink   | String? — optional URL, shown as "Visit Link" button on public detail page (migration `20260831132158`) |
 
 ### CommitteeMember
 

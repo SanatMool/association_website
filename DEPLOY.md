@@ -271,6 +271,55 @@ cd /var/www/eva-nepal
 npm run cleanup:uploads
 ```
 
+**Note: as of 2026-08-31 this cron job has never actually been installed on production** (`crontab -l` shows only the Postgres/arena-manager backup jobs) — add it now if you want orphan/duplicate cleanup running automatically.
+
+---
+
+## Scheduled Upload Backup (Cron) — added after the 2026-08-31 uploads-wipe incident
+
+A bad deploy (`rsync --delete` without `--exclude public/uploads`) once wiped every real
+uploaded image on the server in one shot — see the fixed command at the top of this file and
+`scripts/backup-uploads.sh`. This cron job tars `public/uploads` into `/var/backups/eva-nepal-uploads/`
+daily (a path deploys never touch) so there's always a same-day-or-newer copy to restore from
+instead of total loss. Keeps the last 14 days, prunes older ones automatically.
+
+Install:
+
+```bash
+chmod +x /var/www/eva-nepal/scripts/backup-uploads.sh
+crontab -e
+```
+
+Add (runs daily at 1am, before the 3am cleanup job above):
+
+```cron
+0 1 * * * /var/www/eva-nepal/scripts/backup-uploads.sh >> /var/log/eva-nepal-uploads-backup.log 2>&1
+```
+
+Test manually first:
+
+```bash
+/var/www/eva-nepal/scripts/backup-uploads.sh
+```
+
+Restore from a backup if needed:
+
+```bash
+tar -xzf /var/backups/eva-nepal-uploads/uploads-YYYY-MM-DD.tar.gz -C /var/www/eva-nepal/public/
+```
+
+---
+
+## Missing-Upload Report (run after any incident, or any time images seem broken)
+
+Read-only — lists every DB record pointing at an `/uploads/*` file that isn't actually on disk,
+so you know exactly what needs re-uploading through the admin panel. See `scripts/report-missing-uploads.ts`.
+
+```bash
+cd /var/www/eva-nepal
+npm run report:missing-uploads
+```
+
 ---
 
 ## Change Admin Password (Required Before Going Live)
@@ -341,6 +390,15 @@ Then open `http://localhost:5555` in your browser.
 | `/etc/nginx/sites-available/eva-nepal` | Nginx config                         |
 | `/var/log/nginx/`                      | Nginx access + error logs            |
 
-rsync -avz --delete --exclude node*modules --exclude .next --exclude .env --exclude .env.local --exclude .git \
-/Users/sanatmool/Documents/website\ *\ Eva\ Nepal/ \
-sysadmin@139.59.65.222:/var/www/eva-nepal/
+## Deploy Command (USE THIS EXACT COMMAND — the --exclude public/uploads is CRITICAL)
+
+Without `--exclude public/uploads`, `--delete` wipes every real admin-uploaded image on the
+server and replaces the folder with whatever (if anything) is in your local `public/uploads`
+(which is git-ignored and normally empty/stale on your machine). This has happened before —
+do not remove that flag.
+
+```bash
+rsync -avz --delete --exclude node_modules --exclude .next --exclude .env --exclude .env.local --exclude .git --exclude public/uploads \
+  "/Users/sanatmool/Documents/website _ Eva Nepal/" \
+  sysadmin@139.59.65.222:/var/www/eva-nepal/
+```

@@ -16,9 +16,11 @@ interface AboutProps {
   aboutImage?: string;
   aboutHeadline?: string;
   aboutBadge?: string;
+  aboutGrowingLabel?: string;
+  coverageArea?: string;
 }
 
-export default function About({ foundedYear = 2011, location = "Maitidevi, Kathmandu", memberCount = 150, yearsActive = 14, name = "EVA Nepal", description, memberMode = "venue", aboutImage, aboutHeadline, aboutBadge }: AboutProps) {
+export default function About({ foundedYear = 2011, location = "Maitidevi, Kathmandu", memberCount = 150, yearsActive = 14, name = "EVA Nepal", description, memberMode = "venue", aboutImage, aboutHeadline, aboutBadge, aboutGrowingLabel, coverageArea = "Kathmandu Valley" }: AboutProps) {
   const { t } = useLocale();
   const isPersonMode = memberMode === "person";
   const shortName = name.split(" ")[0];
@@ -26,7 +28,7 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
   const details = [
     { icon: Calendar,   label: t.about.established, value: String(foundedYear) },
     { icon: MapPin,     label: t.about.hq,          value: location },
-    { icon: Globe,      label: t.about.coverage,    value: "Kathmandu Valley" },
+    { icon: Globe,      label: t.about.coverage,    value: coverageArea },
     { icon: Building2,  label: "Members",            value: isPersonMode ? `${memberCount}+` : `${memberCount}+ Venues` },
   ];
 
@@ -138,7 +140,7 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
               >
                 <div className="flex items-center gap-1.5">
                   <TrendingUp size={14} className="text-navy-900/70" />
-                  <span className="text-xs font-bold uppercase tracking-wide">Growing</span>
+                  <span className="text-xs font-bold uppercase tracking-wide">{aboutGrowingLabel || "Growing"}</span>
                 </div>
                 <div className="text-2xl font-serif font-bold mt-1">{yearsActive} Yrs</div>
               </motion.div>

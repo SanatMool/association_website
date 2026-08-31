@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { News } from "@prisma/client";
 import ImageUpload from "./ImageUpload";
+import MultiImageUpload from "./MultiImageUpload";
 import {
   FileText, AlignLeft, CalendarDays, Image as ImageIcon,
   ChevronRight, ChevronLeft, Check, Info, Star, Loader2,
@@ -93,7 +94,10 @@ export default function NewsForm({ article }: Props) {
     status:      article?.status      ?? "published",
     featured:    article?.featured    ?? false,
     image:       article?.image       ?? "",
+    externalLink: article?.externalLink ?? "",
   });
+
+  const [galleryImages, setGalleryImages] = useState<string[]>(article?.galleryImages ?? []);
 
   const [translatingExcerpt, setTranslatingExcerpt] = useState(false);
   const [translatingContent, setTranslatingContent] = useState(false);
@@ -288,7 +292,7 @@ export default function NewsForm({ article }: Props) {
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, publishedAt }),
+      body: JSON.stringify({ ...form, publishedAt, externalLink: form.externalLink || null, galleryImages }),
     });
 
     if (!res.ok) {
@@ -770,6 +774,34 @@ export default function NewsForm({ article }: Props) {
                   Shown as the article thumbnail and hero image. Recommended: 1200 × 630 px (16:9).
                 </p>
                 <ImageUpload value={form.image} onChange={(url) => set("image", url)} />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                  <ImageIcon size={13} className="text-gray-400" /> Gallery
+                  <span className="text-gray-400 font-normal text-xs">optional, up to 6</span>
+                </label>
+                <p className="text-[11px] text-gray-400 mb-2">
+                  Additional photos shown on the article page alongside the cover image.
+                </p>
+                <MultiImageUpload values={galleryImages} onChange={setGalleryImages} max={6} />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-1">
+                  <Globe size={13} className="text-gray-400" /> External Link
+                  <span className="text-gray-400 font-normal text-xs">optional</span>
+                </label>
+                <p className="text-[11px] text-gray-400 mb-2">
+                  A related link — source article, registration page, etc. — shown as a button on the article page.
+                </p>
+                <input
+                  type="url"
+                  value={form.externalLink}
+                  onChange={(e) => set("externalLink", e.target.value)}
+                  placeholder="https://…"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                />
               </div>
 
               <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">

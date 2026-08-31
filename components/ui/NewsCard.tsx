@@ -37,13 +37,13 @@ export default function NewsCard({ item, compact = false }: NewsCardProps) {
 
       {/* Cover image */}
       {item.image && (
-        <div className="h-40 overflow-hidden">
+        <div className="h-40 overflow-hidden bg-navy-900">
           <SmartImage
             src={item.image}
             alt={item.title}
             className="w-full h-full"
             imgClassName="group-hover:scale-105 transition-transform duration-500"
-            fit="cover"
+            fit="contain"
           />
         </div>
       )}

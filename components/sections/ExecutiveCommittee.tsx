@@ -53,7 +53,7 @@ export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProp
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           {leadership.map((member, i) => (
             <AnimatedSection key={member.id} delay={i * 0.08}>
-              <CommitteeCard member={member} highlighted={member.order <= 2} onSelect={setSelectedMember} />
+              <CommitteeCard member={member} highlighted={member.highlighted} onSelect={setSelectedMember} />
             </AnimatedSection>
           ))}
         </div>
@@ -71,7 +71,7 @@ export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProp
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {rest.map((member, i) => (
             <AnimatedSection key={member.id} delay={0.3 + i * 0.06}>
-              <CommitteeCard member={member} onSelect={setSelectedMember} />
+              <CommitteeCard member={member} highlighted={member.highlighted} onSelect={setSelectedMember} />
             </AnimatedSection>
           ))}
         </div>

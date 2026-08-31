@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
+import { ArrowLeft, Calendar, User, Tag, ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 import { formatDate } from "@/lib/utils";
 import ArticleContent from "./ArticleContent";
+import SmartImage from "@/components/ui/SmartImage";
+import ImageLightboxGallery from "@/components/ui/ImageLightboxGallery";
 
 interface Props {
   params: { slug: string };
@@ -74,8 +76,8 @@ export default async function NewsDetailPage({ params }: Props) {
         <article className="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden">
           <div className="h-1 bg-gradient-to-r from-gold-500 to-navy-700" />
           {item.image && (
-            <div className="h-64 sm:h-80 overflow-hidden">
-              <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+            <div className="h-64 sm:h-80 overflow-hidden bg-navy-900">
+              <SmartImage src={item.image} alt={item.title} className="w-full h-full" fit="contain" />
             </div>
           )}
           <div className="p-8 sm:p-12">
@@ -104,6 +106,23 @@ export default async function NewsDetailPage({ params }: Props) {
               content={item.content}
               contentNe={item.contentNe ?? null}
             />
+
+            {item.galleryImages.length > 0 && (
+              <div className="mt-8">
+                <ImageLightboxGallery images={item.galleryImages} title="Gallery" />
+              </div>
+            )}
+
+            {item.externalLink && (
+              <a
+                href={item.externalLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-8 inline-flex items-center gap-2 px-5 py-2.5 bg-gold-500 text-navy-900 text-sm font-semibold rounded-xl hover:bg-gold-400 transition-colors"
+              >
+                <ExternalLink size={14} /> Visit Link
+              </a>
+            )}
           </div>
         </article>
 
