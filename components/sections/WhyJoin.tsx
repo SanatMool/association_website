@@ -124,13 +124,13 @@ export default function WhyJoin({ name = "EVA Nepal", memberCount = 150, memberM
                 whileTap={{ scale: 0.97 }}
                 className="inline-block"
               >
-                <Link
+                <a
                   href="/#join"
                   className="inline-flex items-center gap-2.5 bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold px-8 py-4 rounded-xl transition-all duration-200 hover:shadow-gold-lg text-base"
                 >
                   Apply for Membership
                   <ArrowRight size={16} />
-                </Link>
+                </a>
               </motion.div>
             </div>
           </div>

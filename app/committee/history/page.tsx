@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
 import type { Metadata } from "next";
-import Image from "next/image";
-import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import SmartImage from "@/components/ui/SmartImage";
 
 export const revalidate = 3600;
 
@@ -60,12 +59,12 @@ export default async function CommitteeHistoryPage() {
       {/* Header */}
       <div className="bg-navy-800 text-white py-16">
         <div className="container-max section-padding">
-          <Link
+          <a
             href="/#committee"
             className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white/90 mb-6 transition-colors"
           >
             <ChevronLeft size={15} /> Back to current committee
-          </Link>
+          </a>
           <h1 className="text-3xl md:text-4xl font-serif font-bold mb-3">
             Committee History
           </h1>
@@ -164,7 +163,7 @@ function MemberCard({ member: m, prominent }: { member: CardMember; prominent: b
     <div className={`bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden text-center ${prominent ? "w-44" : "w-36"}`}>
       <div className={`relative bg-gray-100 ${prominent ? "h-36" : "h-28"}`}>
         {m.image ? (
-          <Image src={m.image} alt={m.name} fill className="object-cover" />
+          <SmartImage src={m.image} alt={m.name} className="absolute inset-0 w-full h-full" fit="cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl font-serif font-bold">
             {m.name.charAt(0)}

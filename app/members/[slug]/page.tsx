@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import SmartImage from "@/components/ui/SmartImage";
 import { MapPin, Users, Phone, Globe, ArrowLeft, Calendar, CheckCircle, Building2, Facebook, Instagram, Youtube, Navigation } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getAssociationOrThrow } from "@/lib/getAssociation";
@@ -114,8 +114,8 @@ export default async function MemberProfilePage({ params }: Props) {
               <div className="h-2 bg-gradient-to-r from-navy-700 via-gold-500 to-navy-700" />
               <div className="p-8 text-center">
                 {member.image ? (
-                  <Image src={member.image} alt={member.name} width={80} height={80}
-                    className="w-20 h-20 rounded-2xl object-cover mx-auto mb-5" />
+                  <SmartImage src={member.image} alt={member.name}
+                    className="w-20 h-20 rounded-2xl mx-auto mb-5" fit="cover" />
                 ) : (
                   <div className="w-20 h-20 bg-navy-900 rounded-2xl flex items-center justify-center mx-auto mb-5">
                     <Building2 size={32} className="text-gold-400" />

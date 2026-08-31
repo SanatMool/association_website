@@ -240,10 +240,18 @@ bash deploy.sh
 
 ## Scheduled Upload Cleanup (Cron)
 
-Deletes files in `public/uploads` that no longer have any database reference (left behind when an
-image is removed or replaced in the admin panel). Safe to run on a schedule — files uploaded in the
-last 24 hours are always skipped, and it only ever touches `public/uploads`. Can also be run
-on-demand from the Platform panel → **Storage** page, which shows a preview before deleting anything.
+Runs two passes over `public/uploads`:
+1. Deletes files that no longer have any database reference (left behind when an image is removed
+   or replaced in the admin panel).
+2. Finds byte-identical duplicate files and merges each group down to one copy, rewriting every
+   record that referenced a duplicate to point at the survivor first. Only merges when every
+   reference in the group belongs to the same association — a file referenced identically by two
+   different associations is left alone and logged, not merged.
+
+Safe to run on a schedule — files uploaded in the last 24 hours are always skipped, and it only ever
+touches `public/uploads`. Can also be run on-demand from the Platform panel → **Storage** page, which
+shows a preview before changing anything (separate "Unused Uploads Cleanup" and "Duplicate Images"
+panels).
 
 Runs as a separate one-shot process (not inside the PM2-managed app), takes a few seconds total,
 and is scheduled for the lowest-traffic hour — negligible server impact. `nice -n 19` additionally

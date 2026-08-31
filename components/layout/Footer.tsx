@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { MapPin, Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 
@@ -63,11 +62,10 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
           {/* ── Brand ── */}
           <div className="lg:col-span-2">
             <div className="mb-5">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={logo}
                 alt={settings?.name ?? "EVA Nepal"}
-                width={160}
-                height={103}
                 className={`h-12 w-auto${logoInvert ? " brightness-0 invert" : ""}`}
               />
             </div>
@@ -104,17 +102,26 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
               {t.footer.quick_links}
             </h3>
             <ul className="space-y-2.5">
-              {quickLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-slate-400 hover:text-gold-400 text-sm transition-colors flex items-center gap-2 group"
-                  >
+              {quickLinks.map((link) => {
+                const linkClassName = "text-slate-400 hover:text-gold-400 text-sm transition-colors flex items-center gap-2 group";
+                const linkContent = (
+                  <>
                     <span className="w-1 h-1 rounded-full bg-gold-500/40 group-hover:bg-gold-500 transition-colors flex-shrink-0" />
                     {link.label}
-                  </Link>
-                </li>
-              ))}
+                  </>
+                );
+                return (
+                  <li key={link.href}>
+                    {/* Hash-anchor links use a plain <a> — next/link's client-side router doesn't
+                        reliably navigate+scroll to a same-page anchor from a different route. */}
+                    {link.href.includes("#") ? (
+                      <a href={link.href} className={linkClassName}>{linkContent}</a>
+                    ) : (
+                      <Link href={link.href} className={linkClassName}>{linkContent}</Link>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -175,11 +182,10 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
               className="flex items-center gap-1.5 group"
             >
               <span className="text-slate-600 group-hover:text-slate-400 text-xs transition-colors">Powered by</span>
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/nibjar/nibjar_white_logo.png"
                 alt="Nibjar Solutions"
-                width={72}
-                height={24}
                 className="h-4 w-auto opacity-40 group-hover:opacity-70 transition-opacity"
               />
             </a>

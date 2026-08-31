@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { LayoutDashboard, Calendar, Users2, CreditCard, LogOut, User, Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import SidebarNavItem from "@/components/ui/panel/SidebarNavItem";
@@ -65,7 +64,8 @@ export default function PortalShell({ children }: { children: React.ReactNode })
       {/* Logo / Branding */}
       <div className="px-5 pt-5 pb-4 border-b border-white/10">
         {branding?.logo ? (
-          <Image src={branding.logo} alt={branding.name} width={120} height={40} className="h-9 w-auto mb-1" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={branding.logo} alt={branding.name} className="h-9 w-auto mb-1" />
         ) : (
           <div className="text-sm font-bold text-white">{branding?.name ?? "Member Portal"}</div>
         )}

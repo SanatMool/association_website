@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LogIn, Lock, Mail } from "lucide-react";
-import Image from "next/image";
 
 const stagger = {
   hidden: {},
@@ -126,13 +125,11 @@ export default function LoginPage() {
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 flex justify-center"
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={logoUrl ?? "/default-logo.png"}
               alt={assocName}
-              width={280}
-              height={180}
               className="h-28 w-auto"
-              priority
             />
           </motion.div>
 
@@ -189,11 +186,10 @@ export default function LoginPage() {
               className="flex items-center gap-2.5 group"
             >
               <span className="text-white/30 text-xs group-hover:text-white/50 transition-colors">Powered by Nibjar Solutions</span>
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/nibjar/nibjar_white_logo.png"
                 alt="Nibjar Solutions"
-                width={100}
-                height={34}
                 className="h-7 w-auto opacity-40 group-hover:opacity-70 transition-opacity"
               />
             </a>
@@ -217,13 +213,11 @@ export default function LoginPage() {
           >
             {/* Mobile logo */}
             <div className="lg:hidden flex justify-center mb-8">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={logoUrl ?? "/default-logo.png"}
                 alt={assocName}
-                width={180}
-                height={116}
                 className="h-16 w-auto"
-                priority
               />
             </div>
 
@@ -356,11 +350,10 @@ export default function LoginPage() {
                     className="flex items-center gap-1.5 group"
                   >
                     <span className="text-[11px] text-white/20 group-hover:text-white/40 transition-colors">by</span>
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src="/nibjar/nibjar_white_logo.png"
                       alt="Nibjar Solutions"
-                      width={72}
-                      height={24}
                       className="h-5 w-auto opacity-30 group-hover:opacity-60 transition-opacity"
                     />
                   </a>

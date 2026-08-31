@@ -278,7 +278,7 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3 }}
-            className="text-white/45 text-xs tracking-[0.2em] uppercase font-medium"
+            className="text-white/45 text-xs tracking-[0.2em] uppercase font-medium max-w-[220px] truncate text-right"
           >
             {activeSlides[current].label}
           </motion.span>
@@ -350,7 +350,7 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.4 }}
-                className="text-gold-400/70 text-xs font-semibold tracking-[0.25em] uppercase mb-4"
+                className="text-gold-400/70 text-xs font-semibold tracking-[0.25em] uppercase mb-4 line-clamp-1 max-w-xl"
               >
                 {activeSlides[current].accent}
               </motion.p>
@@ -427,12 +427,12 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
                 {t.hero.cta_primary}
                 <ArrowRight size={17} className="group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link
+              <a
                 href="/#join"
                 className="inline-flex items-center gap-2 bg-white/8 hover:bg-white/15 border border-white/20 hover:border-white/35 text-white font-semibold px-7 py-4 rounded-xl transition-all duration-200 hover:-translate-y-1 backdrop-blur-sm text-base"
               >
                 Join {name.split(" ")[0]}
-              </Link>
+              </a>
             </motion.div>
           </div>
 
@@ -458,7 +458,7 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-900/85 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
-                <p className="text-white font-semibold text-sm">{thumbnail1.label}</p>
+                <p className="text-white font-semibold text-sm line-clamp-2">{thumbnail1.label}</p>
                 <p className="text-gold-400 text-xs mt-0.5">Kathmandu</p>
               </div>
               {!isPersonMode && (
@@ -483,7 +483,7 @@ export default function Hero({ name = "Event and Venue Association Nepal", found
               />
               <div className="absolute inset-0 bg-gradient-to-t from-navy-900/85 via-transparent to-transparent" />
               <div className="absolute bottom-3 left-3 right-3">
-                <p className="text-white font-semibold text-xs">{thumbnail2.label}</p>
+                <p className="text-white font-semibold text-xs line-clamp-2">{thumbnail2.label}</p>
                 <p className="text-gold-400 text-[10px] mt-0.5">{isPersonMode ? "Members" : "Patan"}</p>
               </div>
             </motion.div>

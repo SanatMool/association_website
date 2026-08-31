@@ -4,7 +4,6 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, Users, Calendar, Newspaper, Award, LogOut, Settings,
@@ -123,7 +122,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const systemRole = sessionUser?.systemRole ?? "admin";
 
   function LogoMark({ width, height, className }: { width: number; height: number; className: string }) {
-    if (logoUrl) return <Image src={logoUrl} alt={assocName || "Association logo"} width={width} height={height} className={className} priority />;
+    // eslint-disable-next-line @next/next/no-img-element
+    if (logoUrl) return <img src={logoUrl} alt={assocName || "Association logo"} width={width} height={height} className={className} />;
     return (
       <div
         className={`rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0 ${className}`}

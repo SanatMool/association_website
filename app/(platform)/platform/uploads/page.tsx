@@ -1,6 +1,7 @@
 import { getPlatformUser } from "@/lib/platformAuth";
 import { redirect } from "next/navigation";
 import UploadsCleanupPanel from "./UploadsCleanupPanel";
+import DuplicateUploadsPanel from "./DuplicateUploadsPanel";
 
 export default async function PlatformUploadsPage() {
   const user = await getPlatformUser();
@@ -13,7 +14,10 @@ export default async function PlatformUploadsPage() {
         <p className="text-gray-400 text-sm mt-0.5">Manage uploaded files shared across all associations.</p>
       </div>
 
-      <UploadsCleanupPanel />
+      <div className="space-y-6">
+        <UploadsCleanupPanel />
+        <DuplicateUploadsPanel />
+      </div>
     </div>
   );
 }

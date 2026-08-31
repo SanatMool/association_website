@@ -2,7 +2,6 @@
 
 import { ReactNode, InputHTMLAttributes, useState } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import { Lock, LucideIcon } from "lucide-react";
 import { ACCENTS, Accent } from "./accent";
 
@@ -45,7 +44,8 @@ export default function AuthCard({
 
   const brandMark = (size: number) =>
     logoUrl ? (
-      <Image src={logoUrl} alt={brandName} width={logoWidth} height={logoHeight} className="h-auto w-auto" style={{ height: size }} priority />
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={logoUrl} alt={brandName} width={logoWidth} height={logoHeight} className="h-auto w-auto" style={{ height: size }} />
     ) : BrandIcon ? (
       <div className="rounded-2xl flex items-center justify-center" style={{ width: size, height: size, background: a.iconBg, border: a.iconBorder }}>
         <BrandIcon size={size * 0.45} className={a.solidText} />
@@ -91,7 +91,8 @@ export default function AuthCard({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.6 }} className="relative z-10">
             <a href="https://www.nibjar.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 group">
               <span className="text-white/30 text-xs group-hover:text-white/50 transition-colors">Powered by Nibjar Solutions</span>
-              <Image src="/nibjar/nibjar_white_logo.png" alt="Nibjar Solutions" width={100} height={34} className="h-7 w-auto opacity-40 group-hover:opacity-70 transition-opacity" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/nibjar/nibjar_white_logo.png" alt="Nibjar Solutions" className="h-7 w-auto opacity-40 group-hover:opacity-70 transition-opacity" />
             </a>
           </motion.div>
         </div>
@@ -131,7 +132,8 @@ export default function AuthCard({
                   <span className="text-[11px] text-white/20">{footerLabel}</span>
                   <a href="https://www.nibjar.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 group">
                     <span className="text-[11px] text-white/20 group-hover:text-white/40 transition-colors">by</span>
-                    <Image src="/nibjar/nibjar_white_logo.png" alt="Nibjar Solutions" width={72} height={24} className="h-5 w-auto opacity-30 group-hover:opacity-60 transition-opacity" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/nibjar/nibjar_white_logo.png" alt="Nibjar Solutions" className="h-5 w-auto opacity-30 group-hover:opacity-60 transition-opacity" />
                   </a>
                 </div>
               </div>

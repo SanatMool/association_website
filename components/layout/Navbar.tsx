@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Globe } from "lucide-react";
-import Image from "next/image";
 import { useLocale } from "@/context/LocaleContext";
 import { cn } from "@/lib/utils";
 
@@ -82,13 +81,11 @@ export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
               whileHover={{ scale: 1.04 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={logo}
                 alt={name}
-                width={120}
-                height={77}
                 className={`h-10 w-auto${logoInvert ? " brightness-0 invert" : ""}`}
-                priority
               />
             </motion.div>
           </Link>
@@ -97,8 +94,11 @@ export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
           <nav className="hidden lg:flex items-center">
             {navLinks.map((link) => {
               const active = isActive(link.href);
+              // Hash-anchor links use a plain <a> — next/link's client-side router doesn't
+              // reliably navigate+scroll to a same-page anchor from a different route.
+              const NavLinkComp = link.href.includes("#") ? "a" : Link;
               return (
-                <Link
+                <NavLinkComp
                   key={link.href}
                   href={link.href}
                   className="relative px-4 py-2 text-sm font-medium transition-colors duration-200 group"
@@ -118,7 +118,7 @@ export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
                     )}
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
-                </Link>
+                </NavLinkComp>
               );
             })}
           </nav>
@@ -179,12 +179,12 @@ export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
               whileTap={{ scale: 0.97 }}
               className="hidden sm:block"
             >
-              <Link
+              <a
                 href="/#join"
                 className="inline-flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold text-sm px-4 py-2.5 rounded-xl transition-all duration-200 hover:shadow-gold"
               >
                 Join {name.split(" ")[0]}
-              </Link>
+              </a>
             </motion.div>
 
             {/* Mobile Toggle */}
@@ -221,43 +221,48 @@ export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
             className="lg:hidden overflow-hidden bg-navy-950/98 backdrop-blur-xl border-t border-white/8"
           >
             <div className="px-4 py-4 space-y-1">
-              {navLinks.map((link, i) => (
-                <motion.div
-                  key={link.href}
-                  initial={{ opacity: 0, x: -16 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04, duration: 0.2 }}
-                >
-                  <Link
-                    href={link.href}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      "flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors",
-                      isActive(link.href)
-                        ? "text-gold-400 bg-white/8"
-                        : "text-white/70 hover:text-white hover:bg-white/6"
-                    )}
+              {navLinks.map((link, i) => {
+                // Hash-anchor links use a plain <a> — next/link's client-side router doesn't
+                // reliably navigate+scroll to a same-page anchor from a different route.
+                const MobileNavLinkComp = link.href.includes("#") ? "a" : Link;
+                return (
+                  <motion.div
+                    key={link.href}
+                    initial={{ opacity: 0, x: -16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04, duration: 0.2 }}
                   >
-                    {isActive(link.href) && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-gold-500 mr-2.5" />
-                    )}
-                    {link.label}
-                  </Link>
-                </motion.div>
-              ))}
+                    <MobileNavLinkComp
+                      href={link.href}
+                      onClick={() => setIsMobileOpen(false)}
+                      className={cn(
+                        "flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors",
+                        isActive(link.href)
+                          ? "text-gold-400 bg-white/8"
+                          : "text-white/70 hover:text-white hover:bg-white/6"
+                      )}
+                    >
+                      {isActive(link.href) && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-gold-500 mr-2.5" />
+                      )}
+                      {link.label}
+                    </MobileNavLinkComp>
+                  </motion.div>
+                );
+              })}
               <motion.div
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: navLinks.length * 0.04, duration: 0.2 }}
                 className="pt-1"
               >
-                <Link
+                <a
                   href="/#join"
                   onClick={() => setIsMobileOpen(false)}
                   className="block w-full text-center bg-gold-500 hover:bg-gold-400 text-navy-900 font-bold text-sm px-4 py-3.5 rounded-xl mt-1 transition-colors"
                 >
                   Join {name.split(" ")[0]}
-                </Link>
+                </a>
               </motion.div>
             </div>
           </motion.div>
