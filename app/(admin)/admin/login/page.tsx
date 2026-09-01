@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, LogIn, Lock, Mail } from "lucide-react";
+import LogoImage from "@/components/ui/LogoImage";
 
 const stagger = {
   hidden: {},
@@ -125,8 +126,7 @@ export default function LoginPage() {
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 flex justify-center"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <LogoImage
               src={logoUrl ?? "/default-logo.png"}
               alt={assocName}
               className="h-28 w-auto"
@@ -213,8 +213,7 @@ export default function LoginPage() {
           >
             {/* Mobile logo */}
             <div className="lg:hidden flex justify-center mb-8">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <LogoImage
                 src={logoUrl ?? "/default-logo.png"}
                 alt={assocName}
                 className="h-16 w-auto"

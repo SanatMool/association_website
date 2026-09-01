@@ -11,6 +11,8 @@ import {
   KeyRound, BarChart2, ChevronLeft, ChevronRight, Menu, X, Bell, Activity, DollarSign, Clock, Shield, Landmark,
 } from "lucide-react";
 import SidebarNavItem from "@/components/ui/panel/SidebarNavItem";
+import LogoImage from "@/components/ui/LogoImage";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 import "@/app/(admin)/admin.css";
 
 const NAV_GROUPS = [
@@ -122,8 +124,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const systemRole = sessionUser?.systemRole ?? "admin";
 
   function LogoMark({ width, height, className }: { width: number; height: number; className: string }) {
-    // eslint-disable-next-line @next/next/no-img-element
-    if (logoUrl) return <img src={logoUrl} alt={assocName || "Association logo"} width={width} height={height} className={className} />;
+    if (logoUrl) return <LogoImage src={logoUrl} alt={assocName || "Association logo"} width={width} height={height} className={className} />;
     return (
       <div
         className={`rounded-lg bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0 ${className}`}
@@ -225,6 +226,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   );
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen flex bg-gray-50/80">
       {/* Mobile overlay */}
       <AnimatePresence>
@@ -283,5 +285,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <div className="p-4 sm:p-8">{children}</div>
       </main>
     </div>
+    </PullToRefresh>
   );
 }

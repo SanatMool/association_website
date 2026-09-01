@@ -109,7 +109,7 @@ export default async function MemberProfilePage({ params }: Props) {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left: Profile Card */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 min-w-0">
             <div className="bg-white rounded-2xl shadow-card border border-slate-100 overflow-hidden sticky top-28">
               <div className="h-2 bg-gradient-to-r from-navy-700 via-gold-500 to-navy-700" />
               <div className="p-8 text-center">
@@ -232,7 +232,7 @@ export default async function MemberProfilePage({ params }: Props) {
           </div>
 
           {/* Right: Details */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 min-w-0">
             {member.description && (
               <div className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
                 <h2 className="font-serif font-bold text-navy-900 text-xl mb-4">About {member.name}</h2>

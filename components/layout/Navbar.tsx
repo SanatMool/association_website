@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ChevronDown, Globe } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
 import { cn } from "@/lib/utils";
+import LogoImage from "@/components/ui/LogoImage";
 
 interface NavbarProps {
   logo: string;
@@ -81,8 +82,7 @@ export default function Navbar({ logo, name, logoInvert = true }: NavbarProps) {
               whileHover={{ scale: 1.04 }}
               transition={{ type: "spring", stiffness: 400, damping: 20 }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <LogoImage
                 src={logo}
                 alt={name}
                 className={`h-10 w-auto${logoInvert ? " brightness-0 invert" : ""}`}

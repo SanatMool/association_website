@@ -26,12 +26,25 @@ export default function SmartImage({ src, alt, className = "", imgClassName = ""
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [attempt, setAttempt] = useState(0);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   // Reset when the image URL itself changes (e.g. list re-renders with different data).
   useEffect(() => {
     setStatus("loading");
     setAttempt(0);
   }, [src]);
+
+  // A browser-cached (or service-worker-cached) image can finish loading — and fire its
+  // native `load` event — before React attaches the onLoad listener below, especially on a
+  // PWA where the SW serves static images cache-first (near-instant, every repeat visit).
+  // When that happens `img.complete` is already true and onLoad never (re)fires, so the
+  // shimmer stays up forever over an image that actually loaded fine. Catch that case
+  // explicitly right after mount/update instead of relying solely on the onLoad event.
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setStatus("loaded");
+    }
+  });
 
   useEffect(() => {
     return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
@@ -62,6 +75,7 @@ export default function SmartImage({ src, alt, className = "", imgClassName = ""
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={attempt}
+          ref={imgRef}
           src={effectiveSrc}
           alt={alt}
           loading={loading}

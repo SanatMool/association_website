@@ -60,14 +60,14 @@ export default async function EditMemberPage({ params }: { params: { id: string 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Member</h1>
 
       <div className="grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 min-w-0">
           <div className="bg-white rounded-xl border border-gray-100 p-6">
             {memberMode === "person"
               ? <PersonMemberForm member={member} showPhone={showPhone} showEmail={showEmail} />
               : <MemberForm member={member} showPhone={showPhone} showEmail={showEmail} />}
           </div>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <MemberCategoryCard
             memberId={params.id}
             currentCategoryId={currentCategoryId}

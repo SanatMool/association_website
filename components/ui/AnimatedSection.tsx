@@ -1,7 +1,8 @@
 "use client";
 
-import { motion, useInView } from "framer-motion";
-import { useRef, ReactNode } from "react";
+import { motion } from "framer-motion";
+import { ReactNode } from "react";
+import { useSafeInView, clampStagger } from "./useSafeInView";
 
 interface AnimatedSectionProps {
   children: ReactNode;
@@ -16,8 +17,8 @@ export default function AnimatedSection({
   delay = 0,
   direction = "up",
 }: AnimatedSectionProps) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-80px" });
+  const { ref, isInView } = useSafeInView("-80px");
+  const clampedDelay = clampStagger(delay);
 
   const directionMap = {
     up: { y: 40, x: 0 },
@@ -41,7 +42,7 @@ export default function AnimatedSection({
       }
       transition={{
         duration: 0.6,
-        delay,
+        delay: clampedDelay,
         ease: [0.21, 0.47, 0.32, 0.98],
       }}
       className={className}

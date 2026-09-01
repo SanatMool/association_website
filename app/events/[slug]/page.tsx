@@ -155,7 +155,7 @@ export default async function EventDetailPage({ params }: Props) {
       <div className="max-w-4xl mx-auto px-4 py-10">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Description */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-8 min-w-0">
             <DescriptionSection description={event.description} descriptionNe={event.descriptionNe} />
 
             {isUpcoming ? (
@@ -201,7 +201,7 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             {/* Details card */}
             <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
               <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Event Details</h3>

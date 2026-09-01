@@ -6,6 +6,8 @@ import Link from "next/link";
 import { LayoutDashboard, Calendar, Users2, CreditCard, LogOut, User, Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import SidebarNavItem from "@/components/ui/panel/SidebarNavItem";
+import LogoImage from "@/components/ui/LogoImage";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 
 interface Branding {
   name: string;
@@ -64,8 +66,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
       {/* Logo / Branding */}
       <div className="px-5 pt-5 pb-4 border-b border-white/10">
         {branding?.logo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={branding.logo} alt={branding.name} className="h-9 w-auto mb-1" />
+          <LogoImage src={branding.logo} alt={branding.name} className="h-9 w-auto mb-1" />
         ) : (
           <div className="text-sm font-bold text-white">{branding?.name ?? "Member Portal"}</div>
         )}
@@ -113,6 +114,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   );
 
   return (
+    <PullToRefresh>
     <div className="min-h-screen bg-gray-50/80 flex">
       {/* Mobile overlay */}
       <AnimatePresence>
@@ -155,5 +157,6 @@ export default function PortalShell({ children }: { children: React.ReactNode })
         </div>
       </main>
     </div>
+    </PullToRefresh>
   );
 }

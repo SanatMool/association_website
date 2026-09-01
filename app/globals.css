@@ -53,6 +53,15 @@ html {
   font-family: var(--font-inter);
   -webkit-text-size-adjust: 100%;
   font-size: 16px;
+  /* `hidden` only clips these visually — several decorative absolutely-positioned blobs
+     (ambient glow blobs in Hero/Stats/Committee/News/WhyJoin, deliberately translated half
+     off their section's edge) still count toward the page's real scrollWidth even while
+     invisible at 100% zoom, because `overflow: hidden` doesn't shrink what scrollWidth
+     reports, only what's reachable by scrolling. `clip` does shrink it, which is what
+     actually stops that "hidden" width from showing up as blank space when a mobile
+     browser's zoom/scale recalculates the layout (found + confirmed 2026-09-01: measured
+     document.body.scrollWidth genuinely exceeding clientWidth on production). */
+  overflow-x: clip;
 }
 
 body {
@@ -60,7 +69,7 @@ body {
   background: #ffffff;
   -webkit-font-smoothing:  antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
   line-height: 1.6;
   font-feature-settings: "kern" 1, "liga" 1;
 }

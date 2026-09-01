@@ -4,6 +4,7 @@ import { ReactNode, InputHTMLAttributes, useState } from "react";
 import { motion } from "framer-motion";
 import { Lock, LucideIcon } from "lucide-react";
 import { ACCENTS, Accent } from "./accent";
+import LogoImage from "@/components/ui/LogoImage";
 
 const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.09 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const } } };
@@ -44,8 +45,7 @@ export default function AuthCard({
 
   const brandMark = (size: number) =>
     logoUrl ? (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={logoUrl} alt={brandName} width={logoWidth} height={logoHeight} className="h-auto w-auto" style={{ height: size }} />
+      <LogoImage src={logoUrl} alt={brandName} width={logoWidth} height={logoHeight} className="h-auto w-auto" style={{ height: size }} />
     ) : BrandIcon ? (
       <div className="rounded-2xl flex items-center justify-center" style={{ width: size, height: size, background: a.iconBg, border: a.iconBorder }}>
         <BrandIcon size={size * 0.45} className={a.solidText} />

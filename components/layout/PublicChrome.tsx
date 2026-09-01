@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 
 interface PublicChromeProps {
   children: React.ReactNode;
@@ -81,10 +82,10 @@ export default function PublicChrome({ children, navbar, footer }: PublicChromeP
   if (!isChrome) return <>{children}</>;
 
   return (
-    <>
+    <PullToRefresh>
       {navbar}
       <main>{children}</main>
       {footer}
-    </>
+    </PullToRefresh>
   );
 }

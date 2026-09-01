@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MapPin, Phone, Mail, Facebook, Instagram, Youtube } from "lucide-react";
 import { useLocale } from "@/context/LocaleContext";
+import LogoImage from "@/components/ui/LogoImage";
 
 interface FooterSettings {
   logo?: string;
@@ -62,8 +63,7 @@ export default function Footer({ settings }: { settings?: FooterSettings }) {
           {/* ── Brand ── */}
           <div className="lg:col-span-2">
             <div className="mb-5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <LogoImage
                 src={logo}
                 alt={settings?.name ?? "EVA Nepal"}
                 className={`h-12 w-auto${logoInvert ? " brightness-0 invert" : ""}`}

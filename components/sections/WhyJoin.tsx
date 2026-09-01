@@ -35,8 +35,8 @@ export default function WhyJoin({ name = "EVA Nepal", memberCount = 150, memberM
       <div className="absolute inset-0 bg-mesh-light" />
 
       {/* Decorative gold orbs */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gold-500/5 rounded-full -translate-y-1/2 translate-x-1/3 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-navy-900/5 rounded-full translate-y-1/2 -translate-x-1/3 blur-3xl pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[150px] h-[150px] sm:w-[220px] sm:h-[220px] lg:w-[500px] lg:h-[500px] -translate-y-1/2 lg:translate-x-1/3 bg-gold-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[130px] h-[130px] sm:w-[180px] sm:h-[180px] lg:w-[400px] lg:h-[400px] translate-y-1/2 lg:-translate-x-1/3 bg-navy-900/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="container-max relative z-10">
         <div className="text-center mb-16">

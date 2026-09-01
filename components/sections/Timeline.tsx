@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 import AnimatedSection from "@/components/ui/AnimatedSection";
+import { useSafeInView } from "@/components/ui/useSafeInView";
 import { TimelineType } from "@/lib/types";
 
 interface MilestoneItem {
@@ -23,8 +23,7 @@ function TimelineItem({
   index: number;
   isLeft: boolean;
 }) {
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const { ref, isInView: inView } = useSafeInView("-80px");
 
   return (
     <div

@@ -5,6 +5,7 @@ import { ArrowRight, Calendar, MapPin, Clock, Tag, Zap } from "lucide-react";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 import { motion } from "framer-motion";
+import { useSafeInView, clampStagger } from "@/components/ui/useSafeInView";
 import { formatDate, formatDay, formatMonthShort, formatMonthYear } from "@/lib/utils";
 import { EventType } from "@/lib/types";
 
@@ -24,13 +25,14 @@ interface EventsProps {
 
 function UpcomingEventCard({ event, index }: { event: EventType; index: number }) {
   const cfg = typeConfig[event.type] ?? defaultTypeConfig;
+  const { ref, isInView } = useSafeInView("-60px");
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.45, delay: index * 0.1 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+      transition={{ duration: 0.45, delay: clampStagger(index * 0.1) }}
       whileHover={{ y: -5, transition: { duration: 0.2 } }}
       className="group relative"
     >
@@ -101,13 +103,14 @@ function UpcomingEventCard({ event, index }: { event: EventType; index: number }
 
 function PastEventRow({ event, index }: { event: EventType; index: number }) {
   const cfg = typeConfig[event.type] ?? defaultTypeConfig;
+  const { ref, isInView } = useSafeInView("-40px");
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, x: -16 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.4, delay: index * 0.07 }}
+      animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -16 }}
+      transition={{ duration: 0.4, delay: clampStagger(index * 0.07) }}
     >
     <Link
       href={`/events/${event.slug}`}
@@ -145,6 +148,24 @@ function PastEventRow({ event, index }: { event: EventType; index: number }) {
         </div>
       </div>
     </Link>
+    </motion.div>
+  );
+}
+
+function EventTypeChip({ type, cfg, index }: { type: string; cfg: { color: string; bg: string; icon: string }; index: number }) {
+  const { ref, isInView } = useSafeInView("-20px");
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.3, delay: clampStagger(index * 0.06) }}
+      whileHover={{ y: -2, transition: { duration: 0.15 } }}
+      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border ${cfg.bg} last:odd:col-span-2`}
+    >
+      <span className="text-sm leading-none">{cfg.icon}</span>
+      <span className={`text-xs font-medium capitalize truncate ${cfg.color}`}>{type}</span>
     </motion.div>
   );
 }
@@ -190,7 +211,7 @@ export default function Events({ events }: EventsProps) {
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left: Upcoming (2/3) */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 min-w-0">
             <AnimatedSection>
               <div className="flex items-center gap-3 mb-8">
                 <span className="w-2.5 h-2.5 rounded-full bg-gold-500 animate-pulse" />
@@ -221,7 +242,7 @@ export default function Events({ events }: EventsProps) {
           </div>
 
           {/* Right: Past events sidebar (1/3) */}
-          <div>
+          <div className="min-w-0">
             <AnimatedSection delay={0.15}>
               <div className="flex items-center gap-3 mb-6">
                 <span className="w-2.5 h-2.5 rounded-full bg-slate-300" />
@@ -244,18 +265,7 @@ export default function Events({ events }: EventsProps) {
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(typeConfig).map(([type, cfg], i) => (
-                    <motion.div
-                      key={type}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      viewport={{ once: true, margin: "-20px" }}
-                      transition={{ duration: 0.3, delay: i * 0.06 }}
-                      whileHover={{ y: -2, transition: { duration: 0.15 } }}
-                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border ${cfg.bg} last:odd:col-span-2`}
-                    >
-                      <span className="text-sm leading-none">{cfg.icon}</span>
-                      <span className={`text-xs font-medium capitalize truncate ${cfg.color}`}>{type}</span>
-                    </motion.div>
+                    <EventTypeChip key={type} type={type} cfg={cfg} index={i} />
                   ))}
                 </div>
               </div>

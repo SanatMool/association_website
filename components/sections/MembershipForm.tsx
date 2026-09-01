@@ -151,7 +151,7 @@ export default function MembershipForm({ name = "EVA Nepal" }: { name?: string }
         <div className="grid lg:grid-cols-2 gap-16 items-start">
 
           {/* Left: Info */}
-          <div>
+          <div className="min-w-0">
             <AnimatedSection>
               <span className="section-label">
                 <span className="w-8 h-px bg-gold-500" />
@@ -191,7 +191,7 @@ export default function MembershipForm({ name = "EVA Nepal" }: { name?: string }
           </div>
 
           {/* Right: Form */}
-          <AnimatedSection direction="left" delay={0.2}>
+          <AnimatedSection direction="up" delay={0.2} className="min-w-0">
             <div className="bg-white rounded-3xl border border-slate-200 shadow-card-md overflow-hidden">
               <AnimatePresence mode="wait">
                 {submitted ? (

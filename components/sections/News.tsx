@@ -5,6 +5,7 @@ import { ArrowRight, Calendar, Tag, User, ChevronRight } from "lucide-react";
 import AnimatedSection from "@/components/ui/AnimatedSection";
 import { useLocale } from "@/context/LocaleContext";
 import { motion } from "framer-motion";
+import { useSafeInView, clampStagger } from "@/components/ui/useSafeInView";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { NewsType } from "@/lib/types";
@@ -26,12 +27,13 @@ interface NewsProps {
 
 function FeaturedNewsCard({ item }: { item: NewsType }) {
   const style = categoryStyles[item.category] ?? defaultCategoryStyle;
+  const { ref, isInView } = useSafeInView("-60px");
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
       transition={{ duration: 0.5 }}
       className="group relative bg-navy-900 rounded-2xl overflow-hidden col-span-2"
       style={{ minHeight: 320 }}
@@ -97,13 +99,14 @@ function FeaturedNewsCard({ item }: { item: NewsType }) {
 
 function SmallNewsCard({ item, index }: { item: NewsType; index: number }) {
   const style = categoryStyles[item.category] ?? defaultCategoryStyle;
+  const { ref, isInView } = useSafeInView("-40px");
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.4, delay: index * 0.1 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 16 }}
+      transition={{ duration: 0.4, delay: clampStagger(index * 0.1) }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       className="group bg-white rounded-2xl border border-slate-100 overflow-hidden flex flex-col"
       style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.05)" }}
@@ -156,13 +159,14 @@ function SmallNewsCard({ item, index }: { item: NewsType; index: number }) {
 
 function NewsListRow({ item, index }: { item: NewsType; index: number }) {
   const style = categoryStyles[item.category] ?? defaultCategoryStyle;
+  const { ref, isInView } = useSafeInView();
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, x: -12 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.35, delay: index * 0.06 }}
+      animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: -12 }}
+      transition={{ duration: 0.35, delay: clampStagger(index * 0.06) }}
       className="group flex items-start gap-4 py-4 border-b border-slate-100 last:border-b-0"
     >
       <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${style.dot}`} />
@@ -220,7 +224,7 @@ export default function News({ news, name = "EVA Nepal" }: NewsProps) {
         {/* Editorial grid */}
         <div className="grid lg:grid-cols-3 gap-6 mb-8">
           {/* Featured (large) + cards */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-6 min-w-0">
             {/* Featured article */}
             <div className="grid sm:grid-cols-2 gap-6">
               <FeaturedNewsCard item={featured} />
@@ -235,7 +239,7 @@ export default function News({ news, name = "EVA Nepal" }: NewsProps) {
           </div>
 
           {/* Sidebar: list of recent news */}
-          <div>
+          <div className="min-w-0">
             <AnimatedSection delay={0.2}>
               <div className="bg-slate-50 rounded-2xl border border-slate-200 p-6 sticky top-28">
                 <h3 className="font-serif font-bold text-navy-900 text-base mb-1">

@@ -38,7 +38,7 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
         <div className="grid lg:grid-cols-2 gap-16 items-center">
 
           {/* ── Left: Content ── */}
-          <div>
+          <div className="min-w-0">
             <AnimatedSection>
               <span className="section-label">
                 <span className="w-8 h-px bg-gold-500" />
@@ -85,7 +85,7 @@ export default function About({ foundedYear = 2011, location = "Maitidevi, Kathm
           </div>
 
           {/* ── Right: Visual ── */}
-          <AnimatedSection direction="left" delay={0.2}>
+          <AnimatedSection direction="up" delay={0.2} className="min-w-0">
             <div className="relative">
 
               {/* Main image */}

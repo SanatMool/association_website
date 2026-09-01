@@ -44,7 +44,7 @@ export default function ImageLightboxGallery({ images, title }: Props) {
       </h3>
 
       {/* Horizontally-scrollable thumbnail strip */}
-      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
+      <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide" style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}>
         {images.map((img, i) => (
           <button
             key={i}

@@ -23,7 +23,7 @@ export default function ExecutiveCommittee({ committee }: ExecutiveCommitteeProp
   return (
     <section id="committee" className="section-padding bg-slate-50 relative overflow-hidden">
       {/* Subtle decoration */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gold-500/3 rounded-full translate-x-1/2 -translate-y-1/4 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[160px] h-[160px] sm:w-[280px] sm:h-[280px] lg:w-[600px] lg:h-[600px] -translate-y-1/4 lg:translate-x-1/2 pointer-events-none bg-gold-500/3 rounded-full" />
 
       <div className="container-max relative z-10">
         <div className="text-center mb-16">
